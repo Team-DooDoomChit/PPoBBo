@@ -32,10 +32,14 @@ export function setupKeyboardInput() {
   };
 
   window.addEventListener('keydown', (e) => {
-    if (e.target.closest?.('input, textarea')) return;
+    // 입력창·모달 안에서는 브라우저 기본 키 동작(버튼 누르기 등)을 그대로 쓴다
+    if (e.target.closest?.('input, textarea, .modal-overlay')) return;
     if (e.repeat) return;
-    // 포커스된 버튼이 Space/Enter로 한 번 더 눌리지 않도록
-    if (e.code === 'Space' || e.code === 'Enter') document.activeElement?.blur?.();
+    const isButtonKey = e.code === 'Space' || e.code === 'Enter';
+    // 키보드(Tab)로 버튼에 포커스를 옮겨 둔 경우엔 그 버튼을 누르게 둔다
+    if (isButtonKey && e.target.matches?.('button:focus-visible')) return;
+    // 마우스 클릭으로 남은 포커스 때문에 버튼이 한 번 더 눌리지 않도록
+    if (isButtonKey) document.activeElement?.blur?.();
     if (e.code === 'Enter') eventBus.emit('input:confirm');
     if (e.code === 'KeyC') eventBus.emit('input:coin');
     if (AXES[e.code] || e.code === 'Space') {
