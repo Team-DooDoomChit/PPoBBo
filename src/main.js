@@ -1,5 +1,6 @@
 import './styles/main.css';
 import './styles/ui.css';
+import './styles/modals.css';
 import { eventBus } from './core/EventBus.js';
 import { SceneManager } from './three/SceneManager.js';
 import { Arcade } from './three/Arcade.js';
@@ -10,6 +11,7 @@ import { MainScreen } from './ui/screens/MainScreen.js';
 import { MachineSelectScreen } from './ui/screens/MachineSelectScreen.js';
 import { GameScreen } from './ui/screens/GameScreen.js';
 import { CollectionScreen } from './ui/screens/CollectionScreen.js';
+import { setupModals } from './ui/modals/index.js';
 
 const sceneManager = new SceneManager(document.getElementById('scene'));
 const arcade = new Arcade(sceneManager);
@@ -40,5 +42,6 @@ hud.addAction('📖 도감', () => router.go('collection'), '인형 도감');
 if (import.meta.env.DEV) window.__ppobbo = { sceneManager, arcade, games, router, eventBus };
 
 router.go('main');
+setupModals(hud);
 sceneManager.start();
 eventBus.emit('app:ready');
