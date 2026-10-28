@@ -2,7 +2,7 @@ import { PhysicsWorld } from './PhysicsWorld.js';
 import { buildMachineColliders, isInChute, isOverChute } from './MachineColliders.js';
 import { createDollBody } from './DollBody.js';
 import { ClawController, CLAW_STATE } from './ClawController.js';
-import { createDollMesh } from '../three/DollFactory.js';
+import { createDollMesh, disposeDollMesh } from '../three/DollFactory.js';
 import { pickRandomDoll } from '../data/dolls.js';
 import { MACHINE_SPEC, PLAY_FLOOR_Y } from '../three/machineSpec.js';
 import { eventBus } from '../core/EventBus.js';
@@ -59,6 +59,7 @@ export class ClawGame {
   #removeDoll(doll) {
     this.physics.removeBody(doll.body);
     this.machine.group.remove(doll.mesh);
+    disposeDollMesh(doll.mesh);
     this.dolls.splice(this.dolls.indexOf(doll), 1);
   }
 

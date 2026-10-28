@@ -56,6 +56,8 @@ export class ClawController {
 
     this.body = new CANNON.Body({
       type: CANNON.Body.KINEMATIC,
+      // 잠들면 속도를 넣어도 깨어나지 않아 내려갈 때 인형을 밀어내지 못한다
+      allowSleep: false,
       shape: new CANNON.Sphere(0.05),
       collisionFilterGroup: GROUP.CLAW,
       collisionFilterMask: GROUP.DOLL,
