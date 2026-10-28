@@ -1,15 +1,16 @@
 /**
  * 3D 화면에서 기계에 마우스를 올리면 강조하고, 클릭(드래그 아님)하면 onPick(machineId) 호출.
+ * isSelected(machine)가 true인 기계는 마우스가 벗어나도 강조를 유지한다.
  * @returns 해제 함수
  */
-export function bindMachinePicking({ arcade, sceneManager }, onPick) {
+export function bindMachinePicking({ arcade, sceneManager }, onPick, { isSelected = () => false } = {}) {
   const canvas = sceneManager.canvas;
   let hovered = null;
   let downAt = null;
 
   const setHover = (machine) => {
     if (hovered === machine) return;
-    hovered?.setHighlight(false);
+    hovered?.setHighlight(isSelected(hovered));
     hovered = machine;
     hovered?.setHighlight(true);
     canvas.style.cursor = machine ? 'pointer' : '';
