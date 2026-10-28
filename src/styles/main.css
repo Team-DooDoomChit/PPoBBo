@@ -1,0 +1,46 @@
+:root {
+  --bg: #0d0a1f;
+  --panel: rgba(24, 18, 52, 0.92);
+  --panel-border: #6c4dff;
+  --text: #f4f0ff;
+  --text-dim: #a99fd0;
+  --accent: #ff4fa3;
+  --accent-2: #3de0ff;
+  --gold: #ffd23f;
+  --radius: 16px;
+  --font: 'Jua', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+#ui > * {
+  pointer-events: auto;
+}
