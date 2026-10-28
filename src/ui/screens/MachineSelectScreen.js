@@ -35,11 +35,15 @@ export function MachineSelectScreen(ctx, { machineId = MACHINES[0].id } = {}) {
 
   const play = () => router.go('game', { machineId: MACHINES[index].id });
 
-  const unbindPicking = bindMachinePicking(ctx, (id) => {
-    const i = MACHINES.findIndex((m) => m.id === id);
-    if (i === index) play();
-    else select(i);
-  });
+  const unbindPicking = bindMachinePicking(
+    ctx,
+    (id) => {
+      const i = MACHINES.findIndex((m) => m.id === id);
+      if (i === index) play();
+      else select(i);
+    },
+    { isSelected: (machine) => machine.config.id === MACHINES[index].id },
+  );
 
   // 모션 인식(B)이나 키보드 어댑터(#6)가 보내는 선택 이벤트
   const offs = [

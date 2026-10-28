@@ -72,6 +72,8 @@ export class SceneManager {
   /** 카메라를 부드럽게 이동시킨다. 이동 중에는 OrbitControls 입력을 막는다. */
   moveCamera(position, target, duration = 1.2) {
     return new Promise((resolve) => {
+      // 이동 중에 새 이동이 들어오면 이전 이동은 중단된 것으로 보고 끝낸다 (await가 영원히 대기하지 않도록)
+      this.#cameraTween?.resolve();
       this.#cameraTween = {
         fromPos: this.camera.position.clone(),
         fromTarget: this.controls.target.clone(),

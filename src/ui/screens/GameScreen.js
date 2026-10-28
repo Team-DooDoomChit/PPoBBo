@@ -35,6 +35,11 @@ export function GameScreen(ctx, { machineId }) {
     if (game.claw.isPlaying) return;
     const result = gameApi.spendGold(machine.price);
     if (!result.ok) {
+      // 잔액 부족이 아닌 실패(예: invalid-amount)는 충전을 권하지 않는다
+      if (result.reason && result.reason !== 'not-enough-gold') {
+        toast('코인을 넣을 수 없어요. 잠시 후 다시 시도해 주세요', { type: 'warn' });
+        return;
+      }
       toast('골드가 부족해요! 충전하거나 야간 근무를 해보세요', { type: 'warn' });
       eventBus.emit('ui:open-modal', { name: 'charge' });
       return;

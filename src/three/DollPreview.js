@@ -97,6 +97,8 @@ export function createDollViewer(canvas, doll) {
       observer.disconnect();
       controls.dispose();
       renderer.dispose();
+      // dispose()만으로는 WebGL 컨텍스트가 반납되지 않아, 여러 번 열면 메인 씬 컨텍스트가 끊길 수 있다
+      renderer.forceContextLoss();
     },
   };
 }

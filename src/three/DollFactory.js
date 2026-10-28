@@ -132,3 +132,10 @@ export function createDollMesh(doll) {
   builders[doll.type](group, doll, createMaterials(doll));
   return group;
 }
+
+/** createDollMesh로 만든 인형의 머티리얼 해제 (지오메트리와 눈 머티리얼은 공유라 제외) */
+export function disposeDollMesh(group) {
+  group.traverse((obj) => {
+    if (obj.isMesh && obj.material !== black) obj.material.dispose();
+  });
+}
