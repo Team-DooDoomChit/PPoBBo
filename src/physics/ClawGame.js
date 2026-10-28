@@ -48,7 +48,8 @@ export class ClawGame {
     const data = pickRandomDoll(this.machineId);
     const mesh = createDollMesh(data);
     const body = createDollBody(this.physics.materials.doll, position);
-    body.quaternion.setFromEuler(Math.random() * 0.6 - 0.3, Math.random() * Math.PI * 2, Math.random() * 0.6 - 0.3);
+    // 대체로 정면(+Z)을 보도록 약간만 비튼다
+    body.quaternion.setFromEuler(Math.random() * 0.6 - 0.3, (Math.random() - 0.5) * 2, Math.random() * 0.6 - 0.3);
     this.machine.group.add(mesh);
     this.physics.addBody(body, mesh);
     const doll = { data, body, mesh };
