@@ -11,12 +11,15 @@ import { wallet } from './wallet.js';
  */
 export const ATTENDANCE_REWARDS = Object.freeze([100, 100, 150, 150, 200, 200, 500]);
 const KEY = 'attendance';
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const defaultState = () => ({ streak: 0, lastDate: null });
 
 function readState() {
   const s = load(KEY, defaultState());
   if (!Number.isSafeInteger(s?.streak) || s.streak < 0) return defaultState();
+  // 깨진 값이나 예전 형식('Wed Oct 28 2026')이면 문자열 비교가 틀어지므로 초기화
+  if (s.lastDate != null && !DATE_RE.test(s.lastDate)) return defaultState();
   return s;
 }
 
@@ -25,8 +28,9 @@ export const attendance = {
   getAttendance() {
     const { streak, lastDate } = readState();
     const today = dateKey();
-    // 기기 시계를 과거로 돌려도 이미 받은 날 이전에는 다시 받을 수 없다
-    const claimedToday = lastDate != null && lastDate >= today;
+    // 기록이 오늘 또는 내일(시계를 하루 되돌린 경우, 시간대 이동)이면 오늘은 받은 것으로 본다.
+    // 그보다 더 미래면 기기 시계가 잘못됐던 기록으로 보고 무시한다. (영구 잠김 방지)
+    const claimedToday = lastDate === today || lastDate === dateKey(1);
     const continued = claimedToday || lastDate === dateKey(-1);
     const current = continued ? streak : 0;
     const n = ATTENDANCE_REWARDS.length;
@@ -44,9 +48,13 @@ export const attendance = {
     if (info.claimedToday) return { ok: false, reason: 'already-claimed' };
 
     const reward = ATTENDANCE_REWARDS[info.todayIndex];
-    // 출석 기록을 먼저 저장해 중복 지급을 막는다
-    save(KEY, { streak: info.streak + 1, lastDate: dateKey() });
-    wallet.addGold(reward, 'attendance');
+    const prev = readState();
+    // 출석 기록을 먼저 저장해 중복 지급을 막는다. 저장이 안 되면 지급하지 않는다.
+    if (!save(KEY, { streak: info.streak + 1, lastDate: dateKey() })) return { ok: false, reason: 'save-failed' };
+    if (!wallet.addGold(reward, 'attendance').ok) {
+      save(KEY, prev); // 골드 지급 실패 시 출석 기록도 되돌려 다시 받을 수 있게 한다
+      return { ok: false, reason: 'save-failed' };
+    }
     return { ok: true, reward, day: info.todayIndex + 1 };
   },
 };

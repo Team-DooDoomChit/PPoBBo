@@ -1,5 +1,5 @@
 import { eventBus } from '../core/EventBus.js';
-import { load, save } from './storage.js';
+import { load, save, onExternalChange } from './storage.js';
 import { now } from './clock.js';
 
 /**
@@ -31,14 +31,36 @@ function readState() {
   return s;
 }
 
+/** 저장소의 최신값으로 갱신하고, 골드가 바뀌었으면 이벤트 발생 */
+function refresh() {
+  const prev = state.gold;
+  state = readState();
+  if (state.gold !== prev) eventBus.emit('gold:changed', { gold: state.gold });
+}
+
+// 다른 탭에서 골드가 바뀌면 이 탭에도 반영
+onExternalChange(KEY, refresh);
+
 const isValidAmount = (n) => Number.isSafeInteger(n) && n > 0;
 
+/**
+ * 골드 변경. 다른 탭의 변경을 덮어쓰지 않도록 최신값을 읽은 뒤 적용하고,
+ * 저장에 성공했을 때만 반영한다. (실패 시 새로고침하면 되돌아가는 문제 방지)
+ * @returns {boolean} 저장 성공 여부
+ */
 function apply(delta, reason) {
-  state.gold += delta;
-  state.history.push({ delta, reason, gold: state.gold, at: now() });
-  if (state.history.length > HISTORY_LIMIT) state.history.splice(0, state.history.length - HISTORY_LIMIT);
-  save(KEY, state);
+  const base = readState();
+  const next = {
+    gold: base.gold + delta,
+    history: [...base.history, { delta, reason, gold: base.gold + delta, at: now() }].slice(-HISTORY_LIMIT),
+  };
+  if (!save(KEY, next)) {
+    state = base;
+    return false;
+  }
+  state = next;
   eventBus.emit('gold:changed', { gold: state.gold });
+  return true;
 }
 
 export const wallet = {
@@ -49,15 +71,16 @@ export const wallet = {
   /** @returns {{ ok: boolean, gold: number, reason?: string }} 잔액 부족 시 ok=false */
   spendGold(amount, reason = 'spend') {
     if (!isValidAmount(amount)) return { ok: false, gold: state.gold, reason: 'invalid-amount' };
+    refresh();
     if (state.gold < amount) return { ok: false, gold: state.gold, reason: 'not-enough-gold' };
-    apply(-amount, reason);
+    if (!apply(-amount, reason)) return { ok: false, gold: state.gold, reason: 'save-failed' };
     return { ok: true, gold: state.gold };
   },
 
   /** @returns {{ ok: boolean, gold: number, reason: string }} */
   addGold(amount, reason = 'reward') {
     if (!isValidAmount(amount)) return { ok: false, gold: state.gold, reason: 'invalid-amount' };
-    apply(amount, reason);
+    if (!apply(amount, reason)) return { ok: false, gold: state.gold, reason: 'save-failed' };
     return { ok: true, gold: state.gold, reason };
   },
 

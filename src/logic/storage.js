@@ -58,6 +58,19 @@ export function save(key, data) {
   }
 }
 
+/**
+ * 다른 탭에서 같은 키를 바꾸면 callback 호출 (브라우저 'storage' 이벤트).
+ * 저장소 전체가 지워진 경우(e.key === null)도 포함한다.
+ * @returns 해제 함수
+ */
+export function onExternalChange(key, callback) {
+  const handler = (e) => {
+    if (e.key === null || e.key === PREFIX + key) callback();
+  };
+  globalThis.addEventListener?.('storage', handler);
+  return () => globalThis.removeEventListener?.('storage', handler);
+}
+
 export function remove(key) {
   try {
     backend.removeItem(PREFIX + key);

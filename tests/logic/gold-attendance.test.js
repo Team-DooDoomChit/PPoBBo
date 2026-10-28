@@ -7,6 +7,21 @@ import { setClock } from '../../src/logic/clock.js';
 import { wallet, INITIAL_GOLD } from '../../src/logic/wallet.js';
 import { attendance, ATTENDANCE_REWARDS } from '../../src/logic/attendance.js';
 
+/** 쓰기 실패를 흉내 낼 수 있는 메모리 저장소 */
+function memoryBackend() {
+  const map = new Map();
+  return {
+    failWrites: false,
+    failKey: null,
+    getItem: (k) => (map.has(k) ? map.get(k) : null),
+    setItem(k, v) {
+      if (this.failWrites || this.failKey === k) throw new Error('QuotaExceededError');
+      map.set(k, String(v));
+    },
+    removeItem: (k) => map.delete(k),
+  };
+}
+
 /** 로컬 시간 기준 날짜로 시계 고정 */
 const setDay = (y, m, d, hh = 12) => setClock(() => new Date(y, m - 1, d, hh).getTime());
 
@@ -94,11 +109,70 @@ test('변경 내역이 최신순으로 기록된다', () => {
 
 // ---------------- 저장소 ----------------
 
-test('저장소: 버전이 다르면 기본값', () => {
+test('저장소: 저장/읽기/삭제', () => {
   save('x', { a: 1 });
   assert.deepEqual(load('x', {}), { a: 1 });
   remove('x');
   assert.deepEqual(load('x', { d: 1 }), { d: 1 });
+});
+
+test('저장소: 버전이 다르거나 JSON이 깨졌으면 기본값', () => {
+  const backend = memoryBackend();
+  useStorageBackend(backend);
+  backend.setItem('ppobbo:x', JSON.stringify({ v: 0, data: { a: 1 } }));
+  assert.deepEqual(load('x', { d: 1 }), { d: 1 });
+  backend.setItem('ppobbo:x', '{broken');
+  assert.deepEqual(load('x', { d: 1 }), { d: 1 });
+});
+
+// ---------------- 여러 탭 / 저장 실패 ----------------
+
+test('다른 탭에서 바뀐 골드를 덮어쓰지 않는다', () => {
+  // 이 탭은 1000으로 알고 있는데, 다른 탭이 900을 써서 저장값이 100
+  save('wallet', { gold: 100, history: [] });
+  const r = wallet.spendGold(100);
+  assert.deepEqual(r, { ok: true, gold: 0 });
+  assert.equal(load('wallet', null).gold, 0);
+});
+
+test('다른 탭 때문에 잔액이 부족해졌으면 차감 실패', () => {
+  save('wallet', { gold: 50, history: [] });
+  assert.equal(wallet.spendGold(100).reason, 'not-enough-gold');
+  assert.equal(wallet.getGold(), 50);
+});
+
+test('저장 실패 시 골드는 바뀌지 않고 이벤트도 없다', () => {
+  const backend = memoryBackend();
+  useStorageBackend(backend);
+  wallet.reload();
+  backend.failWrites = true;
+  let events = 0;
+  const off = eventBus.on('gold:changed', () => events++);
+  assert.equal(wallet.addGold(500).reason, 'save-failed');
+  assert.equal(wallet.spendGold(100).reason, 'save-failed');
+  off();
+  assert.equal(wallet.getGold(), INITIAL_GOLD);
+  assert.equal(events, 0);
+});
+
+test('저장 실패 시 출석 보상을 주지 않는다 (반복 수령 방지)', () => {
+  const backend = memoryBackend();
+  useStorageBackend(backend);
+  wallet.reload();
+  backend.failWrites = true;
+  for (let i = 0; i < 3; i++) assert.equal(attendance.claimAttendance().reason, 'save-failed');
+  assert.equal(wallet.getGold(), INITIAL_GOLD);
+});
+
+test('골드 지급만 실패하면 출석 기록을 되돌려 다시 받을 수 있다', () => {
+  const backend = memoryBackend();
+  useStorageBackend(backend);
+  wallet.reload();
+  backend.failKey = 'ppobbo:wallet';
+  assert.equal(attendance.claimAttendance().reason, 'save-failed');
+  assert.equal(attendance.getAttendance().claimedToday, false);
+  backend.failKey = null;
+  assert.equal(attendance.claimAttendance().ok, true);
 });
 
 // ---------------- 출석체크 ----------------
@@ -166,10 +240,29 @@ test('받은 뒤 getAttendance는 오늘 칸을 가리킨다 (UI 표시용)', ()
   assert.equal(info.todayIndex, 0);
 });
 
-test('기기 시계를 과거로 돌려도 다시 받을 수 없다', () => {
+test('기기 시계를 하루 되돌려도 다시 받을 수 없다', () => {
   attendance.claimAttendance();
   setDay(2026, 10, 27);
   assert.equal(attendance.claimAttendance().ok, false);
+});
+
+test('미래 날짜로 출석했던 기록 때문에 영구히 잠기지 않는다', () => {
+  setDay(2030, 1, 1); // 기기 시계가 잘못 설정된 상태로 출석
+  attendance.claimAttendance();
+  setDay(2026, 10, 28); // 시계를 고침
+  const info = attendance.getAttendance();
+  assert.equal(info.claimedToday, false);
+  assert.equal(info.streak, 0);
+  assert.equal(attendance.claimAttendance().day, 1);
+});
+
+test('lastDate가 깨졌거나 예전 형식이면 초기화', () => {
+  for (const bad of ['9999', 'Wed Oct 28 2026', 123]) {
+    save('attendance', { streak: 3, lastDate: bad });
+    const info = attendance.getAttendance();
+    assert.equal(info.claimedToday, false, String(bad));
+    assert.equal(info.streak, 0, String(bad));
+  }
 });
 
 test('출석 기록도 새로고침 후 유지', () => {
