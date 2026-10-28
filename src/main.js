@@ -1,8 +1,17 @@
 import './styles/main.css';
+import './styles/ui.css';
+import './styles/modals.css';
 import { eventBus } from './core/EventBus.js';
 import { SceneManager } from './three/SceneManager.js';
 import { Arcade } from './three/Arcade.js';
 import { ClawGame } from './physics/ClawGame.js';
+import { ScreenRouter } from './ui/ScreenRouter.js';
+import { HUD } from './ui/HUD.js';
+import { MainScreen } from './ui/screens/MainScreen.js';
+import { MachineSelectScreen } from './ui/screens/MachineSelectScreen.js';
+import { GameScreen } from './ui/screens/GameScreen.js';
+import { CollectionScreen } from './ui/screens/CollectionScreen.js';
+import { setupModals } from './ui/modals/index.js';
 
 const sceneManager = new SceneManager(document.getElementById('scene'));
 const arcade = new Arcade(sceneManager);
@@ -12,18 +21,27 @@ const games = new Map([...arcade.machines].map(([id, machine]) => [id, new ClawG
 let activeGame = null;
 sceneManager.onUpdate((dt) => activeGame?.update(dt));
 
-// 기계 더블클릭 시 클로즈업, ESC로 전체 시점 복귀
-sceneManager.canvas.addEventListener('dblclick', (e) => {
-  const machine = arcade.pickMachine(e.clientX, e.clientY);
-  if (!machine) return;
-  activeGame = games.get(machine.config.id);
-  arcade.focusMachine(machine.config.id);
+const uiRoot = document.getElementById('ui');
+const router = new ScreenRouter(uiRoot, {
+  sceneManager,
+  arcade,
+  games,
+  setActiveGame: (game) => (activeGame = game),
 });
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') arcade.focusOverview();
-});
+const hud = new HUD(uiRoot, router);
+router.ctx.hud = hud;
 
-if (import.meta.env.DEV) window.__ppobbo = { sceneManager, arcade, games, eventBus };
+router
+  .register('main', MainScreen)
+  .register('select', MachineSelectScreen)
+  .register('game', GameScreen)
+  .register('collection', CollectionScreen);
 
+hud.addAction('📖 도감', () => router.go('collection'), '인형 도감');
+
+if (import.meta.env.DEV) window.__ppobbo = { sceneManager, arcade, games, router, eventBus };
+
+router.go('main');
+setupModals(hud);
 sceneManager.start();
 eventBus.emit('app:ready');
