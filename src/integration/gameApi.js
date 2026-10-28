@@ -1,27 +1,23 @@
 import { eventBus } from '../core/EventBus.js';
 import { wallet } from '../logic/wallet.js';
 import { attendance } from '../logic/attendance.js';
+import { nightShift } from '../logic/nightShift.js';
 
 /**
  * 게임 로직(팀원 B) 연동 어댑터.
  *
  * UI는 이 객체만 호출한다.
- *   - #11 골드·충전·출석: src/logic 모듈 연결 완료 (LocalStorage 저장)
- *   - #12 야간 근무 / #13 도감: 아직 메모리 Mock, 구현 후 교체 (반환 형태만 유지하면 UI 수정 없음)
+ *   - #11 골드·충전·출석, #12 야간 근무: src/logic 모듈 연결 완료 (LocalStorage 저장)
+ *   - #13 도감: 아직 메모리 Mock, 구현 후 교체 (반환 형태만 유지하면 UI 수정 없음)
  *
  * 이벤트 계약
  *   gold:changed        { gold }        골드가 바뀔 때 (B #11과 동일)
  *   collection:changed  { collection }  도감이 바뀔 때
  */
-const NIGHT_SHIFT = { duration: 15, reward: 300, dailyMax: 5 };
-
-// #12 / #13 구현 전까지 사용하는 메모리 Mock
+// #13 구현 전까지 사용하는 메모리 Mock
 const state = {
   collection: {}, // { [dollId]: { count, obtainedAt } }
-  nightShift: { date: null, count: 0, session: null },
 };
-
-const today = () => new Date().toDateString();
 
 export const gameApi = {
   // ---------- 골드 / 충전 (#11) ----------
@@ -47,34 +43,17 @@ export const gameApi = {
 
   // ---------- 야간 근무 (#12) ----------
 
-  getNightShiftStatus() {
-    const count = state.nightShift.date === today() ? state.nightShift.count : 0;
-    return { ...NIGHT_SHIFT, remaining: NIGHT_SHIFT.dailyMax - count };
-  },
+  getNightShiftStatus: () => nightShift.getStatus(),
 
-  startNightShift() {
-    if (this.getNightShiftStatus().remaining <= 0) return { ok: false, reason: 'daily-limit' };
-    const session = { id: crypto.randomUUID(), startedAt: Date.now() };
-    state.nightShift.session = session;
-    return { ok: true, sessionId: session.id, duration: NIGHT_SHIFT.duration, reward: NIGHT_SHIFT.reward };
-  },
+  startNightShift: () => nightShift.start(),
 
-  /** 시청 시간이 충분할 때만 수당 지급 */
-  completeNightShift(sessionId) {
-    const session = state.nightShift.session;
-    if (!session || session.id !== sessionId) return { ok: false, reason: 'invalid-session' };
-    state.nightShift.session = null;
-    if (Date.now() - session.startedAt < NIGHT_SHIFT.duration * 1000) return { ok: false, reason: 'too-short' };
+  /** 시청 시간 충족 + 탭 이탈 없음 + 일일 제한 이내일 때만 수당 지급 */
+  completeNightShift: (sessionId) => nightShift.complete(sessionId),
 
-    if (state.nightShift.date !== today()) state.nightShift = { date: today(), count: 0, session: null };
-    state.nightShift.count += 1;
-    this.addGold(NIGHT_SHIFT.reward, 'night-shift');
-    return { ok: true, reward: NIGHT_SHIFT.reward };
-  },
+  cancelNightShift: (sessionId) => nightShift.cancel(sessionId),
 
-  cancelNightShift(sessionId) {
-    if (state.nightShift.session?.id === sessionId) state.nightShift.session = null;
-  },
+  /** 시청 중 탭 이탈로 이미 실패가 확정됐는지 (UI에서 바로 안내할 때 사용, 선택) */
+  isNightShiftInterrupted: (sessionId) => nightShift.isInterrupted(sessionId),
 
   // ---------- 도감 (#13) ----------
 
