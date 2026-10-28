@@ -1,16 +1,16 @@
-# 🤝 A ↔ B 연동 가이드
+# 🤝 모션 인식·게임 로직 ↔ 3D·UI 연동 가이드
 
-팀원 B(모션 인식 · 게임 로직)가 팀원 A(3D · UI)의 코드와 연결할 때 필요한 내용만 정리했습니다.
+모션 인식·게임 로직 코드를 3D·UI 코드와 연결할 때 필요한 내용만 정리했습니다.
 
 ```
-[웹캠] → MediaPipe(B) → 브릿지(B, #10) ─ inputState.update() ─→ MotionBinding(A, #6) → 집게 / 조이스틱 / 화면
-                                                                                      ↓ eventBus
-                         게임 로직(B, #11~#13) ←──── integration/gameApi.js ←──────── UI(A, #4·#5)
+[웹캠] → MediaPipe → 모션 브릿지(#10) ─ inputState.update() ─→ MotionBinding(#6) → 집게 / 조이스틱 / 화면
+                                                                                ↓ eventBus
+                   게임 로직(#11~#13) ←──── integration/gameApi.js ←──────── UI(#4·#5)
 ```
 
 ## 1. 입력: `InputState` (`src/core/InputState.js`)
 
-B는 매 프레임(또는 값이 바뀔 때) 아래처럼 넣기만 하면 됩니다. 넣지 않은 필드는 이전 값을 유지합니다.
+모션 브릿지는 매 프레임(또는 값이 바뀔 때) 아래처럼 넣기만 하면 됩니다. 넣지 않은 필드는 이전 값을 유지합니다.
 
 ```js
 import { inputState } from './core/InputState.js';
@@ -19,7 +19,7 @@ inputState.update({ joystickX: 0.5, joystickY: 0, isFist: true });
 inputState.reset(); // 손을 놓쳤을 때 등 모두 초기화
 ```
 
-| 필드 | 타입 / 범위 | 의미 | A 쪽 동작 |
+| 필드 | 타입 / 범위 | 의미 | 3D·게임 동작 |
 | --- | --- | --- | --- |
 | `joystickX` | `-1 ~ 1` | 왼쪽 − / 오른쪽 + | 게임: 집게 좌우 이동 + 조이스틱 기울기 · 선택: ±0.6을 넘는 순간 이전/다음 기계 |
 | `joystickY` | `-1 ~ 1` | 앞쪽(플레이어 쪽) − / 안쪽 + | 게임: 집게 앞뒤 이동 + 조이스틱 기울기 |
@@ -52,7 +52,7 @@ import { eventBus } from './core/EventBus.js';
 const off = eventBus.on('doll:won', ({ machineId, dollId }) => { /* ... */ });
 ```
 
-### A가 발행 → B가 구독할 수 있는 이벤트
+### 3D·게임이 발행하는 이벤트 (게임 로직 등에서 구독)
 
 | 이벤트 | payload | 시점 |
 | --- | --- | --- |
@@ -63,7 +63,7 @@ const off = eventBus.on('doll:won', ({ machineId, dollId }) => { /* ... */ });
 | `claw:round-end` | `{ machineId }` | 한 판 종료 |
 | `screen:changed` | `{ name, params }` | 화면 전환 (`main`, `select`, `game`, `collection`) |
 
-### B(또는 누구든)가 발행 → A가 처리하는 이벤트
+### 입력·게임 로직이 발행 → 3D·UI가 처리하는 이벤트
 
 | 이벤트 | payload | 처리 |
 | --- | --- | --- |
@@ -76,7 +76,7 @@ const off = eventBus.on('doll:won', ({ machineId, dollId }) => { /* ... */ });
 
 ## 3. 게임 로직: `gameApi` (`src/integration/gameApi.js`)
 
-UI는 이 객체만 호출합니다. 현재는 **메모리 Mock**이며, B 모듈이 준비되면 각 메서드 내부를 B 모듈 호출로 바꾸면 됩니다. **반환 형태만 유지하면 UI 수정은 필요 없습니다.**
+UI는 이 객체만 호출합니다. 현재는 **메모리 Mock**이며, 게임 로직 모듈이 준비되면 각 메서드 내부를 해당 모듈 호출로 바꾸면 됩니다. **반환 형태만 유지하면 UI 수정은 필요 없습니다.**
 
 | 메서드 | 반환 | 이슈 |
 | --- | --- | --- |
