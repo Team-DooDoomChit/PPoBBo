@@ -60,7 +60,7 @@ export function MachineSelectScreen(ctx, { machineId = MACHINES[0].id } = {}) {
       h('div', { class: 'machine-cards' }, cards),
       h('button', { class: 'btn btn-round', onClick: () => select(index + 1), 'aria-label': '다음 기계' }, '▶'),
     ),
-    h('button', { class: 'btn btn-primary btn-lg play-btn', onClick: play }, '플레이 ▶'),
+    h('button', { class: 'btn btn-primary btn-lg play-btn', onClick: play, title: '가리키기 · 주먹 · Enter 로도 시작' }, '플레이 ▶'),
   );
 
   select(index);

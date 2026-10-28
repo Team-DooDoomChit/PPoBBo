@@ -65,6 +65,10 @@ export class SceneManager {
     });
   }
 
+  get isCameraMoving() {
+    return this.#cameraTween !== null;
+  }
+
   /** 카메라를 부드럽게 이동시킨다. 이동 중에는 OrbitControls 입력을 막는다. */
   moveCamera(position, target, duration = 1.2) {
     return new Promise((resolve) => {

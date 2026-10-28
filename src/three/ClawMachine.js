@@ -315,5 +315,16 @@ export class ClawMachine {
       ),
     );
     this.button.add(ring, this.buttonCap);
+
+    // 코인 투입구 (동전 드래그 앤 드롭 대상)
+    this.coinSlot = new THREE.Group();
+    this.coinSlot.position.set(0, panelTop, panel.z);
+    this.group.add(this.coinSlot);
+
+    const rim = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.01, 0.045), this.materials.metal);
+    rim.position.y = 0.005;
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.012, 0.008), this.materials.dark);
+    slot.position.y = 0.006;
+    this.coinSlot.add(rim, slot);
   }
 }

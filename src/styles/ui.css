@@ -566,3 +566,51 @@
   .machine-card { flex-basis: 170px; }
   .select-panel .btn-round { display: none; }
 }
+
+/* ---------- 모션 커서 ---------- */
+.motion-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  border: 3px solid var(--accent-2);
+  border-radius: 50%;
+  box-shadow: 0 0 12px var(--accent-2);
+  pointer-events: none;
+  transition: border-color 0.1s, width 0.1s, height 0.1s;
+}
+
+.motion-cursor.holding {
+  border-color: var(--gold);
+  box-shadow: 0 0 12px var(--gold);
+}
+
+.motion-cursor.over-slot {
+  border-color: #33ff88;
+  box-shadow: 0 0 20px #33ff88;
+}
+
+.controls-hint {
+  margin-top: 2px;
+}
+
+/* 넓은 화면에서는 게임 패널을 오른쪽으로 옮겨 코인 투입구(동전 드롭 대상)를 가리지 않게 한다 */
+@media (min-width: 900px) {
+  .game-panel {
+    left: auto;
+    right: 24px;
+    transform: none;
+    align-items: flex-end;
+    width: 360px;
+  }
+
+  .game-panel .controls-hint {
+    text-align: right;
+  }
+}
