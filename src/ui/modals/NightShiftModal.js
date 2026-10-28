@@ -4,11 +4,15 @@ import { openModal } from '../modal.js';
 import { toast } from '../toast.js';
 
 const AD_SCENES = ['🧹 오락실 바닥 청소 중...', '🧸 인형 채워 넣는 중...', '🪙 동전 정리 중...', '✨ 유리창 닦는 중...'];
+const FAIL_TEXT = {
+  interrupted: '다른 화면으로 이동해서 근무가 중단됐어요',
+  default: '근무 확인에 실패해 수당이 지급되지 않았어요',
+};
 
 /**
  * 야간 근무(광고 시청) UI.
- * 시청 시작/완료를 gameApi에 알리고, 지급 여부 검증은 게임 로직(B #12)에 맡긴다.
- * 중간에 닫으면 근무가 취소되어 수당이 지급되지 않는다.
+ * 시청 시작/완료를 gameApi에 알리고, 지급 여부 검증은 게임 로직(#12)에 맡긴다.
+ * 중간에 닫거나 다른 탭/앱으로 이동하면 근무가 취소되어 수당이 지급되지 않는다.
  */
 export function openNightShiftModal() {
   let session = null;
@@ -17,6 +21,16 @@ export function openNightShiftModal() {
   const stop = () => {
     clearInterval(timer);
     timer = null;
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+  };
+
+  // 광고 중 화면이 숨겨지면 바로 중단한다 (돌아왔을 때 완료로 처리되지 않도록)
+  const onVisibilityChange = () => {
+    if (!document.hidden || !session) return;
+    stop();
+    gameApi.cancelNightShift(session.sessionId);
+    session = null;
+    renderResult({ ok: false, reason: 'interrupted' });
   };
 
   const modal = openModal({
@@ -58,6 +72,7 @@ export function openNightShiftModal() {
       h('p', { class: 'hint' }, remainText, '초 남음 · 건너뛸 수 없어요'),
     );
 
+    document.addEventListener('visibilitychange', onVisibilityChange);
     const startedAt = performance.now();
     timer = setInterval(() => {
       const elapsed = (performance.now() - startedAt) / 1000;
@@ -73,12 +88,16 @@ export function openNightShiftModal() {
     stop();
     const result = gameApi.completeNightShift(session.sessionId);
     session = null;
+    renderResult(result);
+    if (result.ok) toast(`야간 수당 🪙 ${formatGold(result.reward)}`, { type: 'good' });
+  };
+
+  const renderResult = (result) => {
     modal.body.replaceChildren(
       h('div', { class: 'night-hero' }, result.ok ? '🎉' : '😢'),
-      h('p', {}, result.ok ? `수고했어요! 야간 수당 🪙 ${formatGold(result.reward)} 지급` : '근무 확인에 실패해 수당이 지급되지 않았어요'),
+      h('p', {}, result.ok ? `수고했어요! 야간 수당 🪙 ${formatGold(result.reward)} 지급` : (FAIL_TEXT[result.reason] ?? FAIL_TEXT.default)),
       h('button', { class: 'btn btn-ghost btn-lg modal-action', onClick: renderIntro }, '확인'),
     );
-    if (result.ok) toast(`야간 수당 🪙 ${formatGold(result.reward)}`, { type: 'good' });
   };
 
   renderIntro();
