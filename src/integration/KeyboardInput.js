@@ -1,5 +1,6 @@
 import { inputState } from '../core/InputState.js';
 import { eventBus } from '../core/EventBus.js';
+import { isModalOpen } from '../ui/modal.js';
 
 const AXES = {
   ArrowLeft: ['joystickX', -1],
@@ -32,8 +33,10 @@ export function setupKeyboardInput() {
   };
 
   window.addEventListener('keydown', (e) => {
-    // 입력창·모달 안에서는 브라우저 기본 키 동작(버튼 누르기 등)을 그대로 쓴다
-    if (e.target.closest?.('input, textarea, .modal-overlay')) return;
+    // 모달이 열려 있거나 입력창이면 브라우저 기본 키 동작(버튼 누르기 등)을 그대로 쓴다
+    if (isModalOpen() || e.target.closest?.('input, textarea')) return;
+    // Ctrl+C(복사), Ctrl+W 같은 단축키는 게임 입력으로 쓰지 않는다
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.repeat) return;
     const isButtonKey = e.code === 'Space' || e.code === 'Enter';
     // 키보드(Tab)로 버튼에 포커스를 옮겨 둔 경우엔 그 버튼을 누르게 둔다

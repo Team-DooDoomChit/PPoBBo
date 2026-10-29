@@ -2,10 +2,10 @@
 
 웹캠 모션 인식으로 조작하는 3D 인형뽑기 오락실
 
-| 파트 | 담당 | 기술 |
-| --- | --- | --- |
-| 3D 그래픽 & 프론트엔드 | 팀원 A | Three.js, cannon-es, Vite |
-| AI 모션 인식 & 게임 로직 | 팀원 B | MediaPipe Hands / Face Mesh |
+| 파트 | 기술 |
+| --- | --- |
+| 3D 그래픽 & 프론트엔드 | Three.js, cannon-es, Vite |
+| AI 모션 인식 & 게임 로직 | MediaPipe Hands / Face Mesh |
 
 ## 🚀 실행
 
@@ -21,9 +21,9 @@ npm run build   # dist/ 생성
 | 집게 내리기 | ✊ 주먹 쥐기 | Space |
 | 코인 넣기 | 🤏 동전 집어서 투입구로 | C |
 | 확인 / 플레이 | ☝️ 가리키기 | Enter |
-| 시점 이동 | 고개 돌리기 | 마우스 드래그 |
+| 시점 이동 | 고개 돌리기 | 마우스 드래그 / 휠 (모션과 함께 사용 가능) |
 
-팀원 간 연동 규약은 [docs/INTEGRATION.md](docs/INTEGRATION.md)를 참고하세요.
+모션 인식·게임 로직과 3D·UI 사이의 연동 규약은 [docs/INTEGRATION.md](docs/INTEGRATION.md)를 참고하세요.
 
 ## 🌿 브랜치 전략 (Git Flow)
 
