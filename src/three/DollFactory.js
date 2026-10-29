@@ -138,8 +138,11 @@ function keychainFaceLines() {
 // ---------- 목도리 고양이: 머리 무늬(모자)와 얼굴 선. 머리 타원체는 목도리 토끼와 같다 ----------
 
 // 머리 무늬 아래 경계: [정면에서 돈 각도 |φ|, 경계 높이(머리 타원체 정규화 y)].
-// 정면 가운데는 V로 내려오고, 그 양옆으로 흰 이마가 둥글게 올라가며, 옆·뒤는 거의 수평이다.
-const CAP_EDGE = [[0, 0.3], [0.42, 0.44], [0.85, 0.24], [1.3, 0.1], [2.2, 0.12], [Math.PI, 0.18]];
+// 흰 이마가 정수리 가까이까지 높은 아치로 올라가고(가운데에 작은 V 가르마), 아치 바깥에서
+// 파란 옆머리가 눈썹 높이까지 가파르게 내려온다. 옆·뒤는 거의 수평이다.
+const CAP_EDGE = [[0, 0.62], [0.3, 0.7], [0.56, 0.6], [0.74, 0.38], [0.95, 0.2], [1.3, 0.12], [2.2, 0.12], [Math.PI, 0.18]];
+
+const capSlope = (i) => (CAP_EDGE[i + 1][1] - CAP_EDGE[i - 1][1]) / (CAP_EDGE[i + 1][0] - CAP_EDGE[i - 1][0]);
 
 function capEdge(phi) {
   const a = Math.abs(Math.atan2(Math.sin(phi), Math.cos(phi)));
@@ -148,8 +151,14 @@ function capEdge(phi) {
     const [p1, y1] = CAP_EDGE[i];
     if (a > p1) continue;
     const u = (a - p0) / (p1 - p0);
-    // 가운데 구간만 직선이라 V 모양으로 뾰족하고, 나머지는 부드럽게 잇는다
-    return y0 + (y1 - y0) * (i === 1 ? u : (1 - Math.cos(Math.PI * u)) / 2);
+    // 가운데 구간만 직선이라 작은 V 가르마가 되고, 나머지는 기울기를 이어 주는 3차 곡선(Catmull-Rom)으로 부드럽게 잇는다
+    if (i === 1) return y0 + (y1 - y0) * u;
+    const h = p1 - p0;
+    const m0 = i === 2 ? 0 : capSlope(i - 1) * h; // 이마 아치 꼭대기는 기울기 0
+    const m1 = i === CAP_EDGE.length - 1 ? 0 : capSlope(i) * h;
+    const u2 = u * u;
+    const u3 = u2 * u;
+    return (2 * u3 - 3 * u2 + 1) * y0 + (u3 - 2 * u2 + u) * m0 + (-2 * u3 + 3 * u2) * y1 + (u3 - u2) * m1;
   }
   return CAP_EDGE.at(-1)[1];
 }
@@ -200,7 +209,7 @@ function keychainCatCap() {
     const phi = (c / COLS) * Math.PI * 2;
     return headPoint(Math.acos(capEdge(phi)), phi, 1.02);
   });
-  const rim = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rimPoints, true), 144, 0.0024, 8, true);
+  const rim = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rimPoints, true), 144, 0.0019, 8, true);
   rim.deleteAttribute('uv');
 
   kcCap = mergeGeometries([shell.toNonIndexed(), rim.toNonIndexed()]);
@@ -490,7 +499,8 @@ const builders = {
     }
     group.add(part(geo.capsule, mat.chain, { pos: [0, topY + 0.003, 0], scale: [0.0032, 0.0055, 0.0032], rot: [0, 0, Math.PI / 2] }));
 
-    addScarf(group, mat, 0.02);
+    // 목도리를 토끼보다 조금 낮게 둘러 입 아래 턱 선이 보이게 한다
+    addScarf(group, mat, 0.013);
 
     // 팔, 발, 꼬리 방울
     for (const sx of [-1, 1]) {
