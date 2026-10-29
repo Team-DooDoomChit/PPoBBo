@@ -45,6 +45,27 @@ inputState.reset(); // 손을 놓쳤을 때 등 모두 초기화
 | Enter | `input:confirm` |
 | C | `input:coin` |
 
+### 모션 입력 (`src/motion/`, B #8~#10)
+
+HUD의 **📷** 버튼으로 켜고 끕니다. 켜면 카메라 권한을 요청하고 MediaPipe 모델(손·얼굴)을 받은 뒤 인식을 시작합니다.
+
+```
+웹캠 → MotionTracker → HandTracker(#8) / HeadTracker(#9) → MotionBridge(#10) → inputState.update(..., 'motion')
+```
+
+| InputState 필드 | 만드는 방법 |
+| --- | --- |
+| `joystickX` / `joystickY` | 손바닥 중심이 화면 가운데(0.5, 0.55)에서 벗어난 정도. 화면의 18% 이동 = ±1, 가운데 15%는 0 (데드존) |
+| `isFist` / `isPointing` / `isPinching` | 손가락 펴짐/굽힘 비율로 판별, 80ms 이상 유지돼야 켜지고 120ms 이상 유지돼야 꺼짐 |
+| `pointer` | 집는 중이면 엄지·검지 사이, 아니면 검지 끝 (좌우 반전, 떨림 보정) |
+| `headYaw` / `headPitch` | 켜고 처음 0.5초 동안의 자세를 정면(0)으로 삼은 머리 회전 각도 |
+| `gazeTarget` | yaw ±0.35rad 범위를 기계 수만큼 나눠 **1초 동안 응시**한 기계 |
+
+- 값이 **바뀐 필드만** 보냅니다. 손이 안 보일 때는 손 관련 필드를 한 번만 중립으로 되돌리고 그 뒤로는 보내지 않아서, 모션을 켠 채로 키보드를 써도 덮어쓰지 않습니다.
+- 모션이 켜져 있을 때 단축키: **V** 웹캠 미리보기 숨기기/보이기, **R** 정면과 손 가운데 위치 다시 맞추기
+- 다른 탭으로 가면 카메라를 자동으로 끕니다.
+- 이벤트: `motion:started`, `motion:stopped`, `motion:error { reason }` (`permission-denied` / `no-camera` / `load-failed` / `unsupported`)
+
 ## 2. 이벤트 (`src/core/EventBus.js`)
 
 ```js
@@ -103,8 +124,9 @@ UI는 이 객체만 호출합니다. 현재는 **메모리 Mock**이며, B 모�
 개발 서버(`npm run dev`)에서는 브라우저 콘솔에서 `window.__ppobbo`로 접근할 수 있습니다.
 
 ```js
-const { inputState, router, games } = window.__ppobbo;
+const { inputState, router, games, motion } = window.__ppobbo;
 router.go('game', { machineId: 'bear' });
 inputState.update({ pointer: { x: 0.5, y: 0.8 }, isPinching: true }); // 손 커서/동전 표시 확인
 inputState.update({ headYaw: 0.3 });                                    // 시점 이동 확인
+await motion.start();                                                   // 📷 버튼과 같음 (motion.hand / motion.head 로 트래커 상태 확인)
 ```
