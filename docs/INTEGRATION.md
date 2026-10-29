@@ -39,7 +39,7 @@ inputState.reset('motion'); // 손을 놓쳤을 때: 모션 입력값만 초기�
 - 모달이 열려 있는 동안에는 모든 입력이 무시되고 게임(집게·타이머)이 일시정지됩니다.
 - 정의되지 않은 필드를 넣으면 콘솔에 경고가 한 번 출력됩니다. 필드 추가가 필요하면 #6에서 합의 후 `DEFAULT_STATE`에 추가합니다.
 - 버튼 동작(하강 / 확인)은 **엣지**(false→true)에서만 일어나므로, 디바운스된 boolean을 계속 넣어주면 됩니다.
-- 기계 위치 → 화면 좌표가 필요하면 `arcade.getCoinSlotScreenPosition()`처럼 `Arcade`에 헬퍼를 추가해 사용합니다.
+- 기계 위치 → 화면 좌표가 필요하면 `Arcade`에 헬퍼를 추가해 사용합니다. (예: `machine.coinSlot`의 월드 좌표를 `camera`로 `project()`)
 
 ### 키보드 대체 입력 (`src/integration/KeyboardInput.js`)
 

@@ -99,13 +99,6 @@ export class Arcade {
     await this.sm.moveCamera(base.clone().add(FOCUS.position), target, duration);
   }
 
-  /** 기계 코인 투입구의 화면 정규화 좌표 { x, y } (0~1, 좌상단 원점) */
-  getCoinSlotScreenPosition(machine = this.focusedMachine) {
-    if (!machine) return null;
-    const p = machine.coinSlot.getWorldPosition(new THREE.Vector3()).project(this.sm.camera);
-    return { x: (p.x + 1) / 2, y: (1 - p.y) / 2 };
-  }
-
   /** 화면 좌표(clientX/Y)에 있는 기계를 찾는다. 없으면 null */
   pickMachine(clientX, clientY) {
     this.#pointer.set((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
