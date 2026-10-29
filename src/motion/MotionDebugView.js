@@ -1,4 +1,7 @@
 import { HandLandmarker } from '@mediapipe/tasks-vision';
+import { FACE } from './headPose.js';
+
+const FACE_POINTS = Object.values(FACE);
 
 /**
  * 디버그 화면: 좌우 반전된 웹캠 영상 위에 손 관절과 인식 상태를 그린다. (#8)
@@ -51,7 +54,7 @@ export class MotionDebugView {
    * @param {object} hand HandTracker 상태
    * @param {object} [extra] 아래쪽에 표시할 추가 정보 { label: value }
    */
-  draw({ hands }, hand, extra = {}) {
+  draw({ hands, face }, hand, extra = {}) {
     if (!this.visible) return;
     const { ctx, canvas } = this;
     const w = canvas.width;
@@ -74,6 +77,13 @@ export class MotionDebugView {
       }
       ctx.fillStyle = '#fff';
       lm.forEach((p) => ctx.fillRect(p.x * w - 2, p.y * h - 2, 4, 4));
+    }
+
+    // 머리 방향 계산에 쓰는 얼굴 기준점 (#9)
+    const fl = face?.faceLandmarks?.[0];
+    if (fl) {
+      ctx.fillStyle = '#ffd23f';
+      for (const i of FACE_POINTS) if (fl[i]) ctx.fillRect(fl[i].x * w - 3, fl[i].y * h - 3, 6, 6);
     }
     ctx.restore();
 
