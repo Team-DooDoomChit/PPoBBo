@@ -65,12 +65,12 @@ inputState.reset('motion'); // 손을 놓쳤을 때: 모션 입력값만 초기�
 | `headYaw` / `headPitch` | 켜고 처음 0.5초 동안의 자세를 정면(0)으로 삼은 머리 회전 각도 |
 | `gazeTarget` | yaw ±0.35rad 범위를 기계 수만큼 나눠 **1초 동안 응시**한 기계 |
 
-- 값이 **바뀐 필드만** 보냅니다. 손이 안 보일 때는 손 관련 필드를 한 번만 중립으로 되돌리고 그 뒤로는 보내지 않아서, 모션을 켠 채로 키보드를 써도 덮어쓰지 않습니다.
-- 게임 화면 단축키: **V** 카메라 창 숨기기/보이기, **R** 정면과 손 가운데 위치 다시 맞추기
+- 값이 **바뀐 필드만** 보냅니다(작은 떨림은 반올림해서 무시). 키보드와는 InputState가 입력원별로 합치므로 섞이지 않고, 이렇게 하면 구독자 호출 횟수가 줄어듭니다. 손이 안 보이면 손 관련 필드를 한 번만 중립으로 되돌리고, 카메라를 끌 때는 `inputState.reset('motion')`으로 모션 값만 지웁니다.
+- 게임 화면 단축키: **V** 카메라 창 숨기기/보이기, **R** 정면과 손 가운데 위치 다시 맞추기 (모달이 열려 있거나 Ctrl/Alt/⌘ 조합일 때는 무시)
 - 다른 탭으로 가면 카메라를 끄고, 게임 화면으로 돌아오면 다시 켭니다.
 - 카메라 권한이 거부되면 카메라 창에 안내가 뜨고, 버튼·키보드로 그대로 플레이할 수 있습니다.
 - 게임 화면에서만 카메라를 켜므로, 메인·선택 화면의 모션 입력(가리키기로 확인, `gazeTarget`)은 지금은 동작하지 않습니다.
-- 이벤트: `motion:started`, `motion:stopped`, `motion:error { reason }` (`permission-denied` / `no-camera` / `load-failed` / `unsupported`)
+- 이벤트: `motion:started`, `motion:stopped`, `motion:error { reason }` (`permission-denied` / `no-camera` / `load-failed` / `unsupported` / 실행 중 멈춤 `runtime-error`)
 
 ## 2. 이벤트 (`src/core/EventBus.js`)
 
