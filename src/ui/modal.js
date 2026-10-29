@@ -2,6 +2,9 @@ import { h } from './dom.js';
 
 let current = null;
 
+/** 모달이 열려 있는지 (열려 있으면 뒤 화면의 게임 입력을 막는다) */
+export const isModalOpen = () => current !== null;
+
 /**
  * 공용 모달. 한 번에 하나만 열리며, 새로 열면 이전 모달은 닫힌다.
  * @returns {{ el: HTMLElement, body: HTMLElement, close(): void }}
