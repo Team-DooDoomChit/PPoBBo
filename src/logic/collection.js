@@ -7,7 +7,9 @@ import { now } from './clock.js';
  * 뽑은 인형 저장 및 도감 데이터. (#13)
  *
  * 저장 형식: { [dollId]: { count, obtainedAt, lastObtainedAt } }
- * - 카탈로그(data/dolls.js)에 없는 ID는 저장하지 않는다.
+ * - 카탈로그(data/dolls.js)에 없는 ID는 새로 저장하지 않고 화면에도 보여주지 않지만,
+ *   이미 저장된 기록은 지우지 않는다 (ID를 바꿨다가 되돌려도 복구되도록).
+ * - 형식이 깨진 항목은 다음 저장 때 정리한다.
  * - 저장소는 storage.js를 거치므로 DB로 바꿀 때 load/save만 교체하면 된다.
  *
  * 이벤트: 'collection:changed' { collection }
@@ -24,15 +26,19 @@ function isValidEntry(e) {
   );
 }
 
-/** 저장값을 읽고, 깨졌거나 카탈로그에 없는 항목은 버린다 */
-function readState() {
+/**
+ * 저장된 기록 중 형식이 올바른 항목 전부 (카탈로그에 없는 ID도 포함).
+ * 저장할 때는 이 값을 기준으로 해서, dolls.js에서 ID를 바꾸거나 빼도 기록이 지워지지 않게 한다.
+ */
+function readStored() {
   const raw = load(KEY, {});
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
-  const clean = {};
-  for (const [id, entry] of Object.entries(raw)) {
-    if (getDoll(id) && isValidEntry(entry)) clean[id] = entry;
-  }
-  return clean;
+  return Object.fromEntries(Object.entries(raw).filter(([, entry]) => isValidEntry(entry)));
+}
+
+/** 화면에 보여줄 기록: 카탈로그에 있는 인형만 */
+function readState() {
+  return Object.fromEntries(Object.entries(readStored()).filter(([id]) => getDoll(id)));
 }
 
 const emitChanged = () => eventBus.emit('collection:changed', { collection: collection.getCollection() });
@@ -52,13 +58,13 @@ export const collection = {
    */
   addDoll(dollId) {
     if (!getDoll(dollId)) return { ok: false, reason: 'unknown-doll' };
-    const state = readState();
+    const stored = readStored(); // 카탈로그에서 빠진 인형 기록도 그대로 보존
     const at = now();
-    const prev = state[dollId];
+    const prev = stored[dollId];
     const entry = prev
       ? { ...prev, count: prev.count + 1, lastObtainedAt: at }
       : { count: 1, obtainedAt: at, lastObtainedAt: at };
-    if (!save(KEY, { ...state, [dollId]: entry })) return { ok: false, reason: 'save-failed' };
+    if (!save(KEY, { ...stored, [dollId]: entry })) return { ok: false, reason: 'save-failed' };
     emitChanged();
     return { ok: true, entry: { ...entry }, isNew: !prev };
   },
