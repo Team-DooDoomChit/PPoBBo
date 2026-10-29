@@ -4,7 +4,8 @@ import { palmToJoystick, JOYSTICK_DEFAULTS } from './joystickMapping.js';
  * 손/머리 트래커 상태 → InputState. (#10)
  *
  * - 값이 바뀐 필드만 inputState.update(partial, 'motion')로 보낸다.
- *   (손이 안 보일 때 매 프레임 0을 넣으면 키보드 입력을 덮어쓰기 때문)
+ *   InputState가 입력원별로 값을 따로 두고 합치므로 키보드 입력과 섞이지는 않지만,
+ *   매 프레임 같은 값을 보내면 구독자(MotionBinding)가 불필요하게 호출되므로 줄인다.
  * - 손이 사라지면 손 관련 필드를 한 번만 중립으로 되돌린다.
  * - 작은 떨림으로 매 프레임 값이 바뀌지 않도록 소수점을 반올림한다.
  */
@@ -81,7 +82,7 @@ export class MotionBridge {
 
   /** 모션 입력을 끌 때: 모든 모션 값을 중립으로 */
   release() {
-    this.push({ detected: false }, { yaw: 0, pitch: 0, gazeTarget: null });
+    this.inputState.reset('motion'); // 모션 입력원의 값만 지운다 (키보드는 그대로)
     this.#sent = {};
   }
 }
