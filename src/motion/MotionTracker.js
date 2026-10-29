@@ -3,7 +3,8 @@ import { FilesetResolver, HandLandmarker, FaceLandmarker } from '@mediapipe/task
 /**
  * 웹캠 + MediaPipe 실행기 (브라우저 전용). (#8 손, #9 얼굴)
  *
- * start() → 카메라 권한 요청, 모델 로드, 프레임 루프 시작.
+ * preload() → 모델만 미리 받기 (권한 불필요)
+ * start()   → 카메라 권한 요청, 모델 로드, 프레임 루프 시작 / stop() → 카메라 끄기
  * 매 프레임 onFrame({ hands, face, t }) 호출
  *   hands = HandLandmarker 결과, face = FaceLandmarker 결과 (face: false면 null)
  * 얼굴은 손보다 덜 급하므로 faceEvery 프레임마다 한 번만 인식하고 그 사이엔 직전 결과를 넘긴다.
@@ -13,6 +14,7 @@ import { FilesetResolver, HandLandmarker, FaceLandmarker } from '@mediapipe/task
  *   'permission-denied' 카메라 권한 거부
  *   'no-camera'         카메라 없음 / 다른 앱이 사용 중 / 영상 재생 실패
  *   'load-failed'       MediaPipe 모델/WASM 로드 실패 (네트워크 등)
+ *   'cancelled'         시작하는 도중 stop() 호출됨
  *
  * 실행 중 인식이 실패하면(GPU 컨텍스트 손실 등) 멈추고 onError({ reason: 'runtime-error', error }) 호출.
  */
@@ -45,6 +47,9 @@ export class MotionTracker {
   #running = false;
 
   #frame = 0;
+  #models = null; // preload() Promise
+  #starting = null; // 진행 중인 시작 { id, cancelled, promise }
+  #startId = 0;
   #lastFace = null;
 
   constructor({ onFrame, onError, urls = MEDIAPIPE_URLS, face = true, faceEvery = 2 } = {}) {
@@ -65,12 +70,46 @@ export class MotionTracker {
     return this.#running;
   }
 
-  async start() {
-    if (this.#running) return { ok: true };
+  /**
+   * 카메라 없이 모델만 미리 받는다 (카메라 권한이 필요 없음).
+   * 여러 번 불러도 한 번만 받고, 실패하면 다음 호출 때 다시 시도한다.
+   */
+  preload() {
+    this.#models ??= this.#loadModels().catch((err) => {
+      this.#models = null;
+      throw err;
+    });
+    return this.#models;
+  }
+
+  /**
+   * 동시에 여러 번 불러도 한 번만 시작한다.
+   * 시작하는 도중 stop()이 불리면 카메라를 다시 끄고 { ok: false, reason: 'cancelled' }
+   * 취소된 시작이 아직 정리 중일 때 다시 부르면, 정리가 끝난 뒤 새로 시작한다.
+   */
+  start() {
+    if (this.#running) return Promise.resolve({ ok: true });
+    const prev = this.#starting;
+    if (prev && !prev.cancelled) return prev.promise;
+
+    const attempt = { id: ++this.#startId, cancelled: false };
+    attempt.promise = (prev?.promise ?? Promise.resolve())
+      .then(() => this.#start(attempt))
+      .finally(() => {
+        if (this.#starting === attempt) this.#starting = null;
+      });
+    this.#starting = attempt;
+    return attempt.promise;
+  }
+
+  async #start(attempt) {
+    const cancelled = () => attempt.cancelled;
+    if (cancelled()) return { ok: false, reason: 'cancelled' };
     if (!navigator.mediaDevices?.getUserMedia) return { ok: false, reason: 'unsupported' };
 
+    let stream;
     try {
-      this.#stream = await navigator.mediaDevices.getUserMedia({
+      stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
         audio: false,
       });
@@ -78,30 +117,38 @@ export class MotionTracker {
       console.warn('[MotionTracker] 카메라를 열 수 없습니다.', err);
       return { ok: false, reason: cameraErrorReason(err) };
     }
+    const release = () => stream.getTracks().forEach((track) => track.stop());
+    if (cancelled()) return release(), { ok: false, reason: 'cancelled' };
 
     try {
-      await this.#loadModels();
+      await this.preload();
     } catch (err) {
       console.warn('[MotionTracker] MediaPipe 로드 실패', err);
-      this.stop();
+      release();
       return { ok: false, reason: 'load-failed' };
     }
+    if (cancelled()) return release(), { ok: false, reason: 'cancelled' };
 
+    this.#stream = stream;
     try {
-      this.video.srcObject = this.#stream;
+      this.video.srcObject = stream;
       await this.video.play();
     } catch (err) {
+      if (cancelled()) return { ok: false, reason: 'cancelled' }; // stop()이 재생을 끊은 경우
       // 재생이 막히거나(AbortError 등) 스트림이 끊긴 경우: 카메라를 닫고 실패로 돌려준다
       console.warn('[MotionTracker] 영상 재생 실패', err);
       this.stop();
       return { ok: false, reason: 'no-camera' };
     }
+    if (cancelled()) return { ok: false, reason: 'cancelled' }; // stop()이 이미 정리함
+
     this.#running = true;
     this.#loop();
     return { ok: true };
   }
 
   stop() {
+    if (this.#starting) this.#starting.cancelled = true; // 진행 중인 start()는 취소
     this.#running = false;
     cancelAnimationFrame(this.#rafId);
     this.#stream?.getTracks().forEach((track) => track.stop());
@@ -116,6 +163,7 @@ export class MotionTracker {
     this.faces?.close();
     this.hands = null;
     this.faces = null;
+    this.#models = null;
   }
 
   async #loadModels() {
