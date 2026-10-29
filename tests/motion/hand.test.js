@@ -202,3 +202,10 @@ test('기울기: 오른쪽으로 기울이면 x+, 왼쪽은 x-', () => {
   assert.ok(Math.abs(r.x - 0.3) < 0.05, `r=${r.x}`);
   assert.ok(Math.abs(l.x + 0.3) < 0.05, `l=${l.x}`);
 });
+
+test('트래커: 손 기울기를 떨림 보정해서 알려 준다', () => {
+  const s = run(new HandTracker(), repeat(makeHand(POSES.fist, undefined, 2, { forward: 0.3, right: -0.2 }), 10));
+  assert.ok(Math.abs(s.tilt.y - 0.3) < 0.05, `y=${s.tilt.y}`);
+  assert.ok(Math.abs(s.tilt.x + 0.2) < 0.05, `x=${s.tilt.x}`);
+  assert.equal(new HandTracker().state.tilt, null, '손이 없으면 null');
+});

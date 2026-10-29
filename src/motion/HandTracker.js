@@ -1,4 +1,4 @@
-import { classifyHand, handAnchors } from './handGestures.js';
+import { classifyHand, handAnchors, handTilt } from './handGestures.js';
 import { BoolDebouncer, PointFilter } from './filters.js';
 import { SlamDetector } from './slamDetector.js';
 
@@ -20,6 +20,7 @@ export const HAND_DEFAULTS = Object.freeze({
   okOnMs: 250,
   slam: false, // true 또는 SlamDetector 옵션
   filter: { minCutoff: 1.5, beta: 4 },
+  tiltFilter: { minCutoff: 1.0, beta: 0.6 }, // 기울기(라디안)용: 가만히 있을 땐 떨림을 강하게 줄인다
 });
 
 const EMPTY = Object.freeze({
@@ -31,6 +32,7 @@ const EMPTY = Object.freeze({
   isSlam: false,
   palm: null, // { x, y } 손바닥 중심 (화면 정규화, 좌우 반전)
   pointer: null, // { x, y } 커서 위치 (집는 중이면 엄지·검지 사이, 아니면 검지 끝)
+  tilt: null, // { x, y } 손 기울기 라디안 (x: 오른쪽 +, y: 앞으로 숙이면 +), handTilt() 참고
   handedness: null, // 'Left' | 'Right'
 });
 
@@ -40,7 +42,7 @@ export class HandTracker {
 
   constructor(options = {}) {
     this.options = { ...HAND_DEFAULTS, ...options };
-    const { gestureOnMs: onMs, gestureOffMs: offMs, okOnMs, slam, filter } = this.options;
+    const { gestureOnMs: onMs, gestureOffMs: offMs, okOnMs, slam, filter, tiltFilter } = this.options;
     this.debounce = {
       isFist: new BoolDebouncer({ onMs, offMs }),
       isPointing: new BoolDebouncer({ onMs, offMs }),
@@ -50,6 +52,7 @@ export class HandTracker {
     this.slam = slam ? new SlamDetector(slam === true ? {} : slam) : null;
     this.palmFilter = new PointFilter(filter);
     this.pointerFilter = new PointFilter(filter);
+    this.tiltFilter = new PointFilter(tiltFilter);
     this.state = { ...EMPTY };
   }
 
@@ -57,6 +60,7 @@ export class HandTracker {
     Object.values(this.debounce).forEach((d) => d.reset());
     this.palmFilter.reset();
     this.pointerFilter.reset();
+    this.tiltFilter.reset();
     this.slam?.reset();
     this.#raw = { isPinching: false, isOk: false };
     this.state = { ...EMPTY };
@@ -92,6 +96,7 @@ export class HandTracker {
       isSlam: this.slam ? this.slam.update(anchors.palm.y, t) : false, // 필터 지연 없이 원래 위치로 판정
       palm: this.palmFilter.filter(anchors.palm, t),
       pointer: this.pointerFilter.filter(pointerRaw, t),
+      tilt: this.tiltFilter.filter(handTilt(world), t),
       handedness: result.handedness?.[0]?.[0]?.categoryName ?? null,
     };
     return { ...this.state };
