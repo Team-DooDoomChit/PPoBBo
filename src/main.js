@@ -15,6 +15,7 @@ import { setupModals } from './ui/modals/index.js';
 import { inputState } from './core/InputState.js';
 import { setupKeyboardInput } from './integration/KeyboardInput.js';
 import { setupMotionBinding } from './integration/MotionBinding.js';
+import { setupMotion } from './motion/setupMotion.js';
 
 const sceneManager = new SceneManager(document.getElementById('scene'));
 const arcade = new Arcade(sceneManager);
@@ -45,9 +46,11 @@ setupMotionBinding({ sceneManager, arcade, router, getActiveGame: () => activeGa
 // 물리는 현재 플레이 중인 기계만 시뮬레이션한다 (나머지는 쌓인 상태로 정지)
 sceneManager.onUpdate((dt) => activeGame?.update(dt));
 
-if (import.meta.env.DEV) window.__ppobbo = { sceneManager, arcade, games, router, eventBus, inputState };
-
 router.go('main');
 setupModals(hud);
+// 웹캠 모션 인식 (HUD 📷 버튼으로 켜기)
+const motion = setupMotion({ hud });
+
+if (import.meta.env.DEV) window.__ppobbo = { sceneManager, arcade, games, router, eventBus, inputState, motion };
 sceneManager.start();
 eventBus.emit('app:ready');
