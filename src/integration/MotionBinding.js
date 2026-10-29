@@ -1,4 +1,3 @@
-import { MathUtils } from 'three';
 import { inputState } from '../core/InputState.js';
 import { eventBus } from '../core/EventBus.js';
 import { CLAW_STATE } from '../physics/ClawController.js';
@@ -8,9 +7,6 @@ import { isModalOpen } from '../ui/modal.js';
 const SELECT_THRESHOLD = 0.6; // 조이스틱을 이만큼 기울이면 이전/다음 기계
 const COIN_DROP_RADIUS_PX = 70; // 동전을 놓았을 때 투입구로 인정하는 거리
 const JOYSTICK_SMOOTHING = 12;
-const HEAD_LOOK_SMOOTHING = 3;
-const HEAD_LOOK_GAIN = { yaw: 0.9, pitch: 0.5 }; // 머리 각도 → 카메라 회전 배율
-const HEAD_LOOK_LIMIT = { yaw: 0.6, pitch: 0.4 };
 const BUTTON_FLASH_TIME = 0.25;
 
 
@@ -22,15 +18,12 @@ const BUTTON_FLASH_TIME = 0.25;
  *   select: 조이스틱 좌우 → 이전/다음 기계, gazeTarget → 해당 기계, 가리키기/주먹 → 플레이
  *   game  : 조이스틱 → 집게 이동 + 조이스틱 기울기, 주먹 → 집게 내리기 + 버튼 눌림,
  *           집기(pinch) 상태로 투입구까지 끌어와 놓기 → 코인 투입,
- *           머리 회전 → 현재 시점에서 상대적으로 카메라 회전 (마우스 드래그·줌과 함께 사용 가능)
+ *   시점은 마우스 드래그·휠로만 돌린다. 고개로 돌리던 기능은 어지러워서 뺐다. (#34)
  */
 export function setupMotionBinding({ sceneManager, arcade, router, getActiveGame }) {
   let screen = router.current;
   const joystick = { x: 0, y: 0 };
   let buttonFlash = 0;
-  // 헤드룩: 목표 각도를 부드럽게 따라가고(look), 이미 카메라에 적용한 만큼(applied)과의 차이만 회전한다
-  const look = { yaw: 0, pitch: 0 };
-  const applied = { yaw: 0, pitch: 0 };
 
   const cursor = h('div', { class: 'motion-cursor', hidden: true });
   document.getElementById('ui').append(cursor);
@@ -86,17 +79,6 @@ export function setupMotionBinding({ sceneManager, arcade, router, getActiveGame
     buttonFlash = Math.max(0, buttonFlash - dt);
     machine?.setJoystick(joystick.x, joystick.y);
     machine?.setButtonPressed(Boolean(game) && (input.isFist || buttonFlash > 0));
-
-    // 머리 회전 → 지금 시점 기준으로 상대 회전. 거리(줌)와 마우스로 돌린 각도는 유지된다.
-    const kLook = 1 - Math.exp(-HEAD_LOOK_SMOOTHING * dt);
-    look.yaw += ((game ? MathUtils.clamp(input.headYaw, -HEAD_LOOK_LIMIT.yaw, HEAD_LOOK_LIMIT.yaw) * HEAD_LOOK_GAIN.yaw : 0) - look.yaw) * kLook;
-    look.pitch += ((game ? MathUtils.clamp(input.headPitch, -HEAD_LOOK_LIMIT.pitch, HEAD_LOOK_LIMIT.pitch) * HEAD_LOOK_GAIN.pitch : 0) - look.pitch) * kLook;
-    // 카메라 이동 중이거나 사용자가 드래그 중이면 회전하지 않고 기준만 맞춘다 (끝난 뒤 튀지 않도록)
-    if (game && !sceneManager.isCameraMoving && !sceneManager.isUserControlling) {
-      sceneManager.orbitBy(look.yaw - applied.yaw, -(look.pitch - applied.pitch));
-    }
-    applied.yaw = look.yaw;
-    applied.pitch = look.pitch;
 
     // 손 위치 커서 (pointer는 모션 입력만 넣는다)
     const showCursor = Boolean(input.pointer) && !blocked;
