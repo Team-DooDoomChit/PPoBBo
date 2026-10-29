@@ -28,7 +28,8 @@ const CLOSE_TIME = 0.6;
 const RELEASE_TIME = 0.9;
 const HEAD_BOTTOM = 0.06; // 집게 머리 원점 → 머리 아래면
 const PRONG_REACH = 0.1; // 머리 아래면에서 이 거리 안에 물체가 닿으면 하강을 멈춘다
-const GRAB_RADIUS = 0.1; // 수평으로 이 거리 안의 인형만 집을 수 있다
+const GRAB_RADIUS = 0.1; // 수평으로 이 거리 안의 인형만 집을 수 있다 (집게발을 다 벌렸을 때)
+const MIN_GRAB_SCALE = 0.6; // 벽에 붙어 집게발이 덜 벌어지면 집는 거리도 이 비율까지 줄어든다
 export const PLAY_TIME = 20;
 
 /**
@@ -196,12 +197,14 @@ export class ClawController {
 
   #tryGrab() {
     const head = this.#headBottom();
+    // 벽 근처에서는 집게발이 덜 벌어지므로 집을 수 있는 거리도 그만큼 줄인다 (보이는 것과 판정을 맞춘다)
+    const radius = GRAB_RADIUS * THREE.MathUtils.lerp(MIN_GRAB_SCALE, 1, this.#wallRoom());
     let best = null;
     for (const doll of this.getDolls()) {
       const p = doll.body.position;
       const offset = Math.hypot(p.x - head.x, p.z - head.z);
       const below = head.y - p.y;
-      if (offset < GRAB_RADIUS && below > 0 && below < 0.35 && (!best || offset < best.offset)) {
+      if (offset < radius && below > 0 && below < 0.35 && (!best || offset < best.offset)) {
         best = { doll, offset };
       }
     }
@@ -211,7 +214,7 @@ export class ClawController {
     }
 
     const grip = RARITY[best.doll.data.rarity].grip;
-    const centered = 1 - best.offset / GRAB_RADIUS;
+    const centered = 1 - best.offset / radius;
     const chance = grip * Math.pow(centered, 0.6);
     const success = Math.random() < chance;
     this.onEvent('claw:grab', { success, dollId: best.doll.data.id, chance });
