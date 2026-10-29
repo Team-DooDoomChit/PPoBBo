@@ -3,6 +3,7 @@ import { ArcadeRoom } from './ArcadeRoom.js';
 import { ClawMachine } from './ClawMachine.js';
 import { setupLighting } from './Lighting.js';
 import { MACHINES } from '../data/machines.js';
+import { MACHINE_SPEC } from './machineSpec.js';
 
 const OVERVIEW = {
   position: new THREE.Vector3(0, 2.4, 4.2),
@@ -46,14 +47,14 @@ export class Arcade {
    */
   #hideMachinesAroundCamera() {
     const cam = this.sm.camera.position;
-    const margin = 0.25; // 기계 바깥으로 이만큼까지 가까우면 숨긴다
+    const reach = Math.max(MACHINE_SPEC.width, MACHINE_SPEC.depth) / 2 + 0.25; // 기계 반폭 + 이만큼 가까우면 숨긴다
     this.machines.forEach((m) => {
       const p = m.group.position;
       const inside =
         this.focusedMachine &&
         m !== this.focusedMachine &&
-        Math.abs(cam.x - p.x) < 0.5 + margin &&
-        Math.abs(cam.z - p.z) < 0.5 + margin;
+        Math.abs(cam.x - p.x) < reach &&
+        Math.abs(cam.z - p.z) < reach;
       m.group.visible = !inside;
     });
   }
