@@ -103,6 +103,19 @@ test('깨진 항목과 카탈로그에 없는 항목은 버리고 나머지는 �
   assert.deepEqual(collection.getCollection(), {});
 });
 
+test('카탈로그에서 빠진 인형 기록은 숨기기만 하고 저장소에서 지우지 않는다', () => {
+  save('collection', {
+    'renamed-doll': { count: 3, obtainedAt: 10 }, // dolls.js에서 ID가 바뀐 경우
+    'bear-white': { count: -1, obtainedAt: 10 }, // 깨진 항목
+  });
+  collection.addDoll('bear-brown');
+  const stored = load('collection', {});
+  assert.deepEqual(stored['renamed-doll'], { count: 3, obtainedAt: 10 }, '원본 기록 보존');
+  assert.equal(stored['bear-white'], undefined, '깨진 항목은 정리');
+  assert.deepEqual(Object.keys(collection.getCollection()), ['bear-brown'], '화면에는 카탈로그 인형만');
+  assert.equal(collection.getStats().owned, 1);
+});
+
 test('저장 실패 시 ok=false, collection:error 발생', () => {
   useStorageBackend({ getItem: () => null, setItem: () => { throw new Error('quota'); }, removeItem() {} });
   assert.deepEqual(collection.addDoll('bear-brown'), { ok: false, reason: 'save-failed' });
