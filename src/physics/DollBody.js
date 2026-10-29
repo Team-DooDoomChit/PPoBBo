@@ -7,7 +7,7 @@ export const HELD_DOLL_MASK = GROUP.STATIC | GROUP.DOLL;
 
 /**
  * 몸통·머리 구 { r: 반지름, y: 중심 높이 }. 기본은 DOLL_SHAPE,
- * 목도리 햄스터는 머리가 낮고 넓어서(반폭 0.078, 중심 0.036) 따로 둔다.
+ * 목도리 햄스터는 몸통은 같고, 머리가 위가 납작한 찹쌀떡형이라 낮게(중심 0.057, 위쪽 끝 0.106) 따로 둔다.
  */
 const DEFAULT_SPHERES = [
   { r: DOLL_SHAPE.bodyRadius, y: 0 },
@@ -15,8 +15,8 @@ const DEFAULT_SPHERES = [
 ];
 const BASE_SPHERES = {
   keychainHamster: [
-    { r: 0.048, y: -0.022 }, // 몸통 (발 바닥 -0.07)
-    { r: 0.068, y: 0.036 }, // 머리 (위쪽 끝 0.104)
+    { r: DOLL_SHAPE.bodyRadius, y: 0 }, // 몸통 (다른 인형과 같음)
+    { r: 0.055, y: 0.052 }, // 머리 (위쪽 끝 0.107)
   ],
 };
 
@@ -34,11 +34,11 @@ const EXTRA_SHAPES = {
     { half: [0.056, 0.02, 0.014], y: 0.122 }, // 귀 0.102 ~ 0.142
     { half: [0.014, 0.04, 0.005], y: 0.178 }, // 볼체인 0.138 ~ 0.218
   ],
-  keychainHamster: [{ half: [0.058, 0.0125, 0.012], y: 0.1 }], // 귀 0.0875 ~ 0.1125
+  keychainHamster: [{ half: [0.047, 0.0102, 0.009], y: 0.1076 }], // 귀 0.0974 ~ 0.1178
 };
 
 // 집게가 붙잡는 높이: 기본은 머리, 목도리 토끼는 귀, 목도리 고양이는 정수리 (체인 쪽을 집게가 감싼다), 햄스터는 머리
-const GRAB_Y = { keychainBunny: 0.17, keychainCat: 0.125, keychainHamster: 0.045 };
+const GRAB_Y = { keychainBunny: 0.17, keychainCat: 0.125, keychainHamster: 0.057 };
 
 /**
  * 인형 종류별 물리 치수.

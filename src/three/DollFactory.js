@@ -282,7 +282,10 @@ function keychainCatFaceLines() {
 // ---------- 목도리 햄스터: 넓적한 찹쌀떡형 머리. 치수는 참고 이미지(정면)에서 잰 값 ----------
 
 // 가장 넓은 곳(볼 높이)이 중심. 위는 납작하고 아래는 길게 내려와 목도리 위까지 넓은 폭을 유지한다.
+// 머리·귀·얼굴·목도리는 이 치수로 만들고, 그룹째 줄이고 옮겨서 다른 키링 인형과 머리 폭·목 높이를 맞춘다.
 const KH_HEAD = { y: 0.036, rx: 0.078, ry: 0.062, ryBottom: 0.082, rz: 0.068 };
+const KH_SCALE = KB_HEAD.rx / KH_HEAD.rx; // 머리 폭을 목도리 토끼·고양이와 같게
+const KH_CENTER_Y = 0.057; // 줄인 머리의 중심 높이: 목도리가 다른 키링 인형과 같은 목 높이(0.022)에 온다
 const KH_EYE_Y = KH_HEAD.y + 0.0078;
 const KH_EYE_X = 0.0263;
 
@@ -325,9 +328,9 @@ function keychainHamsterFaceLines() {
 
 /**
  * 니트 목도리 + 한쪽으로 늘어진 끝자락과 술 (목도리 인형 공용).
- * size: 둘레·끝자락 크기 배율, band: 밴드 높이 배율, depth: 앞뒤 폭 배율 (머리가 얕은 인형용), tail: 끝자락 길이 배율
+ * size: 둘레·끝자락 크기 배율, band: 밴드 높이 배율, depth: 앞뒤 폭 배율 (머리가 얕은 인형용)
  */
-function addScarf(group, { scarf, fringe }, neckY, { size = 1, band = 1, depth = 1, tail: tailLength = 1 } = {}) {
+function addScarf(group, { scarf, fringe }, neckY, { size = 1, band = 1, depth = 1 } = {}) {
   const r = 0.045 * size;
   const rz = r * depth; // 눕힌 토러스의 로컬 y가 앞뒤 방향
   // (토러스를 눕히면 로컬 z 스케일이 밴드 높이가 된다)
@@ -338,7 +341,7 @@ function addScarf(group, { scarf, fringe }, neckY, { size = 1, band = 1, depth =
   }
   // 앞쪽(보는 사람 기준 왼쪽)으로 늘어진 끝자락 + 술
   const tail = new THREE.Group();
-  tail.scale.set(size, size * tailLength, size);
+  tail.scale.setScalar(size);
   tail.position.set(-0.034 * size, neckY - 0.004, 0.036 * size * depth);
   tail.rotation.set(0.15, -0.5, 0.45);
   tail.add(part(geo.box, scarf, { pos: [0, -0.026, 0], scale: [0.024, 0.052, 0.009] }));
@@ -616,36 +619,44 @@ const builders = {
 
   /**
    * 키링 햄스터: 아래가 넓은 찹쌀떡형 큰 머리, 둥근 귀, 분홍 니트 목도리, 두 손으로 안은 만두.
-   * 체인 없이 머리가 낮고 넓어서 물리 충돌체도 따로 둔다 (DollBody의 BASE_SPHERES).
+   * 몸통·팔·발은 목도리 토끼·고양이와 같은 위치·크기. 체인이 없어 물리 충돌체는 따로 둔다 (DollBody의 BASE_SPHERES).
    */
   keychainHamster(group, doll, { fur }) {
     const mat = { ...KEYCHAIN_MAT, ...HAMSTER_MAT };
     const H = KH_HEAD;
 
-    group.add(
+    // 머리·귀·얼굴·목도리 (KH_HEAD 치수로 만들고 그룹째 줄여서 옮긴다)
+    const head = new THREE.Group();
+    head.scale.setScalar(KH_SCALE);
+    head.position.y = KH_CENTER_Y - H.y * KH_SCALE;
+    group.add(head);
+
+    head.add(
       part(geo.domeTop, fur, { pos: [0, H.y, 0], scale: [H.rx, H.ry, H.rz] }),
       part(geo.domeBottom, fur, { pos: [0, H.y, 0], scale: [H.rx, H.ryBottom, H.rz] }),
-      part(geo.sphere, fur, { pos: [0, -0.03, 0.002], scale: [0.056, 0.038, 0.05] }),
     );
     // 둥근 귀: 머리 위 양쪽 모서리
     for (const sx of [-1, 1]) {
-      group.add(part(geo.sphere, fur, { pos: [sx * 0.0445, 0.099, -0.004], scale: [0.0145, 0.0135, 0.011] }));
+      head.add(part(geo.sphere, fur, { pos: [sx * 0.0445, 0.099, -0.004], scale: [0.0145, 0.0135, 0.011] }));
     }
 
     // 목도리: 머리보다 넓고 얇은 밴드, 머리 아래쪽이 위로 살짝 덮는다
-    addScarf(group, mat, -0.008, { size: 1.22, band: 0.65, depth: 0.9, tail: 0.66 });
+    addScarf(head, mat, -0.008, { size: 1.22, band: 0.65, depth: 0.9 });
 
-    // 손(만두 양옆), 발
+    // 몸통, 팔, 발: 목도리 토끼·고양이와 같다
+    group.add(part(geo.sphere, fur, { pos: [0, -0.008, 0.002], scale: [0.05, 0.05, 0.046] }));
     for (const sx of [-1, 1]) {
       group.add(
-        part(geo.sphere, fur, { pos: [sx * 0.031, -0.05, 0.066], scale: [0.013, 0.011, 0.014] }),
-        part(geo.sphere, fur, { pos: [sx * 0.024, -0.064, 0.014], scale: [0.014, 0.009, 0.016] }),
+        part(geo.sphere, fur, { pos: [sx * 0.046, 0.002, 0.026], scale: [0.016, 0.013, 0.016] }),
+        part(geo.sphere, fur, { pos: [sx * 0.022, -0.056, 0.012], scale: [0.018, 0.014, 0.02] }),
       );
     }
 
     // 만두: 둥근 몸통 위쪽을 주름(가운데로 모이는 결)과 꼭지로 오므렸다. 윗면이 보는 쪽으로 기운다.
+    // 목도리 토끼의 주먹밥처럼 목도리 바로 아래 몸통 앞에 안고 있다 (크기는 머리와 같은 비율로 줄임)
     const bun = new THREE.Group();
-    bun.position.set(0, -0.036, 0.064);
+    bun.position.set(0, -0.008, 0.062);
+    bun.scale.setScalar(KH_SCALE);
     bun.rotation.x = 0.5;
     bun.add(
       part(geo.sphere, mat.bun, { scale: [0.03, 0.027, 0.026] }),
@@ -663,16 +674,16 @@ const builders = {
     const dot = (material, x, y, scale, lift) => surfaceDot(material, x, y, scale, lift, H);
     for (const sx of [-1, 1]) {
       const ex = sx * KH_EYE_X;
-      group.add(
+      head.add(
         dot(mat.ink, ex, KH_EYE_Y, [0.0107, 0.0107, 0.0012], 0.0006), // 검은 테두리
         dot(mat.shine, ex, KH_EYE_Y + 0.0023, [0.0058, 0.0047, 0.0012], 0.0012), // 흰자
         dot(mat.blush, sx * 0.047, KH_EYE_Y - 0.0135, [0.0137, 0.0101, 0.0016], 0.0004), // 볼
         dot(mat.ink, sx * 0.0031, KH_EYE_Y - 0.0367, [0.0016, 0.0025, 0.0012], 0.0006), // 턱 아래 점
       );
     }
-    group.add(dot(mat.ink, -0.0137, KH_EYE_Y + 0.0201, [0.0016, 0.0019, 0.0012], 0.0006)); // 이마 점
+    head.add(dot(mat.ink, -0.0137, KH_EYE_Y + 0.0201, [0.0016, 0.0019, 0.0012], 0.0006)); // 이마 점
     const lines = keychainHamsterFaceLines();
-    group.add(part(lines.ink, mat.ink, { shadow: false }), part(lines.shine, mat.shine, { shadow: false }));
+    head.add(part(lines.ink, mat.ink, { shadow: false }), part(lines.shine, mat.shine, { shadow: false }));
   },
 };
 
