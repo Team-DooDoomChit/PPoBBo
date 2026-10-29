@@ -157,3 +157,24 @@ test('트래커: 손이 잠깐 사라지는 건 유지, 오래 사라지면 초�
 test('트래커: 오른손/왼손 정보', () => {
   assert.equal(run(new HandTracker(), [makeHand(POSES.open)]).handedness, 'Right');
 });
+
+test('트래커: OK 사인은 0.25초 이상 유지해야 켜진다 (코인 잘못 투입 방지)', () => {
+  const t = new HandTracker();
+  assert.equal(run(t, repeat(makeHand(POSES.ok), 6)).isOk, false, '0.17초');
+  assert.equal(run(t, repeat(makeHand(POSES.ok), 4), 6 / 30).isOk, true, '0.3초');
+});
+
+test('트래커: slam 옵션을 켜면 아래로 내려치는 동작을 인식', () => {
+  const t = new HandTracker({ slam: true });
+  const frames = [0.3, 0.3, 0.38, 0.47, 0.56].map((y) => makeHand(POSES.open, { x: 0.3, y }));
+  const seen = frames.map((f, i) => t.update(f, i / 30).isSlam);
+  assert.ok(seen.includes(true));
+  assert.equal(new HandTracker().update(frames[0], 0).isSlam, false, '옵션이 꺼져 있으면 항상 false');
+});
+
+test('트래커: 내려친 직후 손이 화면 밖으로 나가도 isSlam이 잠깐 유지된다', () => {
+  const t = new HandTracker({ slam: true });
+  [0.3, 0.4, 0.5].forEach((y, i) => t.update(makeHand(POSES.open, { x: 0.3, y }), i / 30));
+  assert.equal(t.update(NO_HAND, 0.1).isSlam, true);
+  assert.equal(t.update(NO_HAND, 0.3).isSlam, false);
+});
