@@ -3,6 +3,7 @@ import { inputState } from '../core/InputState.js';
 import { eventBus } from '../core/EventBus.js';
 import { MACHINES } from '../data/machines.js';
 import { toast } from '../ui/toast.js';
+import { isModalOpen } from '../ui/modal.js';
 import { MotionTracker } from './MotionTracker.js';
 import { HandTracker } from './HandTracker.js';
 import { HeadTracker } from './HeadTracker.js';
@@ -93,7 +94,10 @@ export function setupMotion() {
   });
 
   window.addEventListener('keydown', (e) => {
-    if (screen !== CAMERA_SCREEN || e.repeat || e.target.closest?.('input, textarea')) return;
+    if (screen !== CAMERA_SCREEN || e.repeat) return;
+    // 모달·입력창에서는 쓰지 않고, Ctrl+V(붙여넣기)·Ctrl+R(새로고침) 같은 조합키도 무시한다 (KeyboardInput과 같은 조건)
+    if (isModalOpen() || e.target.closest?.('input, textarea')) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.code === 'KeyV') view.toggle();
     if (e.code === 'KeyR' && tracker.running) recenter();
   });
