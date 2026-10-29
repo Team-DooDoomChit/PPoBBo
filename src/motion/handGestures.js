@@ -98,3 +98,22 @@ export function handAnchors(image) {
     pinchPoint: mirror(avg([LM.THUMB_TIP, LM.INDEX_TIP])),
   };
 }
+
+/**
+ * 손 기울기 (라디안). 조이스틱을 쥐듯 손을 세웠을 때 0. (#34 왼손 조이스틱)
+ *
+ * 손목 → 중지 뿌리(MCP) 방향이 위(-y)에서 얼마나 기울었는지 본다. 중지가 손의 가운데 축에 가장 가깝다.
+ * 주먹을 쥐든 펴든, 손목을 축으로 손을 돌려도(손바닥 방향) 값이 같다.
+ *   x: 사용자 기준 오른쪽으로 기울이면 + (원본 영상 -x 쪽)
+ *   y: 손끝을 앞(카메라 쪽)으로 숙이면 +, 뒤로 젖히면 -
+ * @param {Array<{x,y,z}>} world worldLandmarks (MediaPipe 축: +y 아래, -z 카메라 쪽)
+ * @returns {{ x: number, y: number }}
+ */
+export function handTilt(world) {
+  const w = world[LM.WRIST];
+  const m = world[LM.MIDDLE_MCP];
+  const dx = m.x - w.x;
+  const up = -(m.y - w.y);
+  const dz = (m.z ?? 0) - (w.z ?? 0);
+  return { x: Math.atan2(-dx, up), y: Math.atan2(-dz, up) };
+}
