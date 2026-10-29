@@ -18,7 +18,6 @@ const geo = {
   cone: new THREE.ConeGeometry(1, 1, 16),
   capsule: new THREE.CapsuleGeometry(1, 3, 8, 16), // 높이 5, 반지름 1
   box: new THREE.BoxGeometry(1, 1, 1),
-  link: new THREE.TorusGeometry(1, 0.32, 6, 12), // 체인 고리
   ring: new THREE.TorusGeometry(1, 0.3, 8, 24),
   strand: new THREE.CylinderGeometry(1, 1, 1, 6),
   disc: new THREE.CylinderGeometry(1, 1, 1, 24),
@@ -34,7 +33,6 @@ const KEYCHAIN_MAT = {
   scarf: new THREE.MeshStandardMaterial({ color: 0xe6bd45, roughness: 0.95 }),
   fringe: new THREE.MeshStandardMaterial({ color: 0xf2db74, roughness: 0.9 }),
   rice: new THREE.MeshStandardMaterial({ color: 0xfbf9f4, roughness: 0.75 }),
-  chain: new THREE.MeshStandardMaterial({ color: 0xd8d09c, roughness: 0.35, metalness: 0.8 }),
   blush: new THREE.MeshStandardMaterial({ color: 0xf4a6b6, roughness: 0.9 }),
   shine: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 }),
   ink: new THREE.MeshStandardMaterial({ color: 0x1a1414, roughness: 0.4 }),
@@ -45,7 +43,6 @@ const CAT_MAT = {
   scarf: new THREE.MeshStandardMaterial({ color: 0x7f9fe0, roughness: 0.95 }),
   fringe: new THREE.MeshStandardMaterial({ color: 0x92afea, roughness: 0.9 }),
   innerEar: new THREE.MeshStandardMaterial({ color: 0xa9c1f2, roughness: 0.9 }),
-  chain: new THREE.MeshStandardMaterial({ color: 0xa9b9c6, roughness: 0.35, metalness: 0.8 }),
   cream: new THREE.MeshStandardMaterial({ color: 0xf3e3c6, roughness: 0.8 }),
   plate: new THREE.MeshStandardMaterial({ color: 0xe2b85a, roughness: 0.6 }),
 };
@@ -352,34 +349,6 @@ function addScarf(group, { scarf, fringe }, neckY, { size = 1, band = 1, depth =
   group.add(tail);
 }
 
-/**
- * 정수리 고리에서 위로 늘어진 볼체인 (목도리 고양이·햄스터 공용, 크기가 같다).
- * crownY: 고리가 붙는 정수리 표면 높이. 고리 높이 = crownY + 0.004, 맨 위 막대 = 고리 + 0.08
- */
-function addCrownChain(group, material, crownY) {
-  const hookY = crownY + 0.004;
-  group.add(part(geo.link, material, { pos: [0, hookY, 0], scale: s(0.0042), shadow: false }));
-  const baseY = hookY + 0.005;
-  const topY = baseY + 0.072;
-  const LINKS = 16;
-  for (const sx of [-1, 1]) {
-    for (let i = 0; i < LINKS; i++) {
-      const t = (i + 0.5) / LINKS;
-      // 아래는 한 점에서 모이고 위로 갈수록 벌어진다
-      const x = sx * 0.011 * Math.sin((t * Math.PI) / 2);
-      group.add(
-        part(geo.link, material, {
-          pos: [x, THREE.MathUtils.lerp(baseY, topY, t), 0],
-          scale: s(0.0022),
-          rot: [0, i % 2 ? Math.PI / 2 : 0, Math.PI / 2],
-          shadow: false,
-        }),
-      );
-    }
-  }
-  group.add(part(geo.capsule, material, { pos: [0, topY + 0.003, 0], scale: [0.0032, 0.0055, 0.0032], rot: [0, 0, Math.PI / 2] }));
-}
-
 /** 표면에 납작하게 붙는 타원 (+Z를 법선 방향으로 돌린다) */
 function surfaceDot(material, x, y, scale, lift, head = KB_HEAD) {
   const { point, normal } = headSurface(x, y, lift, head);
@@ -482,7 +451,7 @@ const builders = {
   },
 
   /**
-   * 키링 토끼: 큰 머리와 몸이 이어진 달걀형, 서로 붙은 긴 귀, 귀 끝의 볼체인,
+   * 키링 토끼: 큰 머리와 몸이 이어진 달걀형, 서로 붙은 긴 귀,
    * 노란 니트 목도리(한쪽으로 늘어진 술 장식), 품에 안은 주먹밥.
    */
   keychainBunny(group, doll, { fur, sub }) {
@@ -504,27 +473,6 @@ const builders = {
         part(geo.capsule, sub, { pos: [sx * 0.0165, earY - 0.004, 0.0085], scale: [0.0095, 0.012, 0.006], rot: tilt }),
       );
     }
-
-    // 볼체인: 귀 끝 두 곳에서 위쪽 고리로
-    const tipY = earY + 0.04;
-    const topY = tipY + 0.05;
-    const LINKS = 9;
-    for (const sx of [-1, 1]) {
-      for (let i = 0; i < LINKS; i++) {
-        const t = (i + 0.5) / LINKS;
-        const x = sx * THREE.MathUtils.lerp(0.0165, 0.011, t);
-        group.add(
-          part(geo.link, mat.chain, {
-            pos: [x, THREE.MathUtils.lerp(tipY, topY, t), -0.004],
-            scale: s(0.0028),
-            rot: [0, i % 2 ? Math.PI / 2 : 0, Math.PI / 2],
-            shadow: false,
-          }),
-        );
-      }
-    }
-    // 체인 위쪽 막대형 고리
-    group.add(part(geo.capsule, mat.chain, { pos: [0, topY + 0.003, -0.004], scale: [0.0032, 0.0055, 0.0032], rot: [0, 0, Math.PI / 2] }));
 
     // 목도리: 머리와 몸 사이를 감싸는 니트 + 결
     addScarf(group, mat, 0.02);
@@ -564,7 +512,7 @@ const builders = {
 
   /**
    * 키링 고양이: 목도리 토끼와 같은 달걀형 몸에, 앞이마가 물결 모양인 파란 머리 무늬와 뾰족한 귀,
-   * 정수리의 볼체인, 파란 니트 목도리, 꼬리 방울, 한 손에 든 마카롱.
+   * 파란 니트 목도리, 꼬리 방울, 한 손에 든 마카롱.
    */
   keychainCat(group, doll, { fur, sub }) {
     const mat = { ...KEYCHAIN_MAT, ...CAT_MAT };
@@ -585,8 +533,6 @@ const builders = {
       );
     }
 
-    // 볼체인: 정수리(머리 무늬 위) 고리에서 위로
-    addCrownChain(group, mat.chain, headY + KB_HEAD.ry * 1.03);
 
     // 목도리는 턱 선 바로 아래
     addScarf(group, mat, 0.024);
@@ -626,8 +572,8 @@ const builders = {
   },
 
   /**
-   * 키링 햄스터: 아래가 넓은 찹쌀떡형 큰 머리, 둥근 귀, 정수리의 볼체인, 분홍 니트 목도리, 두 손으로 안은 만두.
-   * 몸통·팔·발과 볼체인은 목도리 토끼·고양이와 같은 크기. 머리가 낮아 물리 충돌체는 따로 둔다 (DollBody의 BASE_SPHERES).
+   * 키링 햄스터: 아래가 넓은 찹쌀떡형 큰 머리, 둥근 귀, 분홍 니트 목도리, 두 손으로 안은 만두.
+   * 몸통·팔·발은 목도리 토끼·고양이와 같은 크기. 머리가 낮아 물리 충돌체는 따로 둔다 (DollBody의 BASE_SPHERES).
    */
   keychainHamster(group, doll, { fur }) {
     const mat = { ...KEYCHAIN_MAT, ...HAMSTER_MAT };
@@ -650,10 +596,6 @@ const builders = {
 
     // 목도리: 머리보다 넓고 얇은 밴드, 머리 아래쪽이 위로 살짝 덮는다
     addScarf(head, mat, -0.008, { size: 1.22, band: 0.65, depth: 0.9 });
-
-    // 볼체인: 목도리 고양이와 같은 크기 (줄인 머리 그룹이 아니라 인형 그룹에 붙인다)
-    addCrownChain(group, CAT_MAT.chain, KH_CENTER_Y + H.ry * KH_SCALE);
-
     // 몸통, 팔, 발: 목도리 토끼·고양이와 같다
     group.add(part(geo.sphere, fur, { pos: [0, -0.008, 0.002], scale: [0.05, 0.05, 0.046] }));
     for (const sx of [-1, 1]) {

@@ -199,7 +199,7 @@ export class ClawController {
       const p = doll.body.position;
       const offset = Math.hypot(p.x - head.x, p.z - head.z);
       const below = head.y - p.y;
-      // 키가 큰 인형(귀·체인)은 그만큼 위에서 멈추므로, 인형 맨 위 기준으로 닿는 거리를 본다
+      // 키가 큰 인형(긴 귀)은 그만큼 위에서 멈추므로, 인형 맨 위 기준으로 닿는 거리를 본다
       const { top } = dollProfile(doll.data.type);
       if (offset < GRAB_RADIUS && below > 0 && below < top + GRAB_REACH && (!best || offset < best.offset)) {
         best = { doll, offset };
