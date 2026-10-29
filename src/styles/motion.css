@@ -1,0 +1,79 @@
+/* ---------- 게임 중 내 모습 카메라 (B #10) ---------- */
+.motion-cam {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 5;
+  width: 320px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 2px solid var(--panel-border, #6c4dff);
+  background: #000;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  animation: motion-cam-in 0.25s ease;
+}
+
+.motion-cam canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+}
+
+.motion-cam-label {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12px;
+}
+
+.motion-cam-label .rec {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: #ff3355;
+  vertical-align: 1px;
+}
+
+.motion-cam-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  text-align: center;
+  color: var(--text-dim, #a99fd0);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.motion-cam-status[hidden] {
+  display: none;
+}
+
+/* 좁은 화면: 게임 패널이 아래 가운데에 있으므로 왼쪽 위(나가기 버튼 아래)로 */
+@media (max-width: 899px) {
+  .motion-cam {
+    top: 124px;
+    bottom: auto;
+    width: 160px;
+  }
+
+  .motion-cam-label {
+    font-size: 11px;
+  }
+}
+
+@keyframes motion-cam-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}

@@ -48,8 +48,8 @@ sceneManager.onUpdate((dt) => activeGame?.update(dt));
 
 router.go('main');
 setupModals(hud);
-// 웹캠 모션 인식 (HUD 📷 버튼으로 켜기)
-const motion = setupMotion({ hud });
+// 웹캠 모션 인식 (게임 화면에 들어가면 카메라 켜짐)
+const motion = setupMotion();
 
 if (import.meta.env.DEV) window.__ppobbo = { sceneManager, arcade, games, router, eventBus, inputState, motion };
 sceneManager.start();
