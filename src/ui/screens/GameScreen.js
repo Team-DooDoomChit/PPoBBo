@@ -6,6 +6,7 @@ import { gameApi } from '../../integration/gameApi.js';
 import { eventBus } from '../../core/EventBus.js';
 import { h, formatGold } from '../dom.js';
 import { toast } from '../toast.js';
+import { failText } from '../failText.js';
 
 const STATE_TEXT = {
   [CLAW_STATE.IDLE]: '코인을 넣어 주세요',
@@ -38,7 +39,7 @@ export function GameScreen(ctx, { machineId }) {
     if (!result.ok) {
       // 잔액 부족이 아닌 실패(예: invalid-amount)는 충전을 권하지 않는다
       if (result.reason && result.reason !== 'not-enough-gold') {
-        toast('코인을 넣을 수 없어요. 잠시 후 다시 시도해 주세요', { type: 'warn' });
+        toast(failText(result.reason), { type: 'warn' });
         return;
       }
       toast('골드가 부족해요! 충전하거나 야간 근무를 해보세요', { type: 'warn' });
@@ -57,8 +58,21 @@ export function GameScreen(ctx, { machineId }) {
     backBtn.disabled = playing;
   }
 
+  // 도감 저장 실패(#13, collection:error)는 doll:won을 처리하는 같은 emit 안에서 온다.
+  // 팝업을 마이크로태스크로 미뤄 띄우면 구독 순서와 상관없이 저장 결과를 먼저 받은 뒤 그린다.
+  const saveFailed = new Map(); // dollId → reason
+  const prizeHint = (reason) =>
+    reason
+      ? `⚠️ ${failText(reason, { 'save-failed': '도감 저장에 실패했어요 (저장 공간을 확인해 주세요)' })} · 터치해서 닫기`
+      : '도감에 등록되었어요 · 터치해서 닫기';
+  // payload에 machineId가 없어서, 이 기계의 인형인지로 거른다
+  const onSaveFailed = ({ dollId, reason }) => getDoll(dollId)?.machineId === machineId && saveFailed.set(dollId, reason);
+
   const showPrize = (dollId) => {
     const doll = getDoll(dollId);
+    if (!doll) return;
+    const reason = saveFailed.get(dollId);
+    saveFailed.delete(dollId);
     const popup = h(
       'div',
       { class: 'prize-popup', onClick: () => popup.remove() },
@@ -69,7 +83,7 @@ export function GameScreen(ctx, { machineId }) {
         h('img', { src: getDollThumbnail(doll), alt: doll.name }),
         h('div', { class: 'prize-name' }, doll.name),
         h('div', { class: `rarity rarity-${doll.rarity}` }, RARITY[doll.rarity].label),
-        h('p', { class: 'hint' }, '도감에 등록되었어요 · 터치해서 닫기'),
+        h('p', { class: reason ? 'hint prize-warn' : 'hint' }, prizeHint(reason)),
       ),
     );
     el.append(popup);
@@ -80,7 +94,8 @@ export function GameScreen(ctx, { machineId }) {
     eventBus.on('claw:state', mine(({ state }) => render(state))),
     eventBus.on('claw:grab', mine(({ success, dollId }) => dollId && toast(success ? '잡았다!' : '앗, 놓쳤다...', { type: success ? 'good' : 'warn' }))),
     eventBus.on('claw:slip', mine(() => toast('으악, 떨어졌다!', { type: 'warn' }))),
-    eventBus.on('doll:won', mine(({ dollId }) => showPrize(dollId))),
+    eventBus.on('doll:won', mine(({ dollId }) => queueMicrotask(() => showPrize(dollId)))),
+    eventBus.on('collection:error', onSaveFailed),
     eventBus.on('input:coin', insertCoin),
     // 타이머는 보일 때(READY), 초가 바뀔 때만 DOM을 갱신한다
     sceneManager.onUpdate(() => {

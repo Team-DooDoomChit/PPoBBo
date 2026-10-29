@@ -2,10 +2,15 @@ import { gameApi } from '../../integration/gameApi.js';
 import { h, formatGold } from '../dom.js';
 import { openModal } from '../modal.js';
 import { toast } from '../toast.js';
+import { failText } from '../failText.js';
 
 const AD_SCENES = ['🧹 오락실 바닥 청소 중...', '🧸 인형 채워 넣는 중...', '🪙 동전 정리 중...', '✨ 유리창 닦는 중...'];
+// #12 nightShift.complete()의 실패 사유별 문구 (save-failed는 공통 문구 사용)
 const FAIL_TEXT = {
   interrupted: '다른 화면으로 이동해서 근무가 중단됐어요',
+  'too-short': '광고를 끝까지 보지 않아 수당이 지급되지 않았어요',
+  'daily-limit': '오늘 근무 횟수를 모두 채워서 수당이 지급되지 않았어요',
+  'invalid-session': '근무 정보가 만료됐어요. 다시 시작해 주세요',
   default: '근무 확인에 실패해 수당이 지급되지 않았어요',
 };
 
@@ -95,7 +100,7 @@ export function openNightShiftModal() {
   const renderResult = (result) => {
     modal.body.replaceChildren(
       h('div', { class: 'night-hero' }, result.ok ? '🎉' : '😢'),
-      h('p', {}, result.ok ? `수고했어요! 야간 수당 🪙 ${formatGold(result.reward)} 지급` : (FAIL_TEXT[result.reason] ?? FAIL_TEXT.default)),
+      h('p', {}, result.ok ? `수고했어요! 야간 수당 🪙 ${formatGold(result.reward)} 지급` : failText(result.reason, FAIL_TEXT)),
       h('button', { class: 'btn btn-ghost btn-lg modal-action', onClick: renderIntro }, '확인'),
     );
   };

@@ -2,6 +2,13 @@ import { gameApi } from '../../integration/gameApi.js';
 import { h, formatGold } from '../dom.js';
 import { openModal } from '../modal.js';
 import { toast } from '../toast.js';
+import { failText } from '../failText.js';
+
+// save-failed는 출석 기록과 골드 저장 실패 둘 다에서 오므로 공통 문구('저장하지 못했어요')를 쓴다
+const FAIL_TEXT = {
+  'already-claimed': '오늘은 이미 출석했어요',
+  default: '출석 보상을 받지 못했어요. 잠시 후 다시 시도해 주세요',
+};
 
 /** 출석체크 팝업: 7일 보상 달력 + 오늘 보상 받기 */
 export function openAttendanceModal() {
@@ -44,7 +51,7 @@ export function openAttendanceModal() {
   const claim = () => {
     const result = gameApi.claimAttendance();
     if (result.ok) toast(`${result.day}일차 출석! 🪙 ${formatGold(result.reward)} 지급`, { type: 'good' });
-    else toast('오늘은 이미 출석했어요', { type: 'warn' });
+    else toast(failText(result.reason, FAIL_TEXT), { type: 'warn' });
     render();
   };
 
