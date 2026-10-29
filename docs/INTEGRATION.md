@@ -49,6 +49,29 @@ inputState.reset('motion'); // 손을 놓쳤을 때: 모션 입력값만 초기�
 | Enter | `input:confirm` |
 | C | `input:coin` |
 
+### 모션 입력 (`src/motion/`, #8~#10)
+
+기계를 골라 **게임 화면에 들어가면 카메라가 켜지고**, 게임 화면을 나가면 꺼집니다. 게임 중에는 왼쪽 아래(좁은 화면은 왼쪽 위)에 **내 모습** 카메라 창이 뜹니다. MediaPipe 모델(손·얼굴)은 기계 선택 화면에서 미리 받아 둡니다(카메라 권한은 묻지 않음).
+
+```
+웹캠 → MotionTracker → HandTracker(#8) / HeadTracker(#9) → MotionBridge(#10) → inputState.update(..., 'motion')
+```
+
+| InputState 필드 | 만드는 방법 |
+| --- | --- |
+| `joystickX` / `joystickY` | 손바닥 중심이 화면 가운데(0.5, 0.55)에서 벗어난 정도. 화면의 18% 이동 = ±1, 가운데 15%는 0 (데드존) |
+| `isFist` / `isPointing` / `isPinching` | 손가락 펴짐/굽힘 비율로 판별, 80ms 이상 유지돼야 켜지고 120ms 이상 유지돼야 꺼짐 |
+| `pointer` | 집는 중이면 엄지·검지 사이, 아니면 검지 끝 (좌우 반전, 떨림 보정) |
+| `headYaw` / `headPitch` | 켜고 처음 0.5초 동안의 자세를 정면(0)으로 삼은 머리 회전 각도 |
+| `gazeTarget` | yaw ±0.35rad 범위를 기계 수만큼 나눠 **1초 동안 응시**한 기계 |
+
+- 값이 **바뀐 필드만** 보냅니다(작은 떨림은 반올림해서 무시). 키보드와는 InputState가 입력원별로 합치므로 섞이지 않고, 이렇게 하면 구독자 호출 횟수가 줄어듭니다. 손이 안 보이면 손 관련 필드를 한 번만 중립으로 되돌리고, 카메라를 끌 때는 `inputState.reset('motion')`으로 모션 값만 지웁니다.
+- 게임 화면 단축키: **V** 카메라 창 숨기기/보이기, **R** 정면과 손 가운데 위치 다시 맞추기 (모달이 열려 있거나 Ctrl/Alt/⌘ 조합일 때는 무시)
+- 다른 탭으로 가면 카메라를 끄고, 게임 화면으로 돌아오면 다시 켭니다.
+- 카메라 권한이 거부되면 카메라 창에 안내가 뜨고, 버튼·키보드로 그대로 플레이할 수 있습니다.
+- 게임 화면에서만 카메라를 켜므로, 메인·선택 화면의 모션 입력(가리키기로 확인, `gazeTarget`)은 지금은 동작하지 않습니다.
+- 이벤트: `motion:started`, `motion:stopped`, `motion:error { reason }` (`permission-denied` / `no-camera` / `load-failed` / `unsupported` / 실행 중 멈춤 `runtime-error`)
+
 ## 2. 이벤트 (`src/core/EventBus.js`)
 
 ```js
@@ -107,8 +130,9 @@ UI는 이 객체만 호출합니다. 현재는 **메모리 Mock**이며, 게임 
 개발 서버(`npm run dev`)에서는 브라우저 콘솔에서 `window.__ppobbo`로 접근할 수 있습니다.
 
 ```js
-const { inputState, router, games } = window.__ppobbo;
+const { inputState, router, games, motion } = window.__ppobbo;
 router.go('game', { machineId: 'bear' });
 inputState.update({ pointer: { x: 0.5, y: 0.8 }, isPinching: true }); // 손 커서/동전 표시 확인
 inputState.update({ headYaw: 0.3 });                                    // 시점 이동 확인
+router.go('game', { machineId: 'bear' });                               // 카메라 켜짐 (motion.hand / motion.head 로 트래커 상태 확인)
 ```

@@ -16,6 +16,7 @@ import { isModalOpen } from './ui/modal.js';
 import { inputState } from './core/InputState.js';
 import { setupKeyboardInput } from './integration/KeyboardInput.js';
 import { setupMotionBinding } from './integration/MotionBinding.js';
+import { setupMotion } from './motion/setupMotion.js';
 
 const sceneManager = new SceneManager(document.getElementById('scene'));
 const arcade = new Arcade(sceneManager);
@@ -54,9 +55,11 @@ setupMotionBinding({ sceneManager, arcade, router, getActiveGame: () => activeGa
 // 모달이 열려 있는 동안은 일시정지 (집게·타이머가 모달 뒤에서 움직이지 않도록)
 sceneManager.onUpdate((dt) => !isModalOpen() && activeGame?.update(dt));
 
-if (import.meta.env.DEV) window.__ppobbo = { sceneManager, arcade, games, router, eventBus, inputState };
-
 router.go('main');
 setupModals(hud);
+// 웹캠 모션 인식 (게임 화면에 들어가면 카메라 켜짐)
+const motion = setupMotion();
+
+if (import.meta.env.DEV) window.__ppobbo = { sceneManager, arcade, games, router, eventBus, inputState, motion };
 sceneManager.start();
 eventBus.emit('app:ready');

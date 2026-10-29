@@ -614,3 +614,7 @@
     text-align: right;
   }
 }
+
+.prize-warn {
+  color: #ff9a7a;
+}
