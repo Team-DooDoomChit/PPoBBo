@@ -137,12 +137,24 @@ function keychainFaceLines() {
 
 // ---------- 목도리 고양이: 머리 무늬(모자)와 얼굴 선. 머리 타원체는 목도리 토끼와 같다 ----------
 
-// 머리 무늬 아래 경계: [정면에서 돈 각도 |φ|, 경계 높이(머리 타원체 정규화 y)].
-// 흰 이마가 정수리 가까이까지 높은 아치로 올라가고(가운데에 작은 V 가르마), 아치 바깥에서
-// 파란 옆머리가 눈썹 높이까지 가파르게 내려온다. 옆·뒤는 거의 수평이다.
-const CAP_EDGE = [[0, 0.62], [0.3, 0.7], [0.56, 0.6], [0.74, 0.38], [0.95, 0.2], [1.3, 0.12], [2.2, 0.12], [Math.PI, 0.18]];
+// 고양이 눈 높이: 머리 위쪽에 가깝게 (참고 이미지 비율: 정수리 → 눈 = 머리 반폭의 0.78배)
+const KC_EYE_Y = 0.08;
 
-const capSlope = (i) => (CAP_EDGE[i + 1][1] - CAP_EDGE[i - 1][1]) / (CAP_EDGE[i + 1][0] - CAP_EDGE[i - 1][0]);
+// 머리 무늬 아래 경계: [정면에서 돈 각도 |φ|, 경계 높이(머리 타원체 정규화 y)]. 참고 이미지에서 잰 값.
+// 정면은 5:5 가르마: 양쪽 파란 머리가 정확히 가운데(φ = 0)에서 만나 흰 이마가 끝이 뾰족한 아치가 되고,
+// 아치 양옆은 눈썹 위 높이에서 수평으로 옆머리까지 이어진다.
+// 뒤쪽은 가운데가 살짝 올라가 양옆 두 덩어리로 갈라진다.
+const CAP_EDGE = [
+  [0, 0.693], [0.21, 0.629], [0.344, 0.555], [0.446, 0.484], [0.62, 0.47], [0.91, 0.464],
+  [1.57, 0.44], [2.4, 0.37], [2.89, 0.32], [Math.PI, 0.39],
+];
+
+/** 경계 곡선의 기울기 (가르마 꼭짓점은 한쪽 기울기라 뾰족하고, 맨 뒤는 좌우 대칭이라 0) */
+function capSlope(i) {
+  if (i === 0) return (CAP_EDGE[1][1] - CAP_EDGE[0][1]) / CAP_EDGE[1][0];
+  if (i === CAP_EDGE.length - 1) return 0;
+  return (CAP_EDGE[i + 1][1] - CAP_EDGE[i - 1][1]) / (CAP_EDGE[i + 1][0] - CAP_EDGE[i - 1][0]);
+}
 
 function capEdge(phi) {
   const a = Math.abs(Math.atan2(Math.sin(phi), Math.cos(phi)));
@@ -151,11 +163,10 @@ function capEdge(phi) {
     const [p1, y1] = CAP_EDGE[i];
     if (a > p1) continue;
     const u = (a - p0) / (p1 - p0);
-    // 가운데 구간만 직선이라 작은 V 가르마가 되고, 나머지는 기울기를 이어 주는 3차 곡선(Catmull-Rom)으로 부드럽게 잇는다
-    if (i === 1) return y0 + (y1 - y0) * u;
+    // 점 사이는 기울기를 이어 주는 3차 곡선(Catmull-Rom)으로 부드럽게 잇는다
     const h = p1 - p0;
-    const m0 = i === 2 ? 0 : capSlope(i - 1) * h; // 이마 아치 꼭대기는 기울기 0
-    const m1 = i === CAP_EDGE.length - 1 ? 0 : capSlope(i) * h;
+    const m0 = capSlope(i - 1) * h;
+    const m1 = capSlope(i) * h;
     const u2 = u * u;
     const u3 = u2 * u;
     return (2 * u3 - 3 * u2 + 1) * y0 + (u3 - 2 * u2 + u) * m0 + (-2 * u3 + 3 * u2) * y1 + (u3 - u2) * m1;
@@ -224,17 +235,22 @@ function keychainCatFaceLines() {
   if (kcFaceLines) return kcFaceLines;
   const lines = [];
   for (const sx of [-1, 1]) {
-    // 눈썹: 눈 위의 짧은 선 (안쪽이 조금 높은 걱정스러운 표정)
-    lines.push(...surfaceLine([[sx * 0.025, KB_EYE_Y + 0.0138], [sx * 0.0175, KB_EYE_Y + 0.0152]], 0.0013));
-    // 볼 빗금 ||||
-    for (const dx of [-0.0054, -0.0018, 0.0018, 0.0054]) {
-      const cx = sx * 0.036 + dx;
-      const cy = KB_EYE_Y - 0.01;
-      lines.push(...surfaceLine([[cx - 0.0008, cy - 0.0034], [cx + 0.0008, cy + 0.0034]], 0.0008, 0.0026));
+    // 눈썹: 눈 바로 위의 짧은 선
+    lines.push(...surfaceLine([[sx * 0.0225, KC_EYE_Y + 0.0127], [sx * 0.0168, KC_EYE_Y + 0.0123]], 0.0013));
+    // 볼 빗금 ////
+    for (const dx of [-0.0051, -0.0017, 0.0017, 0.0051]) {
+      const cx = sx * 0.035 + dx;
+      const cy = KC_EYE_Y - 0.011;
+      lines.push(...surfaceLine([[cx - 0.001, cy - 0.0032], [cx + 0.001, cy + 0.0032]], 0.0008, 0.0026));
     }
   }
+  // 눈동자: 흰자 아래쪽의 ◡ 모양 굵은 선
+  for (const sx of [-1, 1]) {
+    const ex = sx * 0.0188;
+    lines.push(...surfaceLine(arc(ex, KC_EYE_Y + 0.0004, 0.0032, (-160 * Math.PI) / 180, (-20 * Math.PI) / 180, 8), 0.0014, 0.0026));
+  }
   // 입: 양끝이 위로 말려 올라간 고양이 입
-  const my = KB_EYE_Y - 0.0135;
+  const my = KC_EYE_Y - 0.0135;
   const half = [
     [0.0086, my + 0.0034],
     [0.0092, my + 0.0008],
@@ -245,7 +261,7 @@ function keychainCatFaceLines() {
   const mouth = [...half.map(([x, y]) => [-x, y]), [0, my + 0.0012], ...[...half].reverse()];
   lines.push(...surfaceLine(mouth, 0.0011));
   // 입 아래 짧은 턱 선
-  lines.push(...surfaceLine([[-0.0028, KB_EYE_Y - 0.0195], [0.0028, KB_EYE_Y - 0.0195]], 0.001));
+  lines.push(...surfaceLine([[-0.0029, KC_EYE_Y - 0.0205], [0.0029, KC_EYE_Y - 0.0205]], 0.001));
   kcFaceLines = mergeGeometries(lines.map((g) => g.toNonIndexed()));
   lines.forEach((g) => g.dispose());
   return kcFaceLines;
@@ -467,12 +483,12 @@ const builders = {
       part(keychainCatCap(), sub),
     );
 
-    // 귀: 머리 무늬 양옆 위로 뾰족하게, 바깥으로 살짝 기운다
+    // 귀: 머리 위 양쪽 모서리에 거의 곧게 선다
     for (const sx of [-1, 1]) {
-      const tilt = [0, 0, -sx * 0.35];
+      const tilt = [0, 0, -sx * 0.12];
       group.add(
-        part(geo.cone, sub, { pos: [sx * 0.037, headY + 0.05, -0.006], scale: [0.024, 0.036, 0.014], rot: tilt }),
-        part(geo.cone, mat.innerEar, { pos: [sx * 0.036, headY + 0.048, 0.004], scale: [0.014, 0.024, 0.005], rot: tilt, shadow: false }),
+        part(geo.cone, sub, { pos: [sx * 0.033, headY + 0.052, -0.006], scale: [0.023, 0.04, 0.016], rot: tilt }),
+        part(geo.cone, mat.innerEar, { pos: [sx * 0.033, headY + 0.05, 0.005], scale: [0.014, 0.027, 0.005], rot: tilt, shadow: false }),
       );
     }
 
@@ -499,8 +515,8 @@ const builders = {
     }
     group.add(part(geo.capsule, mat.chain, { pos: [0, topY + 0.003, 0], scale: [0.0032, 0.0055, 0.0032], rot: [0, 0, Math.PI / 2] }));
 
-    // 목도리를 토끼보다 조금 낮게 둘러 입 아래 턱 선이 보이게 한다
-    addScarf(group, mat, 0.013);
+    // 목도리는 턱 선 바로 아래
+    addScarf(group, mat, 0.024);
 
     // 팔, 발, 꼬리 방울
     for (const sx of [-1, 1]) {
@@ -526,12 +542,11 @@ const builders = {
 
     // 얼굴: 테두리 눈, 짧은 눈썹, |||| 볼터치, 고양이 입
     for (const sx of [-1, 1]) {
-      const ex = sx * 0.0195;
+      const ex = sx * 0.0188;
       group.add(
-        surfaceDot(mat.ink, ex, KB_EYE_Y, [0.0092, 0.0094, 0.0022], 0.0006), // 검은 테두리
-        surfaceDot(mat.shine, ex, KB_EYE_Y + 0.0003, [0.0063, 0.0066, 0.0016], 0.0013), // 흰자
-        surfaceDot(mat.ink, ex, KB_EYE_Y - 0.0018, [0.0046, 0.0024, 0.0016], 0.0019), // 아래쪽 눈동자
-        surfaceDot(mat.blush, sx * 0.036, KB_EYE_Y - 0.01, [0.0105, 0.0075, 0.0016], 0.0004), // 볼
+        surfaceDot(mat.ink, ex, KC_EYE_Y, [0.0082, 0.0082, 0.0012], 0.0006), // 검은 테두리
+        surfaceDot(mat.shine, ex, KC_EYE_Y + 0.0003, [0.0055, 0.0055, 0.0012], 0.0012), // 흰자 (눈동자는 얼굴 선에)
+        surfaceDot(mat.blush, sx * 0.035, KC_EYE_Y - 0.011, [0.0097, 0.0072, 0.0016], 0.0004), // 볼
       );
     }
     group.add(part(keychainCatFaceLines(), mat.ink, { shadow: false }));
