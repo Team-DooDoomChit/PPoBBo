@@ -19,14 +19,21 @@ import { setupMotionBinding } from './integration/MotionBinding.js';
 
 const sceneManager = new SceneManager(document.getElementById('scene'));
 const arcade = new Arcade(sceneManager);
-const games = new Map([...arcade.machines].map(([id, machine]) => [id, new ClawGame(machine)]));
+// 기계마다 인형 배치(물리 사전 안정화)에 수십 ms가 걸린다.
+// 첫 화면을 먼저 그린 뒤 한 대씩 만들고, 그 전에 게임 화면에 들어가면 그때 바로 만든다.
+const games = new Map();
+const getGame = (id) => {
+  if (!games.has(id)) games.set(id, new ClawGame(arcade.getMachine(id)));
+  return games.get(id);
+};
+[...arcade.machines.keys()].forEach((id, i) => setTimeout(() => getGame(id), 100 * (i + 1)));
 let activeGame = null;
 
 const uiRoot = document.getElementById('ui');
 const router = new ScreenRouter(uiRoot, {
   sceneManager,
   arcade,
-  games,
+  getGame,
   setActiveGame: (game) => (activeGame = game),
 });
 const hud = new HUD(uiRoot, router);

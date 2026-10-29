@@ -1,3 +1,4 @@
+import { MathUtils } from 'three';
 import { inputState } from '../core/InputState.js';
 import { eventBus } from '../core/EventBus.js';
 import { CLAW_STATE } from '../physics/ClawController.js';
@@ -12,7 +13,6 @@ const HEAD_LOOK_GAIN = { yaw: 0.9, pitch: 0.5 }; // 머리 각도 → 카메라 
 const HEAD_LOOK_LIMIT = { yaw: 0.6, pitch: 0.4 };
 const BUTTON_FLASH_TIME = 0.25;
 
-const clamp = (v, limit) => Math.max(-limit, Math.min(limit, v));
 
 /**
  * InputState(모션/키보드) → 3D 오브젝트와 게임 동작 바인딩.
@@ -89,8 +89,8 @@ export function setupMotionBinding({ sceneManager, arcade, router, getActiveGame
 
     // 머리 회전 → 지금 시점 기준으로 상대 회전. 거리(줌)와 마우스로 돌린 각도는 유지된다.
     const kLook = 1 - Math.exp(-HEAD_LOOK_SMOOTHING * dt);
-    look.yaw += ((game ? clamp(input.headYaw, HEAD_LOOK_LIMIT.yaw) * HEAD_LOOK_GAIN.yaw : 0) - look.yaw) * kLook;
-    look.pitch += ((game ? clamp(input.headPitch, HEAD_LOOK_LIMIT.pitch) * HEAD_LOOK_GAIN.pitch : 0) - look.pitch) * kLook;
+    look.yaw += ((game ? MathUtils.clamp(input.headYaw, -HEAD_LOOK_LIMIT.yaw, HEAD_LOOK_LIMIT.yaw) * HEAD_LOOK_GAIN.yaw : 0) - look.yaw) * kLook;
+    look.pitch += ((game ? MathUtils.clamp(input.headPitch, -HEAD_LOOK_LIMIT.pitch, HEAD_LOOK_LIMIT.pitch) * HEAD_LOOK_GAIN.pitch : 0) - look.pitch) * kLook;
     // 카메라 이동 중이거나 사용자가 드래그 중이면 회전하지 않고 기준만 맞춘다 (끝난 뒤 튀지 않도록)
     if (game && !sceneManager.isCameraMoving && !sceneManager.isUserControlling) {
       sceneManager.orbitBy(look.yaw - applied.yaw, -(look.pitch - applied.pitch));

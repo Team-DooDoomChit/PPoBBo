@@ -13,7 +13,9 @@ export class ScreenRouter {
     this.root = root;
     this.ctx = { ...ctx, router: this };
     this.current = null;
+    this.currentParams = {};
     this.previous = null;
+    this.previousParams = {};
   }
 
   register(name, factory) {
@@ -27,7 +29,9 @@ export class ScreenRouter {
     this.#screen?.el.remove();
 
     this.previous = this.current;
+    this.previousParams = this.currentParams;
     this.current = name;
+    this.currentParams = params;
     this.#screen = this.#factories.get(name)(this.ctx, params);
     this.#screen.el.classList.add('screen', `screen-${name}`);
     this.root.append(this.#screen.el);
@@ -35,7 +39,9 @@ export class ScreenRouter {
     return true;
   }
 
+  /** 이전 화면으로. 그 화면의 params(예: 게임 화면의 machineId)도 함께 되돌린다. */
   back(fallback = 'main') {
-    this.go(this.previous && this.previous !== this.current ? this.previous : fallback);
+    if (this.previous && this.previous !== this.current) this.go(this.previous, this.previousParams);
+    else this.go(fallback);
   }
 }
