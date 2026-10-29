@@ -19,14 +19,15 @@ const STATE_TEXT = {
 
 /** 게임 플레이 화면: 기계 클로즈업 + 코인/하강 버튼, 타이머, 획득 팝업 */
 export function GameScreen(ctx, { machineId }) {
-  const { arcade, games, router, sceneManager, setActiveGame } = ctx;
+  const { arcade, getGame, router, sceneManager, setActiveGame } = ctx;
   const machine = getMachine(machineId);
-  const game = games.get(machineId);
+  const game = getGame(machineId);
   setActiveGame(game);
   arcade.focusMachine(machineId);
 
   const statusText = h('div', { class: 'game-status' });
   const timerText = h('div', { class: 'game-timer' });
+  let shownSeconds = null;
   const backBtn = h('button', { class: 'btn btn-ghost back-btn', onClick: () => router.go('select', { machineId }) }, '← 나가기');
   const coinBtn = h('button', { class: 'btn btn-primary btn-lg', onClick: insertCoin }, `🪙 코인 넣기 (${formatGold(machine.price)})`);
   const dropBtn = h('button', { class: 'btn btn-drop btn-lg', onClick: () => game.claw.drop() }, '▼ 내리기');
@@ -81,8 +82,14 @@ export function GameScreen(ctx, { machineId }) {
     eventBus.on('claw:slip', mine(() => toast('으악, 떨어졌다!', { type: 'warn' }))),
     eventBus.on('doll:won', mine(({ dollId }) => showPrize(dollId))),
     eventBus.on('input:coin', insertCoin),
+    // 타이머는 보일 때(READY), 초가 바뀔 때만 DOM을 갱신한다
     sceneManager.onUpdate(() => {
-      timerText.textContent = `⏱ ${Math.ceil(game.claw.timeLeft)}`;
+      if (game.claw.state !== CLAW_STATE.READY) return;
+      const seconds = Math.ceil(game.claw.timeLeft);
+      if (seconds !== shownSeconds) {
+        shownSeconds = seconds;
+        timerText.textContent = `⏱ ${seconds}`;
+      }
     }),
   ];
 

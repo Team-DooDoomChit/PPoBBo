@@ -49,7 +49,10 @@ export function MachineSelectScreen(ctx, { machineId = MACHINES[0].id } = {}) {
   const offs = [
     eventBus.on('input:select-prev', () => select(index - 1)),
     eventBus.on('input:select-next', () => select(index + 1)),
-    eventBus.on('input:select-machine', ({ machineId: id }) => select(MACHINES.findIndex((m) => m.id === id))),
+    eventBus.on('input:select-machine', ({ machineId: id }) => {
+      const i = MACHINES.findIndex((m) => m.id === id);
+      if (i >= 0) select(i); // 모르는 id는 무시 (-1이 마지막 기계로 바뀌지 않도록)
+    }),
     eventBus.on('input:confirm', play),
   ];
 
