@@ -111,7 +111,7 @@ export class MotionDebugView {
       ctx.fillText(text, x - 20, y);
     }
 
-    const lines = [describe('왼손', hands.left, '조이스틱'), describe('오른손', hands.right, '✊·내려치기 = 집게, 👌 = 코인'),
+    const lines = [describe('왼손', hands.left, '쥐고 기울이기 = 조이스틱'), describe('오른손', hands.right, '✊·내려치기 = 집게, 👌 = 코인'),
       ...Object.entries(extra).map(([k, v]) => (k ? `${k}: ${v}` : String(v)))];
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(0, h - 18 * lines.length - 6, w, 18 * lines.length + 6);
