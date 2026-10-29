@@ -1,14 +1,15 @@
 /**
  * 손 위치(화면 정규화, 좌우 반전) → 조이스틱 값(-1 ~ 1). (#10)
  *
- * 화면 가운데(center)에 손을 두면 0, range만큼 움직이면 끝까지 기운다.
+ * 가운데(center)에 손을 두면 0, range만큼 움직이면 끝까지 기운다.
+ * 조이스틱은 왼손으로 잡으므로(#34) 왼손이 편하게 놓이는 화면 왼쪽을 가운데로 둔다. (R 키로 다시 맞춤)
  * 가운데 근처(deadzone)는 0으로 두어 손을 가만히 둬도 집게가 흘러가지 않게 한다.
  *
  *   joystickX: 손을 오른쪽으로 → +
  *   joystickY: 손을 위로 → + (기계 안쪽, docs/INTEGRATION.md)
  */
 export const JOYSTICK_DEFAULTS = Object.freeze({
-  center: Object.freeze({ x: 0.5, y: 0.55 }),
+  center: Object.freeze({ x: 0.3, y: 0.55 }),
   range: 0.18, // 화면 폭/높이 대비, 이만큼 움직이면 ±1
   deadzone: 0.15, // ±1 기준, 이 안은 0
 });
