@@ -13,7 +13,7 @@ import { MotionDebugView } from './MotionDebugView.js';
 /**
  * 모션 인식을 앱에 연결한다. (#10)
  *
- * 웹캠 → MotionTracker → HandTracker / HeadTracker → MotionBridge → inputState → MotionBinding(A)
+ * 웹캠 → MotionTracker → HandTracker / HeadTracker → MotionBridge → inputState → MotionBinding(#6)
  *
  * - 기계를 골라 게임 화면에 들어가면 카메라가 켜지고, 게임 화면을 나가면 꺼진다.
  * - 게임 중에는 "내 모습" 카메라 창을 보여준다. (V 키로 숨기기/보이기)
