@@ -1,24 +1,26 @@
 import '../styles/motion.css';
 import { inputState } from '../core/InputState.js';
 import { eventBus } from '../core/EventBus.js';
-import { MACHINES } from '../data/machines.js';
 import { toast } from '../ui/toast.js';
 import { isModalOpen } from '../ui/modal.js';
 import { MotionTracker } from './MotionTracker.js';
 import { HandTracker } from './HandTracker.js';
-import { HeadTracker } from './HeadTracker.js';
+import { HandRoleAssigner } from './handRoles.js';
 import { MotionBridge } from './MotionBridge.js';
 import { MotionDebugView } from './MotionDebugView.js';
 
 /**
- * 모션 인식을 앱에 연결한다. (#10)
+ * 모션 인식을 앱에 연결한다. (#10, #34)
  *
- * 웹캠 → MotionTracker → HandTracker / HeadTracker → MotionBridge → inputState → MotionBinding(#6)
+ * 웹캠 → MotionTracker → HandRoleAssigner → 왼손/오른손 HandTracker → MotionBridge → inputState → MotionBinding(#6)
  *
+ * - 왼손은 조이스틱, 오른손은 주먹·내려치기로 집게 내리기, OK 사인은 코인 투입 (#34)
  * - 기계를 골라 게임 화면에 들어가면 카메라가 켜지고, 게임 화면을 나가면 꺼진다.
  * - 게임 중에는 "내 모습" 카메라 창을 보여준다. (V 키로 숨기기/보이기)
  * - 기계 선택 화면에서 모델을 미리 받아 두어 게임 시작 때 기다리는 시간을 줄인다.
- * - R 키: 머리 정면 다시 맞추기 + 지금 손 위치를 조이스틱 가운데로.
+ * - R 키: 지금 왼손 위치를 조이스틱 가운데로.
+ * - 게임 중에는 머리 방향을 쓰지 않으므로(시점은 마우스로 조작) 얼굴 인식은 끈다.
+ *   HeadTracker / GazeSelector(#9)는 남겨 두었다가 필요할 때 face: true로 다시 연결한다.
  */
 const CAMERA_SCREEN = 'game';
 
@@ -30,23 +32,25 @@ const ERROR_TEXT = {
   'runtime-error': '모션 인식이 멈췄어요\n게임 화면을 나갔다 다시 들어오면 다시 켜져요',
 };
 
-/** 화면 왼쪽부터 기계 id (gazeTarget용) */
-const machineOrder = () => [...MACHINES].sort((a, b) => a.position[0] - b.position[0]).map((m) => m.id);
-
 export function setupMotion() {
-  const hand = new HandTracker();
-  const head = new HeadTracker(machineOrder());
+  const roles = new HandRoleAssigner();
+  const hand = { left: new HandTracker(), right: new HandTracker({ slam: true }) };
   const bridge = new MotionBridge(inputState);
-  let handState = hand.state;
+  let handState = { left: hand.left.state, right: hand.right.state, index: { left: -1, right: -1 } };
   let screen = null;
   let failed = null; // 권한 거부 등으로 실패한 이유 (같은 안내를 반복하지 않기 위해)
 
   const tracker = new MotionTracker({
+    face: false,
     onFrame: (frame) => {
-      handState = hand.update(frame.hands, frame.t);
-      const headState = head.update(frame.face, frame.t);
-      bridge.push(handState, headState);
-      view.draw(frame, handState, headState.calibrated ? {} : { '': '정면을 보고 잠시 기다려 주세요' });
+      const split = roles.assign(frame.hands, frame.t);
+      handState = {
+        left: hand.left.update(split.left, frame.t),
+        right: hand.right.update(split.right, frame.t),
+        index: split.index,
+      };
+      bridge.push(handState);
+      view.draw(frame, handState);
     },
     // 인식 중 오류(GPU 컨텍스트 손실 등)로 멈췄을 때
     onError: ({ reason }) => {
@@ -68,8 +72,9 @@ export function setupMotion() {
       return;
     }
     failed = null;
-    hand.reset();
-    head.recalibrate();
+    roles.reset();
+    hand.left.reset();
+    hand.right.reset();
     view.setStatus(null);
     eventBus.emit('motion:started');
   }
@@ -92,9 +97,12 @@ export function setupMotion() {
   }
 
   function recenter() {
-    head.recalibrate();
-    if (handState.detected) bridge.recenter(handState.palm);
-    toast('정면과 손 위치를 다시 맞췄어요', { duration: 1500 });
+    if (!handState.left.detected) {
+      toast('왼손을 보여 준 채로 R을 눌러 주세요', { duration: 1500 });
+      return;
+    }
+    bridge.recenter(handState.left.palm);
+    toast('지금 왼손 위치를 조이스틱 가운데로 맞췄어요', { duration: 1500 });
   }
 
   eventBus.on('screen:changed', ({ name }) => {
@@ -120,5 +128,5 @@ export function setupMotion() {
     else if (screen === CAMERA_SCREEN) start();
   });
 
-  return { start, stop, recenter, tracker, hand, head, bridge, view };
+  return { start, stop, recenter, tracker, roles, hand, bridge, view };
 }
