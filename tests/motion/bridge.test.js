@@ -12,7 +12,7 @@ import { makeFace } from './faceFixtures.js';
 /** update 호출을 기록하는 가짜 InputState */
 const recorder = () => {
   const calls = [];
-  return { calls, update: (partial, source) => calls.push({ partial, source }) };
+  return { calls, update: (partial, source) => calls.push({ partial, source }), reset: (source) => calls.push({ reset: source }) };
 };
 const hand = (over = {}) => ({
   detected: true, isFist: false, isPointing: false, isPinching: false,
@@ -20,7 +20,10 @@ const hand = (over = {}) => ({
 });
 const head = (over = {}) => ({ detected: true, calibrated: true, yaw: 0, pitch: 0, gazeTarget: null, ...over });
 
-beforeEach(() => inputState.reset());
+beforeEach(() => {
+  inputState.reset('motion');
+  inputState.reset('keyboard');
+});
 
 // ---------------- 조이스틱 매핑 ----------------
 
@@ -91,15 +94,29 @@ test('recenter: 지금 손 위치가 조이스틱 가운데가 된다', () => {
   assert.equal(out.joystickY, 0);
 });
 
-test('release: 모든 모션 값을 중립으로 되돌린다', () => {
+test('release: 모션 입력원의 값만 지우고 키보드 값은 남긴다', () => {
+  const b = new MotionBridge(inputState);
+  inputState.update({ joystickY: 1 }, 'keyboard');
+  b.push(hand({ isPinching: true, palm: { x: 0.8, y: 0.55 } }), head({ yaw: 0.3, gazeTarget: 'chick' }));
+  assert.equal(inputState.get().isPinching, true);
+
+  b.release();
+  const s = inputState.get();
+  assert.equal(s.isPinching, false);
+  assert.equal(s.joystickX, 0);
+  assert.equal(s.headYaw, 0);
+  assert.equal(s.gazeTarget, null);
+  assert.equal(s.joystickY, 1, '키보드 값 유지');
+});
+
+test('release 후 다시 켜면 모든 값을 처음부터 다시 보낸다', () => {
   const rec = recorder();
   const b = new MotionBridge(rec);
-  b.push(hand({ isPinching: true }), head({ yaw: 0.3, gazeTarget: 'chick' }));
+  b.push(hand(), head());
   b.release();
-  const last = rec.calls.at(-1).partial;
-  assert.equal(last.isPinching, false);
-  assert.equal(last.headYaw, 0);
-  assert.equal(last.gazeTarget, null);
+  assert.deepEqual(rec.calls.at(-1), { reset: 'motion' });
+  b.push(hand(), head());
+  assert.equal(Object.keys(rec.calls.at(-1).partial).length, 9);
 });
 
 // ---------------- 실제 InputState와 함께 ----------------
