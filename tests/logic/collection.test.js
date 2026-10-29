@@ -75,7 +75,7 @@ test('도감 목록: 카탈로그 순서 + 보유 여부', () => {
   const gray = entries.find((e) => e.doll.id === 'bunny-gray');
   assert.equal(gray.owned, true);
   assert.equal(gray.count, 1);
-  assert.equal(entries.find((e) => e.doll.id === 'bunny-white').owned, false);
+  assert.equal(entries.find((e) => e.doll.id === 'bunny-scarf').owned, false);
 });
 
 test('새로고침 후에도 유지 (저장소에서 다시 읽음)', () => {
