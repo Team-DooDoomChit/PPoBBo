@@ -4,14 +4,14 @@ import { nightShift } from '../logic/nightShift.js';
 import { collection } from '../logic/collection.js';
 
 /**
- * 게임 로직(팀원 B) 연동 어댑터.
+ * 게임 로직 연동 어댑터.
  *
  * UI는 이 객체만 호출한다.
  *   - #11 골드·충전·출석, #12 야간 근무, #13 도감: src/logic 모듈 연결 완료 (LocalStorage 저장)
  *   - 반환 형태만 유지하면 내부 구현(예: DB)을 바꿔도 UI 수정 없음
  *
  * 이벤트 계약
- *   gold:changed        { gold }        골드가 바뀔 때 (B #11과 동일)
+ *   gold:changed        { gold }        골드가 바뀔 때 (#11)
  *   collection:changed  { collection }  도감이 바뀔 때
  *   collection:error    { dollId, reason }  획득한 인형 저장 실패 (저장 공간 부족 등)
  */
