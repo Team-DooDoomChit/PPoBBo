@@ -560,11 +560,22 @@
 
 /* ---------- 모바일 ---------- */
 @media (max-width: 600px) {
-  .hud-logo { font-size: 18px; }
+  /* HUD를 한 줄로 유지해 아래의 나가기 버튼을 가리지 않게 한다 (버튼 이름은 title로 남는다) */
+  .hud { gap: 8px; padding: 10px 12px; }
+  .hud-logo { font-size: 18px; padding: 0; white-space: nowrap; }
+  .hud-right { flex-wrap: nowrap; gap: 6px; }
+  .hud-actions { gap: 6px; }
+  .hud-btn { padding: 5px 8px; }
+  .hud-btn-text { display: none; }
+  .gold-pill { font-size: 16px; padding: 4px 10px; white-space: nowrap; }
   .btn-lg { font-size: 17px; padding: 12px 20px; }
   .select-panel { bottom: 88px; }
   .machine-card { flex-basis: 170px; }
   .select-panel .btn-round { display: none; }
+}
+
+@media (max-width: 380px) {
+  .hud-logo-text { display: none; }
 }
 
 .controls-hint {
