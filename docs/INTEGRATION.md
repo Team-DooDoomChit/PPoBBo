@@ -23,16 +23,17 @@ inputState.reset('motion'); // 손을 놓쳤을 때: 모션 입력값만 초기�
 | --- | --- | --- | --- |
 | `joystickX` | `-1 ~ 1` | 왼쪽 − / 오른쪽 + | 게임: 집게 좌우 이동 + 조이스틱 기울기 · 선택: ±0.6을 넘는 순간 이전/다음 기계 |
 | `joystickY` | `-1 ~ 1` | 앞쪽(플레이어 쪽) − / 안쪽 + | 게임: 집게 앞뒤 이동 + 조이스틱 기울기 |
-| `isFist` | `boolean` | 주먹 쥐기 | 게임: `false→true` 순간 집게 내리기 + 버튼 눌림 · 메인/선택: 확인 |
+| `isFist` | `boolean` | 집게 내리기 동작 (모션: **오른손** 주먹 쥐기 또는 아래로 내려치기) | 게임: `false→true` 순간 집게 내리기 + 버튼 눌림 · 메인/선택: 확인 |
 | `isPointing` | `boolean` | 검지 가리키기 | 메인/선택: `false→true` 순간 확인(다음 화면 / 플레이) |
-| `isPinching` | `boolean` | 엄지·검지 집기 | 게임: 집은 채로 `pointer`를 코인 투입구에 가져가 놓으면(`true→false`) 코인 투입. 놓는 순간 `pointer`가 `null`이면(손을 놓침) 무시 |
-| `pointer` | `{ x, y }` 0~1 또는 `null` | 손 위치 (화면 정규화, **좌우 반전 처리된 값**, 좌상단 원점) | 값이 있으면 손 커서 표시, 동전 드롭 위치 판정 |
-| `headYaw` | 라디안 | 오른쪽으로 돌리면 + | 게임: 지금 시점에서 기계 주위로 상대 회전 (마우스 드래그·줌과 함께 동작, 드래그 중엔 멈춤) |
-| `headPitch` | 라디안 | 위를 보면 + | 게임: 카메라를 위아래로 상대 회전 |
+| `isOk` | `boolean` | OK 사인 👌 (엄지·검지 동그라미 + 나머지 세 손가락 폄, 어느 손이든) | 게임: `false→true` 순간 코인 투입 (#34) |
+| `isPinching` | `boolean` | 엄지·검지 집기 | 현재 쓰는 곳 없음 (#34에서 동전 드래그를 OK 사인으로 바꿈) |
+| `pointer` | `{ x, y }` 0~1 또는 `null` | 손 위치 (화면 정규화, **좌우 반전 처리된 값**, 좌상단 원점) | 현재 쓰는 곳 없음 (#34에서 손 커서 제거) |
+| `headYaw` | 라디안 | 오른쪽으로 돌리면 + | 현재 쓰는 곳 없음. 게임 시점은 마우스로만 돌린다 (#34, 고개로 돌리면 어지러워서 제거) |
+| `headPitch` | 라디안 | 위를 보면 + | 현재 쓰는 곳 없음 (#34) |
 | `gazeTarget` | 기계 id 또는 `null` | 바라보는 기계 (`'bear'`/`'bunny'`/`'chick'`) | 선택: 값이 바뀌면 해당 기계 선택 |
 
 - `update(partial, source)`의 `source` 기본값은 `'motion'`입니다. **입력원마다 값을 따로 저장하고 합쳐서** 읽기 때문에 키보드와 모션이 서로 덮어쓰지 않습니다.
-  - `joystickX/Y`: 입력원 값의 합(-1~1) · `isFist`/`isPointing`/`isPinching`: 하나라도 true면 true · `pointer`/`headYaw`/`headPitch`/`gazeTarget`: 값이 있는 입력원 중 가장 최근 것
+  - `joystickX/Y`: 입력원 값의 합(-1~1) · `isFist`/`isPointing`/`isPinching`/`isOk`: 하나라도 true면 true · `pointer`/`headYaw`/`headPitch`/`gazeTarget`: 값이 있는 입력원 중 가장 최근 것
   - `partial`에 `source`를 넣어도 무시됩니다. 합쳐진 상태의 `source`는 마지막으로 갱신한 입력원(읽기 전용)입니다.
 - `reset(source = 'motion')`은 그 입력원의 값만 지웁니다.
 - 모달이 열려 있는 동안에는 모든 입력이 무시되고 게임(집게·타이머)이 일시정지됩니다.
@@ -49,24 +50,32 @@ inputState.reset('motion'); // 손을 놓쳤을 때: 모션 입력값만 초기�
 | Enter | `input:confirm` |
 | C | `input:coin` |
 
-### 모션 입력 (`src/motion/`, #8~#10)
+### 모션 입력 (`src/motion/`, #8~#10, #34)
 
-기계를 골라 **게임 화면에 들어가면 카메라가 켜지고**, 게임 화면을 나가면 꺼집니다. 게임 중에는 왼쪽 아래(좁은 화면은 왼쪽 위)에 **내 모습** 카메라 창이 뜹니다. MediaPipe 모델(손·얼굴)은 기계 선택 화면에서 미리 받아 둡니다(카메라 권한은 묻지 않음).
+기계를 골라 **게임 화면에 들어가면 카메라가 켜지고**, 게임 화면을 나가면 꺼집니다. 게임 중에는 왼쪽 아래(좁은 화면은 왼쪽 위)에 **내 모습** 카메라 창이 뜹니다. MediaPipe 손 모델은 기계 선택 화면에서 미리 받아 둡니다(카메라 권한은 묻지 않음).
+
+| 손 | 동작 | 결과 |
+| --- | --- | --- |
+| 왼손 | 손을 상하좌우로 움직이기 | 집게 이동 (`joystickX/Y`) |
+| 오른손 | 주먹 쥐기 또는 아래로 빠르게 내려치기 | 집게 내리기 (`isFist`) |
+| 어느 손이든 | OK 사인 👌 0.25초 유지 | 코인 투입 (`isOk`) |
+
+- 시점은 **마우스 드래그·휠**로만 돌립니다. 고개로 돌리던 기능은 어지러워서 뺐고, 게임 중에는 얼굴 인식도 끕니다(성능). `HeadTracker`/`GazeSelector`(#9)는 남아 있어 `MotionTracker({ face: true })`로 다시 연결할 수 있습니다.
+- 왼손 주먹은 집게를 내리지 않습니다(조이스틱 조작 중 오작동 방지).
 
 ```
-웹캠 → MotionTracker → HandTracker(#8) / HeadTracker(#9) → MotionBridge(#10) → inputState.update(..., 'motion')
+웹캠 → MotionTracker(손 2개) → HandRoleAssigner(#34) → 왼손/오른손 HandTracker(#8) → MotionBridge(#10) → inputState.update(..., 'motion')
 ```
 
-| InputState 필드 | 만드는 방법 |
+| 단계 | 방법 |
 | --- | --- |
-| `joystickX` / `joystickY` | 손바닥 중심이 화면 가운데(0.5, 0.55)에서 벗어난 정도. 화면의 18% 이동 = ±1, 가운데 15%는 0 (데드존) |
-| `isFist` / `isPointing` / `isPinching` | 손가락 펴짐/굽힘 비율로 판별, 80ms 이상 유지돼야 켜지고 120ms 이상 유지돼야 꺼짐 |
-| `pointer` | 집는 중이면 엄지·검지 사이, 아니면 검지 끝 (좌우 반전, 떨림 보정) |
-| `headYaw` / `headPitch` | 켜고 처음 0.5초 동안의 자세를 정면(0)으로 삼은 머리 회전 각도 |
-| `gazeTarget` | yaw ±0.35rad 범위를 기계 수만큼 나눠 **1초 동안 응시**한 기계 |
+| 왼손/오른손 구분 | 두 손이 보이면 화면 위치(거울 화면에서 왼쪽 = 왼손). 한 손만 보이면 직전 0.5초 안에 가까이 있던 손의 역할을 이어 가고, 없으면 MediaPipe handedness 라벨(원본 영상 기준이라 반대로 읽음) |
+| `joystickX` / `joystickY` | 왼손 손바닥 중심이 (0.3, 0.55)에서 벗어난 정도. 화면의 18% 이동 = ±1, 가운데 15%는 0 (데드존). **R** 키로 지금 왼손 위치를 가운데로 |
+| 주먹 / 가리키기 / OK | 손가락 펴짐/굽힘 비율로 판별, 80ms(OK는 250ms) 이상 유지돼야 켜지고 120ms 이상 유지돼야 꺼짐 |
+| 내려치기 | 오른손이 300ms 안에 화면 높이의 12% 이상, 초당 0.9 이상 빠르기로 내려가면 인식. 150ms 동안 `isFist`를 켜고 700ms 동안 다시 인식하지 않음 |
 
-- 값이 **바뀐 필드만** 보냅니다(작은 떨림은 반올림해서 무시). 키보드와는 InputState가 입력원별로 합치므로 섞이지 않고, 이렇게 하면 구독자 호출 횟수가 줄어듭니다. 손이 안 보이면 손 관련 필드를 한 번만 중립으로 되돌리고, 카메라를 끌 때는 `inputState.reset('motion')`으로 모션 값만 지웁니다.
-- 게임 화면 단축키: **V** 카메라 창 숨기기/보이기, **R** 정면과 손 가운데 위치 다시 맞추기 (모달이 열려 있거나 Ctrl/Alt/⌘ 조합일 때는 무시)
+- 값이 **바뀐 필드만** 보냅니다(작은 떨림은 반올림해서 무시). 키보드와는 InputState가 입력원별로 합치므로 섞이지 않고, 이렇게 하면 구독자 호출 횟수가 줄어듭니다. 손이 안 보이면 그 손의 값을 한 번만 중립으로 되돌리고, 카메라를 끌 때는 `inputState.reset('motion')`으로 모션 값만 지웁니다.
+- 게임 화면 단축키: **V** 카메라 창 숨기기/보이기, **R** 왼손 위치를 조이스틱 가운데로 다시 맞추기 (모달이 열려 있거나 Ctrl/Alt/⌘ 조합일 때는 무시)
 - 다른 탭으로 가면 카메라를 끄고, 게임 화면으로 돌아오면 다시 켭니다.
 - 카메라 권한이 거부되면 카메라 창에 안내가 뜨고, 버튼·키보드로 그대로 플레이할 수 있습니다.
 - 게임 화면에서만 카메라를 켜므로, 메인·선택 화면의 모션 입력(가리키기로 확인, `gazeTarget`)은 지금은 동작하지 않습니다.
@@ -132,7 +141,6 @@ UI는 이 객체만 호출합니다. 현재는 **메모리 Mock**이며, 게임 
 ```js
 const { inputState, router, games, motion } = window.__ppobbo;
 router.go('game', { machineId: 'bear' });
-inputState.update({ pointer: { x: 0.5, y: 0.8 }, isPinching: true }); // 손 커서/동전 표시 확인
-inputState.update({ headYaw: 0.3 });                                    // 시점 이동 확인
-router.go('game', { machineId: 'bear' });                               // 카메라 켜짐 (motion.hand / motion.head 로 트래커 상태 확인)
+inputState.update({ isOk: true }); inputState.update({ isOk: false }); // 코인 투입 확인
+router.go('game', { machineId: 'bear' });                              // 카메라 켜짐 (motion.hand.left / motion.hand.right 로 손별 상태 확인)
 ```
