@@ -61,8 +61,8 @@ export const pinchRatio = (lm) => dist(lm[LM.THUMB_TIP], lm[LM.INDEX_TIP]) / pal
 /**
  * 한 프레임의 제스처 판별.
  * @param {Array<{x,y,z}>} world worldLandmarks 21개
- * @param {{ isPinching?: boolean }} [prev] 직전 결과 (집기 판정 히스테리시스용)
- * @returns {{ isFist: boolean, isPointing: boolean, isPinching: boolean, fingers: object, pinch: number }}
+ * @param {{ isPinching?: boolean, isOk?: boolean }} [prev] 직전 결과 (집기·OK 판정 히스테리시스용)
+ * @returns {{ isFist: boolean, isPointing: boolean, isPinching: boolean, isOk: boolean, fingers: object, pinch: number }}
  */
 export function classifyHand(world, prev = {}, t = GESTURE_THRESHOLDS) {
   const fingers = Object.fromEntries(Object.keys(FINGERS).map((f) => [f, fingerState(world, f, t)]));
@@ -74,8 +74,10 @@ export function classifyHand(world, prev = {}, t = GESTURE_THRESHOLDS) {
   const pinch = pinchRatio(world);
   // 주먹을 쥐면 엄지가 검지 위에 놓여 집기처럼 보이므로 주먹이 우선이다
   const isPinching = !isFist && (prev.isPinching ? pinch < t.pinchOff : pinch < t.pinchOn);
+  // OK 사인 👌: 엄지·검지 끝을 붙여 동그라미 + 나머지 세 손가락은 편다 (#34 코인 투입)
+  const isOk = others.every((s) => s === 'extended') && (prev.isOk ? pinch < t.pinchOff : pinch < t.pinchOn);
 
-  return { isFist, isPointing, isPinching, fingers, pinch };
+  return { isFist, isPointing, isPinching, isOk, fingers, pinch };
 }
 
 /**
@@ -95,4 +97,23 @@ export function handAnchors(image) {
     indexTip: mirror(image[LM.INDEX_TIP]),
     pinchPoint: mirror(avg([LM.THUMB_TIP, LM.INDEX_TIP])),
   };
+}
+
+/**
+ * 손 기울기 (라디안). 조이스틱을 쥐듯 손을 세웠을 때 0. (#34 왼손 조이스틱)
+ *
+ * 손목 → 중지 뿌리(MCP) 방향이 위(-y)에서 얼마나 기울었는지 본다. 중지가 손의 가운데 축에 가장 가깝다.
+ * 주먹을 쥐든 펴든, 손목을 축으로 손을 돌려도(손바닥 방향) 값이 같다.
+ *   x: 사용자 기준 오른쪽으로 기울이면 + (원본 영상 -x 쪽)
+ *   y: 손끝을 앞(카메라 쪽)으로 숙이면 +, 뒤로 젖히면 -
+ * @param {Array<{x,y,z}>} world worldLandmarks (MediaPipe 축: +y 아래, -z 카메라 쪽)
+ * @returns {{ x: number, y: number }}
+ */
+export function handTilt(world) {
+  const w = world[LM.WRIST];
+  const m = world[LM.MIDDLE_MCP];
+  const dx = m.x - w.x;
+  const up = -(m.y - w.y);
+  const dz = (m.z ?? 0) - (w.z ?? 0);
+  return { x: Math.atan2(-dx, up), y: Math.atan2(-dz, up) };
 }

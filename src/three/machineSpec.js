@@ -16,7 +16,7 @@ export const MACHINE_SPEC = {
   // 집게
   claw: {
     railY: 1.74,
-    range: 0.36, // 집게 중심이 움직일 수 있는 X/Z 반경
+    range: 0.4, // 집게 중심이 움직일 수 있는 X/Z 반경 (벽에 붙은 인형 위까지. 벽 근처에선 집게발을 덜 벌린다)
     home: { x: 0.32, z: 0.32 }, // 배출구 위
     minCable: 0.08,
     maxCable: 0.72,
