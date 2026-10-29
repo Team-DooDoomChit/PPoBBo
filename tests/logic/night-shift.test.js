@@ -149,3 +149,16 @@ test('지급 내역 기록 (최신순)', () => {
   assert.equal(log.length, 2);
   assert.ok(log[0].at > log[1].at);
 });
+
+test('시청 중 기기 시간을 앞으로 돌려도 시청 시간은 단조 시계로 잰다', () => {
+  let mono = 0;
+  setClock(() => t, () => mono);
+  const s = nightShift.start();
+  advance(60 * 60); // 기기 시계만 1시간 앞으로
+  mono += (duration - 1) * 1000; // 실제로는 duration - 1초만 지남
+  assert.deepEqual(nightShift.complete(s.sessionId), { ok: false, reason: 'too-short' });
+
+  const s2 = nightShift.start();
+  mono += duration * 1000;
+  assert.equal(nightShift.complete(s2.sessionId).ok, true);
+});

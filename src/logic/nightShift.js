@@ -1,5 +1,5 @@
 import { load, save } from './storage.js';
-import { dateKey, now } from './clock.js';
+import { dateKey, now, elapsedNow } from './clock.js';
 import { wallet } from './wallet.js';
 
 /**
@@ -29,7 +29,7 @@ function readState() {
 /** 오늘 받은 횟수 (날짜가 바뀌면 0) */
 const todayCount = (s) => (s.date === dateKey() ? s.count : 0);
 
-let session = null; // { id, startedAt, interrupted }
+let session = null; // { id, startedAt(elapsedNow 기준), interrupted }
 
 const newId = () => globalThis.crypto?.randomUUID?.() ?? `${now()}-${Math.random().toString(36).slice(2)}`;
 
@@ -43,7 +43,7 @@ export const nightShift = {
   start() {
     if (this.getStatus().remaining <= 0) return { ok: false, reason: 'daily-limit' };
     // 새로 시작하면 이전 세션은 무효 (동시에 여러 개 진행 불가)
-    session = { id: newId(), startedAt: now(), interrupted: false };
+    session = { id: newId(), startedAt: elapsedNow(), interrupted: false }; // 시청 시간은 단조 시계로 잰다
     return { ok: true, sessionId: session.id, duration: NIGHT_SHIFT.duration, reward: NIGHT_SHIFT.reward };
   },
 
@@ -56,7 +56,7 @@ export const nightShift = {
     session = null; // 성공/실패와 관계없이 세션은 한 번만 쓸 수 있다
 
     if (interrupted) return { ok: false, reason: 'interrupted' };
-    if (now() - startedAt < NIGHT_SHIFT.duration * 1000) return { ok: false, reason: 'too-short' };
+    if (elapsedNow() - startedAt < NIGHT_SHIFT.duration * 1000) return { ok: false, reason: 'too-short' };
 
     const prev = readState();
     const count = todayCount(prev);
