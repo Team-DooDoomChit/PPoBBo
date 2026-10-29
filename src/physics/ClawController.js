@@ -5,7 +5,10 @@ import { RARITY } from '../data/dolls.js';
 import { GROUP } from './PhysicsWorld.js';
 import { DOLL_MASK, HELD_DOLL_MASK } from './DollBody.js';
 
-const { claw: CLAW } = MACHINE_SPEC;
+const { claw: CLAW, innerHalf: INNER_HALF } = MACHINE_SPEC;
+// 집게발이 다 벌어졌을 때 머리 중심에서 발끝까지 거리 (ClawMachine 모양 기준)
+const PRONG_SPREAD = 0.106;
+const PRONG_CLOSED_SPREAD = 0.045;
 
 export const CLAW_STATE = {
   IDLE: 'idle', // 코인 대기 (홈 위치)
@@ -275,6 +278,12 @@ export class ClawController {
   #applyToModel() {
     this.machine.setClawPosition(this.x, this.z);
     this.machine.setCableLength(this.cable);
-    this.machine.setProngOpen(this.#prongOpen);
+    this.machine.setProngOpen(Math.min(this.#prongOpen, this.#wallRoom()));
+  }
+
+  /** 벽에 가까우면 집게발이 유리를 뚫고 나가 보이지 않도록 덜 벌린다 (0 = 닫힌 채, 1 = 다 벌림) */
+  #wallRoom() {
+    const room = INNER_HALF - Math.max(Math.abs(this.x), Math.abs(this.z));
+    return THREE.MathUtils.clamp((room - PRONG_CLOSED_SPREAD) / (PRONG_SPREAD - PRONG_CLOSED_SPREAD), 0, 1);
   }
 }
