@@ -9,13 +9,11 @@ const formatDate = (time) => new Date(time).toLocaleDateString('ko-KR');
 /** 인형 도감: 보유/미보유 그리드 + 360° 뷰어 */
 export function CollectionScreen(ctx) {
   const { router } = ctx;
+  // 그리드와 수집률을 같은 스냅샷으로 계산해, 중간에 다른 탭에서 바뀌어도 서로 어긋나지 않게 한다
   const collection = gameApi.getCollection();
-  // 게임 로직(#13)의 수집률 API가 있으면 그 값을 쓰고, 없으면 직접 계산한다
-  const stats = gameApi.getCollectionStats?.() ?? (() => {
-    const owned = DOLLS.filter((d) => collection[d.id]).length;
-    return { owned, total: DOLLS.length, rate: Math.round((owned / DOLLS.length) * 100) };
-  })();
   let filter = 'all';
+  const rateText = h('span');
+  const rateFill = h('div');
 
   const grid = h('div', { class: 'collection-grid' });
   const tabs = [{ id: 'all', name: '전체' }, ...MACHINES].map((m) =>
@@ -30,6 +28,11 @@ export function CollectionScreen(ctx) {
 
   function renderGrid() {
     const dolls = DOLLS.filter((d) => filter === 'all' || d.machineId === filter);
+    // 선택한 탭(기계) 기준 수집률
+    const owned = dolls.filter((d) => collection[d.id]).length;
+    const rate = dolls.length ? Math.round((owned / dolls.length) * 100) : 0;
+    rateText.textContent = `${owned} / ${dolls.length} 수집 (${rate}%)`;
+    rateFill.style.width = `${rate}%`;
     grid.replaceChildren(
       ...dolls.map((doll) => {
         const entry = collection[doll.id];
@@ -91,8 +94,7 @@ export function CollectionScreen(ctx) {
         'div',
         { class: 'collection-header' },
         h('h2', {}, '📖 인형 도감'),
-        h('div', { class: 'collection-rate' }, `${stats.owned} / ${stats.total} 수집 (${stats.rate}%)`,
-          h('div', { class: 'rate-bar' }, h('div', { style: { width: `${stats.rate}%` } }))),
+        h('div', { class: 'collection-rate' }, rateText, h('div', { class: 'rate-bar' }, rateFill)),
         h('button', { class: 'btn-close', onClick: () => router.back(), 'aria-label': '닫기' }, '✕'),
       ),
       h('div', { class: 'tabs' }, tabs),
