@@ -11,8 +11,10 @@ import { FilesetResolver, HandLandmarker, FaceLandmarker } from '@mediapipe/task
  * 실패 시 start()가 { ok: false, reason } 반환:
  *   'unsupported'       getUserMedia 미지원 (http 접속 등)
  *   'permission-denied' 카메라 권한 거부
- *   'no-camera'         카메라 없음 / 다른 앱이 사용 중
+ *   'no-camera'         카메라 없음 / 다른 앱이 사용 중 / 영상 재생 실패
  *   'load-failed'       MediaPipe 모델/WASM 로드 실패 (네트워크 등)
+ *
+ * 실행 중 인식이 실패하면(GPU 컨텍스트 손실 등) 멈추고 onError({ reason: 'runtime-error', error }) 호출.
  */
 const VERSION = '0.10.35'; // package.json의 @mediapipe/tasks-vision 버전과 맞춘다
 export const MEDIAPIPE_URLS = Object.freeze({
@@ -45,8 +47,9 @@ export class MotionTracker {
   #frame = 0;
   #lastFace = null;
 
-  constructor({ onFrame, urls = MEDIAPIPE_URLS, face = true, faceEvery = 2 } = {}) {
+  constructor({ onFrame, onError, urls = MEDIAPIPE_URLS, face = true, faceEvery = 2 } = {}) {
     this.onFrame = onFrame;
+    this.onError = onError;
     this.urls = urls;
     this.useFace = face;
     this.faceEvery = faceEvery;
@@ -84,8 +87,15 @@ export class MotionTracker {
       return { ok: false, reason: 'load-failed' };
     }
 
-    this.video.srcObject = this.#stream;
-    await this.video.play();
+    try {
+      this.video.srcObject = this.#stream;
+      await this.video.play();
+    } catch (err) {
+      // 재생이 막히거나(AbortError 등) 스트림이 끊긴 경우: 카메라를 닫고 실패로 돌려준다
+      console.warn('[MotionTracker] 영상 재생 실패', err);
+      this.stop();
+      return { ok: false, reason: 'no-camera' };
+    }
     this.#running = true;
     this.#loop();
     return { ok: true };
@@ -146,10 +156,17 @@ export class MotionTracker {
     this.#lastVideoTime = this.video.currentTime;
 
     const nowMs = performance.now();
-    const hands = this.hands.detectForVideo(this.video, nowMs);
-    if (this.faces && this.#frame++ % this.faceEvery === 0) this.#lastFace = this.faces.detectForVideo(this.video, nowMs);
-    this.#measureFps(nowMs);
-    this.onFrame?.({ hands, face: this.#lastFace, t: nowMs / 1000 });
+    try {
+      const hands = this.hands.detectForVideo(this.video, nowMs);
+      if (this.faces && this.#frame++ % this.faceEvery === 0) this.#lastFace = this.faces.detectForVideo(this.video, nowMs);
+      this.#measureFps(nowMs);
+      this.onFrame?.({ hands, face: this.#lastFace, t: nowMs / 1000 });
+    } catch (err) {
+      // GPU 컨텍스트 손실 등: 매 프레임 같은 에러가 반복되지 않도록 멈추고 알린다
+      console.warn('[MotionTracker] 인식 중 오류로 멈춥니다.', err);
+      this.stop();
+      this.onError?.({ reason: 'runtime-error', error: err });
+    }
   };
 
   #fpsFrames = 0;

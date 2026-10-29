@@ -12,6 +12,7 @@ import { MachineSelectScreen } from './ui/screens/MachineSelectScreen.js';
 import { GameScreen } from './ui/screens/GameScreen.js';
 import { CollectionScreen } from './ui/screens/CollectionScreen.js';
 import { setupModals } from './ui/modals/index.js';
+import { isModalOpen } from './ui/modal.js';
 import { inputState } from './core/InputState.js';
 import { setupKeyboardInput } from './integration/KeyboardInput.js';
 import { setupMotionBinding } from './integration/MotionBinding.js';
@@ -43,7 +44,8 @@ hud.addAction('📖 도감', () => router.go('collection'), '인형 도감');
 setupKeyboardInput();
 setupMotionBinding({ sceneManager, arcade, router, getActiveGame: () => activeGame });
 // 물리는 현재 플레이 중인 기계만 시뮬레이션한다 (나머지는 쌓인 상태로 정지)
-sceneManager.onUpdate((dt) => activeGame?.update(dt));
+// 모달이 열려 있는 동안은 일시정지 (집게·타이머가 모달 뒤에서 움직이지 않도록)
+sceneManager.onUpdate((dt) => !isModalOpen() && activeGame?.update(dt));
 
 if (import.meta.env.DEV) window.__ppobbo = { sceneManager, arcade, games, router, eventBus, inputState };
 

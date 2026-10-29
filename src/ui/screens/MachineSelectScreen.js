@@ -45,7 +45,7 @@ export function MachineSelectScreen(ctx, { machineId = MACHINES[0].id } = {}) {
     { isSelected: (machine) => machine.config.id === MACHINES[index].id },
   );
 
-  // 모션 인식(B)이나 키보드 어댑터(#6)가 보내는 선택 이벤트
+  // 모션 인식(#9 시선 선택 등)이나 키보드 어댑터(#6)가 보내는 선택 이벤트
   const offs = [
     eventBus.on('input:select-prev', () => select(index - 1)),
     eventBus.on('input:select-next', () => select(index + 1)),
