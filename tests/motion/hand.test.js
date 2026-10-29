@@ -33,6 +33,16 @@ test('엄지·검지 집기', () => {
   assert.deepEqual(pick(classifyHand(world(POSES.pinch))), { isFist: false, isPointing: false, isPinching: true });
 });
 
+test('OK 사인: 엄지·검지 동그라미 + 나머지 세 손가락 폄', () => {
+  assert.equal(classifyHand(world(POSES.ok)).isOk, true);
+});
+
+test('OK 사인이 아닌 자세', () => {
+  assert.equal(classifyHand(world(POSES.okBent)).isOk, false, '중지를 굽히면 OK 아님');
+  assert.equal(classifyHand(world(POSES.open)).isOk, false, '편 손');
+  assert.equal(classifyHand(world(POSES.fist)).isOk, false, '주먹');
+});
+
 test('손 크기가 달라도 같은 결과 (크기 비율로 판별)', () => {
   for (const s of [0.6, 1.5]) {
     const scaled = world(POSES.point).map((p) => ({ x: p.x * s, y: p.y * s, z: p.z * s }));

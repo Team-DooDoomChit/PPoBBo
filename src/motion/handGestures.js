@@ -61,8 +61,8 @@ export const pinchRatio = (lm) => dist(lm[LM.THUMB_TIP], lm[LM.INDEX_TIP]) / pal
 /**
  * 한 프레임의 제스처 판별.
  * @param {Array<{x,y,z}>} world worldLandmarks 21개
- * @param {{ isPinching?: boolean }} [prev] 직전 결과 (집기 판정 히스테리시스용)
- * @returns {{ isFist: boolean, isPointing: boolean, isPinching: boolean, fingers: object, pinch: number }}
+ * @param {{ isPinching?: boolean, isOk?: boolean }} [prev] 직전 결과 (집기·OK 판정 히스테리시스용)
+ * @returns {{ isFist: boolean, isPointing: boolean, isPinching: boolean, isOk: boolean, fingers: object, pinch: number }}
  */
 export function classifyHand(world, prev = {}, t = GESTURE_THRESHOLDS) {
   const fingers = Object.fromEntries(Object.keys(FINGERS).map((f) => [f, fingerState(world, f, t)]));
@@ -74,8 +74,10 @@ export function classifyHand(world, prev = {}, t = GESTURE_THRESHOLDS) {
   const pinch = pinchRatio(world);
   // 주먹을 쥐면 엄지가 검지 위에 놓여 집기처럼 보이므로 주먹이 우선이다
   const isPinching = !isFist && (prev.isPinching ? pinch < t.pinchOff : pinch < t.pinchOn);
+  // OK 사인 👌: 엄지·검지 끝을 붙여 동그라미 + 나머지 세 손가락은 편다 (#34 코인 투입)
+  const isOk = others.every((s) => s === 'extended') && (prev.isOk ? pinch < t.pinchOff : pinch < t.pinchOn);
 
-  return { isFist, isPointing, isPinching, fingers, pinch };
+  return { isFist, isPointing, isPinching, isOk, fingers, pinch };
 }
 
 /**

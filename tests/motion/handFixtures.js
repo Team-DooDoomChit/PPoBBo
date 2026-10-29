@@ -40,6 +40,10 @@ export const POSES = {
   fist: { index: 'curled', middle: 'curled', ring: 'curled', pinky: 'curled', thumb: 'tucked' },
   point: { index: 'extended', middle: 'curled', ring: 'curled', pinky: 'curled', thumb: 'tucked' },
   pinch: { index: 'half', middle: 'extended', ring: 'extended', pinky: 'extended', thumb: 'pinch' },
+  // OK 사인 👌 = 나머지 세 손가락을 편 채로 엄지·검지를 붙인 자세
+  ok: { index: 'half', middle: 'extended', ring: 'extended', pinky: 'extended', thumb: 'pinch' },
+  // 엄지·검지를 붙였지만 중지를 굽힌 자세 (OK 아님)
+  okBent: { index: 'half', middle: 'curled', ring: 'extended', pinky: 'extended', thumb: 'pinch' },
 };
 
 export const NO_HAND = { landmarks: [], worldLandmarks: [], handedness: [] };
