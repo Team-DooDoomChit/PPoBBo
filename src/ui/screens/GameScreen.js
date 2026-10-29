@@ -30,6 +30,11 @@ export function GameScreen(ctx, { machineId }) {
   const timerText = h('div', { class: 'game-timer' });
   let shownSeconds = null;
   const backBtn = h('button', { class: 'btn btn-ghost back-btn', onClick: () => router.go('select', { machineId }) }, '← 나가기');
+  const motionHint = h(
+    'p',
+    { class: 'hint controls-hint', hidden: true },
+    '✊ 왼손 쥐고 기울이기: 이동 (펴면 멈춤) · ✊ 오른손 주먹·내려치기: 내리기 · 👌 OK: 코인 · 고개 돌리기: 시점',
+  );
   const coinBtn = h('button', { class: 'btn btn-primary btn-lg', onClick: insertCoin }, `🪙 코인 넣기 (${formatGold(machine.price)})`);
   const dropBtn = h('button', { class: 'btn btn-drop btn-lg', onClick: () => game.claw.drop() }, '▼ 내리기');
 
@@ -97,6 +102,10 @@ export function GameScreen(ctx, { machineId }) {
     eventBus.on('doll:won', mine(({ dollId }) => queueMicrotask(() => showPrize(dollId)))),
     eventBus.on('collection:error', onSaveFailed),
     eventBus.on('input:coin', insertCoin),
+    // 모션 안내는 카메라가 켜져 있을 때만 (모바일에서 안내가 여러 줄로 꺾이지 않게 줄도 나눴다)
+    eventBus.on('motion:started', () => (motionHint.hidden = false)),
+    eventBus.on('motion:stopped', () => (motionHint.hidden = true)),
+    eventBus.on('motion:error', () => (motionHint.hidden = true)),
     // 타이머는 보일 때(READY), 초가 바뀔 때만 DOM을 갱신한다
     sceneManager.onUpdate(() => {
       if (game.claw.state !== CLAW_STATE.READY) return;
@@ -118,7 +127,8 @@ export function GameScreen(ctx, { machineId }) {
       timerText,
       statusText,
       h('div', { class: 'game-buttons' }, coinBtn, dropBtn),
-      h('p', { class: 'hint controls-hint' }, '🕹 왼손 쥐고 기울이기: 이동(펴면 멈춤) · ✊ 오른손 주먹/내려치기: 내리기 · 👌 OK: 코인 · 🖱 드래그: 시점 · ⌨️ 방향키 / Space / C'),
+      motionHint,
+      h('p', { class: 'hint controls-hint' }, '⌨️ 방향키: 이동 · Space: 내리기 · C: 코인 · 🖱 드래그: 시점'),
     ),
   );
   render();
