@@ -38,7 +38,28 @@ export class SceneManager {
     this.controls.target.set(0, 1.2, 0);
     this.setControlLimits({ minDistance: 2, maxDistance: 8 });
 
+    // 사용자가 마우스/터치로 카메라를 돌리는 중인지 (헤드룩 등 자동 회전을 잠시 멈추는 데 사용)
+    this.isUserControlling = false;
+    this.controls.addEventListener('start', () => (this.isUserControlling = true));
+    this.controls.addEventListener('end', () => (this.isUserControlling = false));
+
     window.addEventListener('resize', () => this.#onResize());
+  }
+
+  /**
+   * 현재 카메라 위치에서 target 기준으로 상대 회전한다 (거리·사용자 시점 유지).
+   * OrbitControls의 각도 제한을 그대로 지킨다.
+   * @param {number} deltaAzimuth + 이면 카메라가 오른쪽으로 이동
+   * @param {number} deltaPolar + 이면 카메라가 아래로 이동
+   */
+  orbitBy(deltaAzimuth, deltaPolar) {
+    const { target, minAzimuthAngle, maxAzimuthAngle, minPolarAngle, maxPolarAngle } = this.controls;
+    const offset = this.camera.position.clone().sub(target);
+    const spherical = new THREE.Spherical().setFromVector3(offset);
+    spherical.theta = THREE.MathUtils.clamp(spherical.theta + deltaAzimuth, minAzimuthAngle, maxAzimuthAngle);
+    spherical.phi = THREE.MathUtils.clamp(spherical.phi + deltaPolar, minPolarAngle, maxPolarAngle);
+    this.camera.position.copy(target).add(offset.setFromSpherical(spherical));
+    this.camera.lookAt(target);
   }
 
   /** 매 프레임 호출될 함수 등록. 반환값을 호출하면 해제된다. */
@@ -63,6 +84,10 @@ export class SceneManager {
       minAzimuthAngle,
       maxAzimuthAngle,
     });
+  }
+
+  get isCameraMoving() {
+    return this.#cameraTween !== null;
   }
 
   /** 카메라를 부드럽게 이동시킨다. 이동 중에는 OrbitControls 입력을 막는다. */

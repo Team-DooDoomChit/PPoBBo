@@ -90,7 +90,14 @@ export function GameScreen(ctx, { machineId }) {
     'div',
     {},
     backBtn,
-    h('div', { class: 'game-panel' }, timerText, statusText, h('div', { class: 'game-buttons' }, coinBtn, dropBtn)),
+    h(
+      'div',
+      { class: 'game-panel' },
+      timerText,
+      statusText,
+      h('div', { class: 'game-buttons' }, coinBtn, dropBtn),
+      h('p', { class: 'hint controls-hint' }, '✊ 주먹: 내리기 · 🤏 동전을 투입구로 · ⌨️ 방향키 / Space / C'),
+    ),
   );
   render();
 

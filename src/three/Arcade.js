@@ -9,6 +9,12 @@ const OVERVIEW = {
   target: new THREE.Vector3(0, 1.1, -1.2),
 };
 
+// 기계 클로즈업 시점 (기계 위치 기준 오프셋)
+const FOCUS = {
+  position: new THREE.Vector3(0, 1.7, 1.85),
+  target: new THREE.Vector3(0, 1.25, 0),
+};
+
 /**
  * 오락실 전체(방 + 조명 + 기계들)와 카메라 시점 전환을 담당한다.
  */
@@ -60,7 +66,7 @@ export class Arcade {
     const machine = this.machines.get(id);
     this.focusedMachine = machine;
     const base = machine.group.position;
-    const target = base.clone().add(new THREE.Vector3(0, 1.25, 0));
+    const target = base.clone().add(FOCUS.target);
     this.sm.setControlLimits({
       minDistance: 1.0,
       maxDistance: 2.6,
@@ -69,7 +75,14 @@ export class Arcade {
       minAzimuthAngle: -0.7,
       maxAzimuthAngle: 0.7,
     });
-    await this.sm.moveCamera(base.clone().add(new THREE.Vector3(0, 1.7, 1.85)), target, duration);
+    await this.sm.moveCamera(base.clone().add(FOCUS.position), target, duration);
+  }
+
+  /** 기계 코인 투입구의 화면 정규화 좌표 { x, y } (0~1, 좌상단 원점) */
+  getCoinSlotScreenPosition(machine = this.focusedMachine) {
+    if (!machine) return null;
+    const p = machine.coinSlot.getWorldPosition(new THREE.Vector3()).project(this.sm.camera);
+    return { x: (p.x + 1) / 2, y: (1 - p.y) / 2 };
   }
 
   /** 화면 좌표(clientX/Y)에 있는 기계를 찾는다. 없으면 null */

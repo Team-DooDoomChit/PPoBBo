@@ -45,7 +45,7 @@ export function MachineSelectScreen(ctx, { machineId = MACHINES[0].id } = {}) {
     { isSelected: (machine) => machine.config.id === MACHINES[index].id },
   );
 
-  // 모션 인식(B)이나 키보드 어댑터(#6)가 보내는 선택 이벤트
+  // 모션 인식(#9 시선 선택 등)이나 키보드 어댑터(#6)가 보내는 선택 이벤트
   const offs = [
     eventBus.on('input:select-prev', () => select(index - 1)),
     eventBus.on('input:select-next', () => select(index + 1)),
@@ -64,7 +64,7 @@ export function MachineSelectScreen(ctx, { machineId = MACHINES[0].id } = {}) {
       h('div', { class: 'machine-cards' }, cards),
       h('button', { class: 'btn btn-round', onClick: () => select(index + 1), 'aria-label': '다음 기계' }, '▶'),
     ),
-    h('button', { class: 'btn btn-primary btn-lg play-btn', onClick: play }, '플레이 ▶'),
+    h('button', { class: 'btn btn-primary btn-lg play-btn', onClick: play, title: '가리키기 · 주먹 · Enter 로도 시작' }, '플레이 ▶'),
   );
 
   select(index);
