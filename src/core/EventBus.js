@@ -24,7 +24,9 @@ class EventBus {
   }
 
   emit(event, payload) {
-    this.#handlers.get(event)?.forEach((handler) => handler(payload));
+    // 복사본을 순회한다: 핸들러 안에서 새로 등록된 핸들러가 같은 emit에서 바로 불리지 않도록
+    const handlers = this.#handlers.get(event);
+    if (handlers) [...handlers].forEach((handler) => handler(payload));
   }
 }
 

@@ -16,7 +16,7 @@
 import { inputState } from './core/InputState.js';
 
 inputState.update({ joystickX: 0.5, joystickY: 0, isFist: true });
-inputState.reset(); // 손을 놓쳤을 때 등 모두 초기화
+inputState.reset('motion'); // 손을 놓쳤을 때: 모션 입력값만 초기화 (키보드 입력은 유지)
 ```
 
 | 필드 | 타입 / 범위 | 의미 | 3D·게임 동작 |
@@ -25,13 +25,17 @@ inputState.reset(); // 손을 놓쳤을 때 등 모두 초기화
 | `joystickY` | `-1 ~ 1` | 앞쪽(플레이어 쪽) − / 안쪽 + | 게임: 집게 앞뒤 이동 + 조이스틱 기울기 |
 | `isFist` | `boolean` | 주먹 쥐기 | 게임: `false→true` 순간 집게 내리기 + 버튼 눌림 · 메인/선택: 확인 |
 | `isPointing` | `boolean` | 검지 가리키기 | 메인/선택: `false→true` 순간 확인(다음 화면 / 플레이) |
-| `isPinching` | `boolean` | 엄지·검지 집기 | 게임: 집은 채로 `pointer`를 코인 투입구에 가져가 놓으면(`true→false`) 코인 투입 |
-| `pointer` | `{ x, y }` 0~1 또는 `null` | 손 위치 (화면 정규화, **좌우 반전 처리된 값**, 좌상단 원점) | 손 커서 표시, 동전 드롭 위치 판정 |
-| `headYaw` | 라디안 | 오른쪽으로 돌리면 + | 게임: 카메라가 기계 주위로 회전 (시점 전환) |
-| `headPitch` | 라디안 | 위를 보면 + | 게임: 카메라 높이 |
+| `isPinching` | `boolean` | 엄지·검지 집기 | 게임: 집은 채로 `pointer`를 코인 투입구에 가져가 놓으면(`true→false`) 코인 투입. 놓는 순간 `pointer`가 `null`이면(손을 놓침) 무시 |
+| `pointer` | `{ x, y }` 0~1 또는 `null` | 손 위치 (화면 정규화, **좌우 반전 처리된 값**, 좌상단 원점) | 값이 있으면 손 커서 표시, 동전 드롭 위치 판정 |
+| `headYaw` | 라디안 | 오른쪽으로 돌리면 + | 게임: 지금 시점에서 기계 주위로 상대 회전 (마우스 드래그·줌과 함께 동작, 드래그 중엔 멈춤) |
+| `headPitch` | 라디안 | 위를 보면 + | 게임: 카메라를 위아래로 상대 회전 |
 | `gazeTarget` | 기계 id 또는 `null` | 바라보는 기계 (`'bear'`/`'bunny'`/`'chick'`) | 선택: 값이 바뀌면 해당 기계 선택 |
 
-- `update(partial, source)`의 `source` 기본값은 `'motion'`입니다. 손 커서와 머리 시점 이동은 `source === 'motion'`일 때만 동작합니다.
+- `update(partial, source)`의 `source` 기본값은 `'motion'`입니다. **입력원마다 값을 따로 저장하고 합쳐서** 읽기 때문에 키보드와 모션이 서로 덮어쓰지 않습니다.
+  - `joystickX/Y`: 입력원 값의 합(-1~1) · `isFist`/`isPointing`/`isPinching`: 하나라도 true면 true · `pointer`/`headYaw`/`headPitch`/`gazeTarget`: 값이 있는 입력원 중 가장 최근 것
+  - `partial`에 `source`를 넣어도 무시됩니다. 합쳐진 상태의 `source`는 마지막으로 갱신한 입력원(읽기 전용)입니다.
+- `reset(source = 'motion')`은 그 입력원의 값만 지웁니다.
+- 모달이 열려 있는 동안에는 모든 입력이 무시되고 게임(집게·타이머)이 일시정지됩니다.
 - 정의되지 않은 필드를 넣으면 콘솔에 경고가 한 번 출력됩니다. 필드 추가가 필요하면 #6에서 합의 후 `DEFAULT_STATE`에 추가합니다.
 - 버튼 동작(하강 / 확인)은 **엣지**(false→true)에서만 일어나므로, 디바운스된 boolean을 계속 넣어주면 됩니다.
 - 기계 위치 → 화면 좌표가 필요하면 `arcade.getCoinSlotScreenPosition()`처럼 `Arcade`에 헬퍼를 추가해 사용합니다.
