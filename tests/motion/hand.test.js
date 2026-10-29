@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { classifyHand, fingerState, handAnchors } from '../../src/motion/handGestures.js';
+import { classifyHand, fingerState, handAnchors, handTilt } from '../../src/motion/handGestures.js';
 import { OneEuroFilter, BoolDebouncer } from '../../src/motion/filters.js';
 import { HandTracker } from '../../src/motion/HandTracker.js';
 import { makeHand, POSES, NO_HAND } from './handFixtures.js';
@@ -31,6 +31,16 @@ test('검지 가리키기', () => {
 
 test('엄지·검지 집기', () => {
   assert.deepEqual(pick(classifyHand(world(POSES.pinch))), { isFist: false, isPointing: false, isPinching: true });
+});
+
+test('OK 사인: 엄지·검지 동그라미 + 나머지 세 손가락 폄', () => {
+  assert.equal(classifyHand(world(POSES.ok)).isOk, true);
+});
+
+test('OK 사인이 아닌 자세', () => {
+  assert.equal(classifyHand(world(POSES.okBent)).isOk, false, '중지를 굽히면 OK 아님');
+  assert.equal(classifyHand(world(POSES.open)).isOk, false, '편 손');
+  assert.equal(classifyHand(world(POSES.fist)).isOk, false, '주먹');
 });
 
 test('손 크기가 달라도 같은 결과 (크기 비율로 판별)', () => {
@@ -146,4 +156,56 @@ test('트래커: 손이 잠깐 사라지는 건 유지, 오래 사라지면 초�
 
 test('트래커: 오른손/왼손 정보', () => {
   assert.equal(run(new HandTracker(), [makeHand(POSES.open)]).handedness, 'Right');
+});
+
+test('트래커: OK 사인은 0.25초 이상 유지해야 켜진다 (코인 잘못 투입 방지)', () => {
+  const t = new HandTracker();
+  assert.equal(run(t, repeat(makeHand(POSES.ok), 6)).isOk, false, '0.17초');
+  assert.equal(run(t, repeat(makeHand(POSES.ok), 4), 6 / 30).isOk, true, '0.3초');
+});
+
+test('트래커: slam 옵션을 켜면 아래로 내려치는 동작을 인식', () => {
+  const t = new HandTracker({ slam: true });
+  const frames = [0.3, 0.3, 0.38, 0.47, 0.56].map((y) => makeHand(POSES.open, { x: 0.3, y }));
+  const seen = frames.map((f, i) => t.update(f, i / 30).isSlam);
+  assert.ok(seen.includes(true));
+  assert.equal(new HandTracker().update(frames[0], 0).isSlam, false, '옵션이 꺼져 있으면 항상 false');
+});
+
+test('트래커: 내려친 직후 손이 화면 밖으로 나가도 isSlam이 잠깐 유지된다', () => {
+  const t = new HandTracker({ slam: true });
+  [0.3, 0.4, 0.5].forEach((y, i) => t.update(makeHand(POSES.open, { x: 0.3, y }), i / 30));
+  assert.equal(t.update(NO_HAND, 0.1).isSlam, true);
+  assert.equal(t.update(NO_HAND, 0.3).isSlam, false);
+});
+
+// ---------------- 손 기울기 (#34) ----------------
+
+test('기울기: 손을 세우면 0, 주먹이든 편 손이든 같다', () => {
+  for (const pose of [POSES.fist, POSES.open]) {
+    const t = handTilt(makeHand(pose).worldLandmarks[0]);
+    assert.ok(Math.abs(t.x) < 0.05 && Math.abs(t.y) < 0.15, `${JSON.stringify(t)}`);
+  }
+});
+
+test('기울기: 앞으로 숙이면 y+, 뒤로 젖히면 y-', () => {
+  const base = handTilt(makeHand(POSES.fist).worldLandmarks[0]).y;
+  const fwd = handTilt(makeHand(POSES.fist, undefined, 2, { forward: 0.4 }).worldLandmarks[0]).y - base;
+  const back = handTilt(makeHand(POSES.fist, undefined, 2, { forward: -0.4 }).worldLandmarks[0]).y - base;
+  assert.ok(Math.abs(fwd - 0.4) < 0.05, `fwd=${fwd}`);
+  assert.ok(Math.abs(back + 0.4) < 0.05, `back=${back}`);
+});
+
+test('기울기: 오른쪽으로 기울이면 x+, 왼쪽은 x-', () => {
+  const r = handTilt(makeHand(POSES.fist, undefined, 2, { right: 0.3 }).worldLandmarks[0]);
+  const l = handTilt(makeHand(POSES.fist, undefined, 2, { right: -0.3 }).worldLandmarks[0]);
+  assert.ok(Math.abs(r.x - 0.3) < 0.05, `r=${r.x}`);
+  assert.ok(Math.abs(l.x + 0.3) < 0.05, `l=${l.x}`);
+});
+
+test('트래커: 손 기울기를 떨림 보정해서 알려 준다', () => {
+  const s = run(new HandTracker(), repeat(makeHand(POSES.fist, undefined, 2, { forward: 0.3, right: -0.2 }), 10));
+  assert.ok(Math.abs(s.tilt.y - 0.3) < 0.05, `y=${s.tilt.y}`);
+  assert.ok(Math.abs(s.tilt.x + 0.2) < 0.05, `x=${s.tilt.x}`);
+  assert.equal(new HandTracker().state.tilt, null, '손이 없으면 null');
 });

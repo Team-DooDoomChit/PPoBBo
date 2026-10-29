@@ -567,35 +567,6 @@
   .select-panel .btn-round { display: none; }
 }
 
-/* ---------- 모션 커서 ---------- */
-.motion-cursor {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 60;
-  width: 28px;
-  height: 28px;
-  margin: -14px 0 0 -14px;
-  display: grid;
-  place-items: center;
-  font-size: 28px;
-  border: 3px solid var(--accent-2);
-  border-radius: 50%;
-  box-shadow: 0 0 12px var(--accent-2);
-  pointer-events: none;
-  transition: border-color 0.1s, width 0.1s, height 0.1s;
-}
-
-.motion-cursor.holding {
-  border-color: var(--gold);
-  box-shadow: 0 0 12px var(--gold);
-}
-
-.motion-cursor.over-slot {
-  border-color: #33ff88;
-  box-shadow: 0 0 20px #33ff88;
-}
-
 .controls-hint {
   margin-top: 2px;
 }

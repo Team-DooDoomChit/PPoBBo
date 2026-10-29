@@ -4,16 +4,17 @@
  * 입력원(source)마다 상태를 따로 두고, 읽을 때 하나로 합친다.
  * 그래서 키보드와 모션이 동시에 들어와도 서로의 값을 덮어쓰지 않는다.
  *   - joystickX/Y : 입력원 값의 합 (-1~1로 자름)
- *   - isFist / isPointing / isPinching : 하나라도 true면 true
+ *   - isFist / isPointing / isPinching / isOk : 하나라도 true면 true
  *   - pointer / headYaw / headPitch / gazeTarget : 값이 있는 입력원 중 가장 최근에 갱신한 쪽
  * 필드 설명은 docs/INTEGRATION.md 참고.
  */
 const DEFAULT_STATE = Object.freeze({
   joystickX: 0, // -1(왼쪽) ~ 1(오른쪽)
   joystickY: 0, // -1(앞쪽/플레이어 방향) ~ 1(안쪽)
-  isFist: false, // 주먹 쥐기 → 집게 내리기
+  isFist: false, // 집게 내리기 (모션: 오른손 주먹 쥐기 또는 내려치기)
   isPointing: false, // 검지 가리키기 → 선택/확인
-  isPinching: false, // 엄지·검지 집기 → 동전 드래그
+  isPinching: false, // 엄지·검지 집기 (현재 게임 동작에는 쓰지 않음)
+  isOk: false, // OK 사인 👌 → 코인 투입
   pointer: null, // { x, y } 화면 정규화 좌표 (0~1, 좌상단 원점, 좌우 반전 처리된 값)
   headYaw: 0, // 라디안, 오른쪽으로 돌리면 +
   headPitch: 0, // 라디안, 위를 보면 +
@@ -21,7 +22,7 @@ const DEFAULT_STATE = Object.freeze({
   source: 'none', // 마지막으로 값을 넣은 입력원 (읽기 전용, update로 바꿀 수 없음)
 });
 
-const BUTTONS = ['isFist', 'isPointing', 'isPinching'];
+const BUTTONS = ['isFist', 'isPointing', 'isPinching', 'isOk'];
 const LATEST = ['pointer', 'headYaw', 'headPitch', 'gazeTarget'];
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
