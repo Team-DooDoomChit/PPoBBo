@@ -111,7 +111,7 @@ export class MotionDebugView {
       ctx.fillText(text, x - 20, y);
     }
 
-    const lines = [describe('왼손', hands.left, '쥐고 기울이기 = 조이스틱'), describe('오른손', hands.right, '✊·내려치기 = 집게, 👌 = 코인'),
+    const lines = [describe('왼손', hands.left, '쥐고 기울이기 = 이동, 펴면 멈춤'), describe('오른손', hands.right, '✊·내려치기 = 집게, 👌 = 코인'),
       ...Object.entries(extra).map(([k, v]) => (k ? `${k}: ${v}` : String(v)))];
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(0, h - 18 * lines.length - 6, w, 18 * lines.length + 6);
@@ -135,6 +135,7 @@ function handColor(role, hand) {
 /** 아래쪽 안내 한 줄: 손이 없으면 무엇을 하는 손인지, 있으면 지금 동작 */
 function describe(name, hand, role) {
   if (!hand?.detected) return `${name}: 보여 주세요 (${role})`;
-  const now = [hand.isSlam && '💥 내려치기', hand.isFist && '✊ 주먹', hand.isOk && '👌 코인', hand.isPointing && '☝️'].filter(Boolean);
+  const fist = name === '왼손' ? '✊ 조이스틱 잡는 중' : '✊ 주먹';
+  const now = [hand.isSlam && '💥 내려치기', hand.isFist && fist, hand.isOk && '👌 코인', hand.isPointing && '☝️'].filter(Boolean);
   return `${name}: ${now.join(' ') || role}`;
 }

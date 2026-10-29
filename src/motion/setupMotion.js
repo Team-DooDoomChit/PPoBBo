@@ -18,7 +18,7 @@ import { MotionDebugView } from './MotionDebugView.js';
  * - 기계를 골라 게임 화면에 들어가면 카메라가 켜지고, 게임 화면을 나가면 꺼진다.
  * - 게임 중에는 "내 모습" 카메라 창을 보여준다. (V 키로 숨기기/보이기)
  * - 기계 선택 화면에서 모델을 미리 받아 두어 게임 시작 때 기다리는 시간을 줄인다.
- * - R 키: 지금 왼손 자세(기울기)를 조이스틱 가운데로. 처음 왼손이 보일 때는 자동으로 잡는다.
+ * - R 키: (쥐고 있으면) 지금 왼손 자세를 조이스틱 가운데로. 왼손 가운데는 쥘 때마다 자동으로 잡는다.
  * - 게임 중에는 머리 방향을 쓰지 않으므로(시점은 마우스로 조작) 얼굴 인식은 끈다.
  *   HeadTracker / GazeSelector(#9)는 남겨 두었다가 필요할 때 face: true로 다시 연결한다.
  */
@@ -50,8 +50,8 @@ export function setupMotion() {
         index: split.index,
       };
       bridge.push(handState);
-      const waiting = handState.left.detected && !bridge.calibrated;
-      view.draw(frame, handState, waiting ? { '': '왼손을 조이스틱 쥐듯 세우고 잠시 기다려 주세요' } : {});
+      const waiting = handState.left.detected && !bridge.gripping;
+      view.draw(frame, handState, waiting ? { '': '왼손을 쥐면 집게가 움직여요 (펴면 멈춤)' } : {});
     },
     // 인식 중 오류(GPU 컨텍스트 손실 등)로 멈췄을 때
     onError: ({ reason }) => {
@@ -98,8 +98,8 @@ export function setupMotion() {
   }
 
   function recenter() {
-    if (!handState.left.detected) {
-      toast('왼손을 보여 준 채로 R을 눌러 주세요', { duration: 1500 });
+    if (!bridge.gripping) {
+      toast('왼손을 쥔 채로 R을 눌러 주세요', { duration: 1500 });
       return;
     }
     bridge.recenter(handState.left.tilt);
