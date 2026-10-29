@@ -56,8 +56,27 @@ export function GameScreen(ctx, { machineId }) {
     backBtn.disabled = playing;
   }
 
+  // 도감 저장 실패(#13, collection:error)는 doll:won보다 먼저 올 수도, 나중에 올 수도 있어 둘 다 처리한다
+  const saveFailed = new Set();
+  let prizeHint = null;
+  let prizeDollId = null;
+  const PRIZE_HINT = {
+    ok: '도감에 등록되었어요 · 터치해서 닫기',
+    failed: '⚠️ 도감 저장에 실패했어요 (저장 공간을 확인해 주세요) · 터치해서 닫기',
+  };
+  const onSaveFailed = ({ dollId }) => {
+    saveFailed.add(dollId);
+    if (prizeHint && prizeDollId === dollId) {
+      prizeHint.textContent = PRIZE_HINT.failed;
+      prizeHint.classList.add('prize-warn');
+    }
+  };
+
   const showPrize = (dollId) => {
     const doll = getDoll(dollId);
+    const failed = saveFailed.delete(dollId);
+    prizeDollId = dollId;
+    prizeHint = h('p', { class: failed ? 'hint prize-warn' : 'hint' }, failed ? PRIZE_HINT.failed : PRIZE_HINT.ok);
     const popup = h(
       'div',
       { class: 'prize-popup', onClick: () => popup.remove() },
@@ -68,7 +87,7 @@ export function GameScreen(ctx, { machineId }) {
         h('img', { src: getDollThumbnail(doll), alt: doll.name }),
         h('div', { class: 'prize-name' }, doll.name),
         h('div', { class: `rarity rarity-${doll.rarity}` }, RARITY[doll.rarity].label),
-        h('p', { class: 'hint' }, '도감에 등록되었어요 · 터치해서 닫기'),
+        prizeHint,
       ),
     );
     el.append(popup);
@@ -80,6 +99,7 @@ export function GameScreen(ctx, { machineId }) {
     eventBus.on('claw:grab', mine(({ success, dollId }) => dollId && toast(success ? '잡았다!' : '앗, 놓쳤다...', { type: success ? 'good' : 'warn' }))),
     eventBus.on('claw:slip', mine(() => toast('으악, 떨어졌다!', { type: 'warn' }))),
     eventBus.on('doll:won', mine(({ dollId }) => showPrize(dollId))),
+    eventBus.on('collection:error', onSaveFailed),
     eventBus.on('input:coin', insertCoin),
     sceneManager.onUpdate(() => {
       timerText.textContent = `⏱ ${Math.ceil(game.claw.timeLeft)}`;

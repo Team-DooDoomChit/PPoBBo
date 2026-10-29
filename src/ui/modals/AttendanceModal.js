@@ -3,6 +3,12 @@ import { h, formatGold } from '../dom.js';
 import { openModal } from '../modal.js';
 import { toast } from '../toast.js';
 
+const FAIL_TEXT = {
+  'already-claimed': '오늘은 이미 출석했어요',
+  'save-failed': '출석 기록을 저장하지 못했어요. 저장 공간을 확인한 뒤 다시 시도해 주세요',
+  default: '출석 보상을 받지 못했어요. 잠시 후 다시 시도해 주세요',
+};
+
 /** 출석체크 팝업: 7일 보상 달력 + 오늘 보상 받기 */
 export function openAttendanceModal() {
   const modal = openModal({ title: '📅 출석체크', className: 'modal-attendance' });
@@ -44,7 +50,7 @@ export function openAttendanceModal() {
   const claim = () => {
     const result = gameApi.claimAttendance();
     if (result.ok) toast(`${result.day}일차 출석! 🪙 ${formatGold(result.reward)} 지급`, { type: 'good' });
-    else toast('오늘은 이미 출석했어요', { type: 'warn' });
+    else toast(FAIL_TEXT[result.reason] ?? FAIL_TEXT.default, { type: 'warn' });
     render();
   };
 

@@ -10,7 +10,11 @@ const formatDate = (time) => new Date(time).toLocaleDateString('ko-KR');
 export function CollectionScreen(ctx) {
   const { router } = ctx;
   const collection = gameApi.getCollection();
-  const owned = DOLLS.filter((d) => collection[d.id]);
+  // 게임 로직(#13)의 수집률 API가 있으면 그 값을 쓰고, 없으면 직접 계산한다
+  const stats = gameApi.getCollectionStats?.() ?? (() => {
+    const owned = DOLLS.filter((d) => collection[d.id]).length;
+    return { owned, total: DOLLS.length, rate: Math.round((owned / DOLLS.length) * 100) };
+  })();
   let filter = 'all';
 
   const grid = h('div', { class: 'collection-grid' });
@@ -77,7 +81,6 @@ export function CollectionScreen(ctx) {
     viewer = createDollViewer(canvas, doll);
   }
 
-  const rate = Math.round((owned.length / DOLLS.length) * 100);
   const el = h(
     'div',
     { class: 'collection-overlay' },
@@ -88,8 +91,8 @@ export function CollectionScreen(ctx) {
         'div',
         { class: 'collection-header' },
         h('h2', {}, '📖 인형 도감'),
-        h('div', { class: 'collection-rate' }, `${owned.length} / ${DOLLS.length} 수집 (${rate}%)`,
-          h('div', { class: 'rate-bar' }, h('div', { style: { width: `${rate}%` } }))),
+        h('div', { class: 'collection-rate' }, `${stats.owned} / ${stats.total} 수집 (${stats.rate}%)`,
+          h('div', { class: 'rate-bar' }, h('div', { style: { width: `${stats.rate}%` } }))),
         h('button', { class: 'btn-close', onClick: () => router.back(), 'aria-label': '닫기' }, '✕'),
       ),
       h('div', { class: 'tabs' }, tabs),
