@@ -1,10 +1,12 @@
-import { palmToJoystick, JOYSTICK_DEFAULTS } from './joystickMapping.js';
+import { tiltToJoystick, JOYSTICK_DEFAULTS } from './joystickMapping.js';
 
 /**
  * 손/머리 트래커 상태 → InputState. (#10, #34)
  *
  * 양손 역할 (#34)
- *   왼손  : 손바닥 위치 → joystickX / joystickY
+ *   왼손  : 조이스틱을 쥐듯 손을 기울이기 → joystickX / joystickY
+ *           (앞으로 숙이면 안쪽, 뒤로 젖히면 플레이어 쪽, 좌우로 기울이면 좌우)
+ *           왼손이 처음 보이면 calibrateFrames 동안의 평균 자세를 기준(가운데)으로 잡는다.
  *   오른손: 주먹 쥐기 또는 아래로 내려치기 → isFist (집게 내리기)
  *   양손  : OK 사인 → isOk (코인 투입), 가리키기 → isPointing
  *   왼손 주먹은 집게를 내리지 않는다 (조이스틱을 잡다가 주먹이 쥐어져도 오작동하지 않게).
@@ -18,8 +20,12 @@ import { palmToJoystick, JOYSTICK_DEFAULTS } from './joystickMapping.js';
 const round = (v, step) => Math.round(v / step) * step;
 const seen = (hand) => Boolean(hand?.detected);
 
+const ZERO = Object.freeze({ joystickX: 0, joystickY: 0 });
+
 export class MotionBridge {
   #sent = {};
+  #base = null; // 왼손 기준 기울기 { x, y } (null이면 아직 못 잡음)
+  #samples = [];
 
   /** @param {{ update(partial, source): void, reset(source): void }} inputState */
   constructor(inputState, { joystick = JOYSTICK_DEFAULTS } = {}) {
@@ -27,13 +33,32 @@ export class MotionBridge {
     this.joystick = { ...JOYSTICK_DEFAULTS, ...joystick };
   }
 
-  /** 지금 왼손 위치를 조이스틱 가운데로 삼는다 */
-  recenter(palm) {
-    if (palm) this.joystick = { ...this.joystick, center: { ...palm } };
+  /** 왼손 기준 자세를 잡았는지 (카메라 창 안내용) */
+  get calibrated() {
+    return this.#base !== null;
+  }
+
+  /** 지금 왼손 기울기를 조이스틱 가운데로 삼는다 (R 키) */
+  recenter(tilt) {
+    if (!tilt) return;
+    this.#base = { ...tilt };
+    this.#samples = [];
+  }
+
+  /** 왼손 → 조이스틱. 기준 자세를 잡기 전에는 0 */
+  #stick(left) {
+    if (!seen(left) || !left.tilt) return ZERO;
+    if (!this.#base) {
+      this.#samples.push(left.tilt);
+      if (this.#samples.length < this.joystick.calibrateFrames) return ZERO;
+      const avg = (k) => this.#samples.reduce((sum, t) => sum + t[k], 0) / this.#samples.length;
+      this.recenter({ x: avg('x'), y: avg('y') });
+    }
+    return tiltToJoystick(left.tilt, this.#base, this.joystick);
   }
 
   /**
-   * 트래커 상태 → InputState에 넣을 값 (테스트용으로 분리)
+   * 트래커 상태 → InputState에 넣을 값 (테스트용으로 분리). 왼손 기준 자세를 잡는 중이면 그 표본도 모은다.
    * @param {{ left?: object, right?: object } | null} hands 손별 HandTracker 상태
    * @param {object | null} head HeadTracker 상태 (없으면 머리 값은 보내지 않음)
    */
@@ -41,7 +66,7 @@ export class MotionBridge {
     const out = {};
     if (hands) {
       const { left, right } = hands;
-      const stick = seen(left) && left.palm ? palmToJoystick(left.palm, this.joystick) : { joystickX: 0, joystickY: 0 };
+      const stick = this.#stick(left);
       Object.assign(out, {
         joystickX: round(stick.joystickX, 0.02),
         joystickY: round(stick.joystickY, 0.02),
@@ -77,9 +102,11 @@ export class MotionBridge {
     return changed;
   }
 
-  /** 모션 입력을 끌 때: 모든 모션 값을 중립으로 */
+  /** 모션 입력을 끌 때: 모든 모션 값을 중립으로. 다시 켜면 왼손 기준 자세도 새로 잡는다 */
   release() {
     this.inputState.reset('motion'); // 모션 입력원의 값만 지운다 (키보드는 그대로)
     this.#sent = {};
+    this.#base = null;
+    this.#samples = [];
   }
 }

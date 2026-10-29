@@ -1,7 +1,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { applyDeadzone, palmToJoystick, JOYSTICK_DEFAULTS } from '../../src/motion/joystickMapping.js';
+import { applyDeadzone, tiltToJoystick, JOYSTICK_DEFAULTS } from '../../src/motion/joystickMapping.js';
 import { MotionBridge } from '../../src/motion/MotionBridge.js';
 import { HandTracker } from '../../src/motion/HandTracker.js';
 import { HandRoleAssigner } from '../../src/motion/handRoles.js';
@@ -13,11 +13,17 @@ const recorder = () => {
   const calls = [];
   return { calls, update: (partial, source) => calls.push({ partial, source }), reset: (source) => calls.push({ reset: source }) };
 };
-const C = JOYSTICK_DEFAULTS.center;
+const R = JOYSTICK_DEFAULTS.range;
 const hand = (over = {}) => ({
   detected: true, isFist: false, isPointing: false, isPinching: false, isOk: false, isSlam: false,
-  palm: { ...C }, pointer: null, ...over,
+  palm: { x: 0.3, y: 0.5 }, pointer: null, tilt: { x: 0, y: 0 }, ...over,
 });
+/** 기준 자세(기울기 0)를 이미 잡은 브릿지 */
+const ready = (target = recorder()) => {
+  const b = new MotionBridge(target);
+  b.recenter({ x: 0, y: 0 });
+  return b;
+};
 const NONE = { detected: false };
 const head = (over = {}) => ({ detected: true, calibrated: true, yaw: 0, pitch: 0, gazeTarget: null, ...over });
 
@@ -34,33 +40,61 @@ test('데드존: 안쪽은 0, 바깥은 0~1로 다시 늘림', () => {
   assert.ok(Math.abs(applyDeadzone(-0.575, 0.15) + 0.5) < 1e-9);
 });
 
-test('조이스틱 가운데는 왼손이 놓이는 화면 왼쪽', () => {
-  assert.ok(C.x < 0.5);
-  assert.deepEqual(palmToJoystick({ ...C }), { joystickX: 0, joystickY: 0 });
+test('기울기 → 조이스틱: 기준 자세면 0, 오른쪽/앞으로 끝까지 기울이면 +1', () => {
+  assert.deepEqual(tiltToJoystick({ x: 0, y: 0 }), { joystickX: 0, joystickY: 0 });
+  assert.deepEqual(tiltToJoystick({ x: R, y: R }), { joystickX: 1, joystickY: 1 });
+  assert.deepEqual(tiltToJoystick({ x: -R, y: -R }), { joystickX: -1, joystickY: -1 });
 });
 
-test('손이 가운데에서 오른쪽/위로 가면 +', () => {
-  const r = palmToJoystick({ x: C.x + 0.18, y: C.y - 0.18 });
-  assert.equal(r.joystickX, 1);
-  assert.equal(r.joystickY, 1);
+test('기울기 → 조이스틱: 기준 자세에서 얼마나 기울었는지로 계산', () => {
+  assert.deepEqual(tiltToJoystick({ x: 0.2, y: -0.1 }, { x: 0.2, y: -0.1 }), { joystickX: 0, joystickY: 0 });
+  assert.equal(tiltToJoystick({ x: 0.2 + R, y: 0 }, { x: 0.2, y: 0 }).joystickX, 1);
 });
 
-test('범위를 넘어가도 ±1', () => {
-  assert.deepEqual(palmToJoystick({ x: 0, y: 1 }), { joystickX: -1, joystickY: -1 });
+test('범위를 넘게 기울여도 ±1', () => {
+  assert.deepEqual(tiltToJoystick({ x: 2, y: -2 }), { joystickX: 1, joystickY: -1 });
 });
 
-test('가운데 근처 떨림은 0 (집게가 흘러가지 않음)', () => {
-  assert.deepEqual(palmToJoystick({ x: C.x + 0.02, y: C.y - 0.02 }), { joystickX: 0, joystickY: 0 });
+test('살짝 기울어진 떨림은 0 (집게가 흘러가지 않음)', () => {
+  assert.deepEqual(tiltToJoystick({ x: 0.05, y: -0.05 }), { joystickX: 0, joystickY: 0 });
+});
+
+// ---------------- 왼손 기준 자세 ----------------
+
+test('왼손이 처음 보이면 0.5초 동안의 자세를 기준으로 잡고, 그동안은 0', () => {
+  const b = new MotionBridge(recorder());
+  const tilted = hand({ tilt: { x: 0.3, y: -0.2 } }); // 원래 손이 조금 기울어진 사람
+  for (let i = 0; i < JOYSTICK_DEFAULTS.calibrateFrames - 1; i++) {
+    assert.deepEqual(pickStick(b.toInput({ left: tilted, right: NONE })), [0, 0]);
+    assert.equal(b.calibrated, false);
+  }
+  assert.deepEqual(pickStick(b.toInput({ left: tilted, right: NONE })), [0, 0]);
+  assert.equal(b.calibrated, true);
+  // 기준에서 앞으로 숙이면 +
+  assert.equal(b.toInput({ left: hand({ tilt: { x: 0.3, y: -0.2 + R } }), right: NONE }).joystickY, 1);
+});
+const pickStick = (o) => [o.joystickX, o.joystickY];
+
+test('recenter(R 키): 지금 기울기가 조이스틱 가운데가 된다', () => {
+  const b = ready();
+  b.recenter({ x: 0.1, y: 0.3 });
+  assert.deepEqual(pickStick(b.toInput({ left: hand({ tilt: { x: 0.1, y: 0.3 } }), right: NONE })), [0, 0]);
+});
+
+test('release 후 다시 켜면 기준 자세를 새로 잡는다', () => {
+  const b = ready();
+  b.release();
+  assert.equal(b.calibrated, false);
 });
 
 // ---------------- 양손 역할 ----------------
 
-test('왼손 위치만 조이스틱이 된다 (오른손을 움직여도 그대로)', () => {
-  const b = new MotionBridge(recorder());
-  const out = b.toInput({ left: hand({ palm: { x: C.x + 0.18, y: C.y } }), right: hand({ palm: { x: 0.9, y: 0.1 } }) });
+test('왼손 기울기만 조이스틱이 된다 (오른손을 기울여도 그대로)', () => {
+  const b = ready();
+  const out = b.toInput({ left: hand({ tilt: { x: R, y: 0 } }), right: hand({ tilt: { x: -R, y: R } }) });
   assert.equal(out.joystickX, 1);
   assert.equal(out.joystickY, 0);
-  const onlyRight = b.toInput({ left: NONE, right: hand({ palm: { x: 0.9, y: 0.1 } }) });
+  const onlyRight = b.toInput({ left: NONE, right: hand({ tilt: { x: R, y: R } }) });
   assert.equal(onlyRight.joystickX, 0);
   assert.equal(onlyRight.joystickY, 0);
 });
@@ -113,34 +147,26 @@ test('값이 그대로면 보내지 않고, 바뀐 필드만 보낸다', () => {
 
 test('아주 작은 떨림은 반올림으로 무시', () => {
   const rec = recorder();
-  const b = new MotionBridge(rec);
-  b.push({ left: hand({ palm: { x: C.x + 0.1, y: C.y } }), right: NONE });
-  b.push({ left: hand({ palm: { x: C.x + 0.1003, y: C.y } }), right: NONE });
+  const b = ready(rec);
+  b.push({ left: hand({ tilt: { x: 0.3, y: 0 } }), right: NONE });
+  b.push({ left: hand({ tilt: { x: 0.3003, y: 0 } }), right: NONE });
   assert.equal(rec.calls.length, 1);
 });
 
 test('왼손이 사라지면 조이스틱을 한 번만 중립으로', () => {
   const rec = recorder();
-  const b = new MotionBridge(rec);
-  b.push({ left: hand({ palm: { x: C.x + 0.18, y: C.y } }), right: NONE });
+  const b = ready(rec);
+  b.push({ left: hand({ tilt: { x: R, y: 0 } }), right: NONE });
   b.push({ left: NONE, right: NONE });
   b.push({ left: NONE, right: NONE });
   assert.equal(rec.calls.length, 2);
   assert.deepEqual(rec.calls[1].partial, { joystickX: 0 });
 });
 
-test('recenter: 지금 손 위치가 조이스틱 가운데가 된다', () => {
-  const b = new MotionBridge(recorder());
-  b.recenter({ x: 0.6, y: 0.7 });
-  const out = b.toInput({ left: hand({ palm: { x: 0.6, y: 0.7 } }), right: NONE });
-  assert.equal(out.joystickX, 0);
-  assert.equal(out.joystickY, 0);
-});
-
 test('release: 모션 입력원의 값만 지우고 키보드 값은 남긴다', () => {
-  const b = new MotionBridge(inputState);
+  const b = ready(inputState);
   inputState.update({ joystickY: 1 }, 'keyboard');
-  b.push({ left: hand({ palm: { x: C.x + 0.18, y: C.y } }), right: hand({ isOk: true }) });
+  b.push({ left: hand({ tilt: { x: R, y: 0 } }), right: hand({ isOk: true }) });
   assert.equal(inputState.get().isOk, true);
 
   b.release();
@@ -171,7 +197,7 @@ test('손이 안 보이면 키보드 입력을 덮어쓰지 않는다', () => {
   assert.equal(inputState.get().source, 'keyboard');
 });
 
-test('전체 흐름: 웹캠 두 손 → 역할 구분 → 트래커 → 브릿지 → InputState', () => {
+test('전체 흐름: 웹캠 두 손 → 역할 구분 → 트래커(기울기) → 브릿지 → InputState', () => {
   const roles = new HandRoleAssigner();
   const left = new HandTracker();
   const right = new HandTracker({ slam: true });
@@ -184,7 +210,7 @@ test('전체 흐름: 웹캠 두 손 → 역할 구분 → 트래커 → 브릿�
 
   // 두 손을 한 결과로 합친다 (카메라 원본 좌표: x가 클수록 화면 왼쪽)
   const both = (l, r) => {
-    const a = makeHand(l.pose, l.at);
+    const a = makeHand(l.pose, l.at, 2, l.tilt);
     const c = makeHand(r.pose, r.at);
     return {
       landmarks: [...c.landmarks, ...a.landmarks],
@@ -198,25 +224,29 @@ test('전체 흐름: 웹캠 두 손 → 역할 구분 → 트래커 → 브릿�
     const r = roles.assign(frame, t);
     b.push({ left: left.update(r.left, t), right: right.update(r.right, t) });
   };
-  const L = (pose, y = 0.6) => ({ pose, at: { x: 0.85, y } }); // 화면 왼쪽 (반전 후 x≈0.15)
-  const R = (pose, y = 0.5) => ({ pose, at: { x: 0.25, y } }); // 화면 오른쪽
+  const L = (pose, tilt = {}) => ({ pose, at: { x: 0.75, y: 0.6 }, tilt }); // 화면 왼쪽
+  const Rh = (pose, y = 0.5) => ({ pose, at: { x: 0.25, y } }); // 화면 오른쪽
 
-  // 왼손을 화면 왼쪽 끝에 → 조이스틱 왼쪽
-  for (let i = 0; i < 10; i++) step(both(L(POSES.open), R(POSES.open)));
-  assert.ok(inputState.get().joystickX < -0.5, `왼손이 가운데보다 왼쪽 → joystickX - (${inputState.get().joystickX})`);
-  assert.equal(inputState.get().isFist, false);
-
-  // 왼손 주먹은 무시
-  for (let i = 0; i < 6; i++) step(both(L(POSES.fist), R(POSES.open)));
-  assert.equal(inputState.get().isFist, false);
+  // 왼손 주먹을 세우고 기다리면 기준 자세를 잡는다 (그동안 조이스틱 0)
+  for (let i = 0; i < 20; i++) step(both(L(POSES.fist), Rh(POSES.open)));
+  assert.equal(b.calibrated, true);
+  assert.equal(inputState.get().joystickY, 0);
+  // 앞으로 숙이면 안쪽(+), 왼쪽으로 기울이면 왼쪽(-)
+  for (let i = 0; i < 15; i++) step(both(L(POSES.fist, { forward: 0.5 }), Rh(POSES.open)));
+  assert.ok(inputState.get().joystickY > 0.8, `앞으로 숙임 → joystickY + (${inputState.get().joystickY})`);
+  for (let i = 0; i < 15; i++) step(both(L(POSES.fist, { forward: -0.5 }), Rh(POSES.open)));
+  assert.ok(inputState.get().joystickY < -0.8, `뒤로 젖힘 → joystickY - (${inputState.get().joystickY})`);
+  for (let i = 0; i < 15; i++) step(both(L(POSES.fist, { right: -0.5 }), Rh(POSES.open)));
+  assert.ok(inputState.get().joystickX < -0.8, `왼쪽으로 기울임 → joystickX - (${inputState.get().joystickX})`);
+  assert.equal(inputState.get().isFist, false, '왼손 주먹은 집게를 내리지 않음');
 
   // 오른손 OK 사인 0.3초 → 코인
-  for (let i = 0; i < 10; i++) step(both(L(POSES.open), R(POSES.ok)));
+  for (let i = 0; i < 10; i++) step(both(L(POSES.fist), Rh(POSES.ok)));
   assert.equal(inputState.get().isOk, true);
-  for (let i = 0; i < 6; i++) step(both(L(POSES.open), R(POSES.open)));
+  for (let i = 0; i < 6; i++) step(both(L(POSES.fist), Rh(POSES.open)));
 
   // 오른손 내려치기 → 집게 내리기
-  for (const y of [0.3, 0.38, 0.46, 0.54, 0.6]) step(both(L(POSES.open), R(POSES.open, y)));
+  for (const y of [0.3, 0.38, 0.46, 0.54, 0.6]) step(both(L(POSES.fist), Rh(POSES.open, y)));
   assert.ok(changes.includes('drop'));
 
   for (let i = 0; i < 12; i++) step(NO_HAND);
