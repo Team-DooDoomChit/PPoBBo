@@ -11,7 +11,7 @@ import { MotionDebugView } from './MotionDebugView.js';
 /**
  * 모션 인식을 앱에 연결한다. (#10)
  *
- * 웹캠 → MotionTracker → HandTracker / HeadTracker → MotionBridge → inputState → MotionBinding(A)
+ * 웹캠 → MotionTracker → HandTracker / HeadTracker → MotionBridge → inputState → MotionBinding(#6)
  *
  * - HUD의 📷 버튼으로 켜고 끈다 (페이지를 열자마자 카메라 권한을 묻지 않도록).
  * - 켜져 있는 동안 왼쪽 아래에 웹캠 미리보기(디버그 화면)를 보여준다. V 키로 숨기기/보이기.

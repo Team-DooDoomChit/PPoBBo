@@ -45,7 +45,7 @@ inputState.reset(); // 손을 놓쳤을 때 등 모두 초기화
 | Enter | `input:confirm` |
 | C | `input:coin` |
 
-### 모션 입력 (`src/motion/`, B #8~#10)
+### 모션 입력 (`src/motion/`, #8~#10)
 
 HUD의 **📷** 버튼으로 켜고 끕니다. 켜면 카메라 권한을 요청하고 MediaPipe 모델(손·얼굴)을 받은 뒤 인식을 시작합니다.
 
