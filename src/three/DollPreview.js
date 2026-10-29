@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { createDollMesh } from './DollFactory.js';
+import { createDollMesh, disposeDollMesh } from './DollFactory.js';
 
 const FRAME_PADDING = 1.2;
 
@@ -59,6 +59,7 @@ export function getDollThumbnail(doll, size = 256) {
   thumbRenderer.render(thumbStage.scene, thumbStage.camera);
   const url = thumbRenderer.domElement.toDataURL('image/png');
   thumbStage.scene.remove(mesh);
+  disposeDollMesh(mesh); // 이미지로 남겼으니 GPU 리소스는 바로 해제
 
   thumbCache.set(doll.id, url);
   return url;

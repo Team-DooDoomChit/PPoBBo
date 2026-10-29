@@ -152,7 +152,8 @@ export class ClawController {
     const t = Math.min(this.#stateTime / CLOSE_TIME, 1);
     // 인형을 잡았으면 완전히 닫히지 않는다
     const closedTo = this.#held ? 0.35 : 0;
-    this.#prongOpen = THREE.MathUtils.lerp(1, closedTo, t);
+    // 잡는 순간 목표가 0 → 0.35로 바뀌어도 다시 벌어지지 않도록 지금 값보다 커지지 않게 한다
+    this.#prongOpen = Math.min(this.#prongOpen, THREE.MathUtils.lerp(1, closedTo, t));
 
     if (t >= 0.5 && !this.#held && !this.#grabTried) {
       this.#grabTried = true;
@@ -255,10 +256,20 @@ export class ClawController {
     return new CANNON.Vec3(this.x, CLAW.railY - this.cable - HEAD_BOTTOM, this.z);
   }
 
+  /**
+   * 키네마틱 바디는 world.step()에서 velocity만큼 위치가 적분된다.
+   * 그래서 위치는 직전 값(prev)에 두고 속도만 넣어, 이번 step이 끝나면 next에 도착하게 한다.
+   * (위치를 next로 두고 속도까지 넣으면 물리 바디가 화면의 집게보다 한 프레임 앞서 간다)
+   */
   #applyToBody(prev, dt) {
     const next = this.#headBottom();
-    this.body.position.copy(next);
-    if (dt > 0) this.body.velocity.set((next.x - prev.x) / dt, (next.y - prev.y) / dt, (next.z - prev.z) / dt);
+    if (dt > 0) {
+      this.body.position.copy(prev);
+      this.body.velocity.set((next.x - prev.x) / dt, (next.y - prev.y) / dt, (next.z - prev.z) / dt);
+    } else {
+      this.body.position.copy(next);
+      this.body.velocity.set(0, 0, 0);
+    }
   }
 
   #applyToModel() {
