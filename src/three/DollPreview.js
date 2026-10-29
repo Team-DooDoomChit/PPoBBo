@@ -1,8 +1,25 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { createDollMesh, DOLL_SHAPE } from './DollFactory.js';
+import { createDollMesh } from './DollFactory.js';
 
-const CENTER = new THREE.Vector3(0, DOLL_SHAPE.headOffsetY / 2, 0);
+const FRAME_PADDING = 1.2;
+
+/**
+ * 인형 전체(귀, 키링 체인 등 포함)가 화면에 들어오도록 카메라를 맞춘다.
+ * @returns {{ center: THREE.Vector3, distance: number }}
+ */
+function frameObject(camera, object) {
+  const box = new THREE.Box3().setFromObject(object);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const halfFov = THREE.MathUtils.degToRad(camera.fov / 2);
+  const fitHeight = size.y / 2 / Math.tan(halfFov);
+  const fitWidth = Math.max(size.x, size.z) / 2 / (Math.tan(halfFov) * camera.aspect);
+  const distance = Math.max(fitHeight, fitWidth) * FRAME_PADDING + Math.max(size.x, size.z) / 2;
+  camera.position.set(center.x, center.y + distance * 0.08, center.z + distance);
+  camera.lookAt(center);
+  return { center, distance };
+}
 
 function createStage() {
   const scene = new THREE.Scene();
@@ -15,8 +32,6 @@ function createStage() {
   scene.add(rim);
 
   const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 10);
-  camera.position.set(0, CENTER.y + 0.05, 0.55);
-  camera.lookAt(CENTER);
   return { scene, camera };
 }
 
@@ -40,6 +55,7 @@ export function getDollThumbnail(doll, size = 256) {
   const mesh = createDollMesh(doll);
   mesh.rotation.y = -0.35;
   thumbStage.scene.add(mesh);
+  frameObject(thumbStage.camera, mesh);
   thumbRenderer.render(thumbStage.scene, thumbStage.camera);
   const url = thumbRenderer.domElement.toDataURL('image/png');
   thumbStage.scene.remove(mesh);
@@ -64,12 +80,13 @@ export function createDollViewer(canvas, doll) {
   const mesh = createDollMesh(doll);
   scene.add(mesh);
 
+  const { center, distance } = frameObject(camera, mesh);
   const controls = new OrbitControls(camera, canvas);
-  controls.target.copy(CENTER);
+  controls.target.copy(center);
   controls.enablePan = false;
   controls.enableDamping = true;
-  controls.minDistance = 0.3;
-  controls.maxDistance = 0.9;
+  controls.minDistance = distance * 0.55;
+  controls.maxDistance = distance * 1.6;
   controls.autoRotate = true;
   controls.autoRotateSpeed = 3;
 
