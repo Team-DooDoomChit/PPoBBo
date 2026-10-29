@@ -21,6 +21,7 @@ const geo = {
   link: new THREE.TorusGeometry(1, 0.32, 6, 12), // 체인 고리
   ring: new THREE.TorusGeometry(1, 0.3, 8, 24),
   strand: new THREE.CylinderGeometry(1, 1, 1, 6),
+  disc: new THREE.CylinderGeometry(1, 1, 1, 24),
 };
 
 const black = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
@@ -34,6 +35,16 @@ const KEYCHAIN_MAT = {
   blush: new THREE.MeshStandardMaterial({ color: 0xf4a6b6, roughness: 0.9 }),
   shine: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 }),
   ink: new THREE.MeshStandardMaterial({ color: 0x1a1414, roughness: 0.4 }),
+};
+
+// 목도리 고양이 전용 공유 머티리얼 (볼·눈·선은 KEYCHAIN_MAT을 같이 쓴다)
+const CAT_MAT = {
+  scarf: new THREE.MeshStandardMaterial({ color: 0x7f9fe0, roughness: 0.95 }),
+  fringe: new THREE.MeshStandardMaterial({ color: 0x92afea, roughness: 0.9 }),
+  innerEar: new THREE.MeshStandardMaterial({ color: 0xa9c1f2, roughness: 0.9 }),
+  chain: new THREE.MeshStandardMaterial({ color: 0xa9b9c6, roughness: 0.35, metalness: 0.8 }),
+  cream: new THREE.MeshStandardMaterial({ color: 0xf3e3c6, roughness: 0.8 }),
+  plate: new THREE.MeshStandardMaterial({ color: 0xe2b85a, roughness: 0.6 }),
 };
 
 /** 인형 하나가 만든(공유하지 않는) 머티리얼 표시. disposeDollMesh는 표시된 것만 해제한다. */
@@ -122,6 +133,133 @@ function keychainFaceLines() {
   kbFaceLines = mergeGeometries(lines.map((g) => g.toNonIndexed()));
   lines.forEach((g) => g.dispose());
   return kbFaceLines;
+}
+
+// ---------- 목도리 고양이: 머리 무늬(모자)와 얼굴 선. 머리 타원체는 목도리 토끼와 같다 ----------
+
+// 머리 무늬 아래 경계: [정면에서 돈 각도 |φ|, 경계 높이(머리 타원체 정규화 y)].
+// 정면 가운데는 V로 내려오고, 그 양옆으로 흰 이마가 둥글게 올라가며, 옆·뒤는 거의 수평이다.
+const CAP_EDGE = [[0, 0.3], [0.42, 0.44], [0.85, 0.24], [1.3, 0.1], [2.2, 0.12], [Math.PI, 0.18]];
+
+function capEdge(phi) {
+  const a = Math.abs(Math.atan2(Math.sin(phi), Math.cos(phi)));
+  for (let i = 1; i < CAP_EDGE.length; i++) {
+    const [p0, y0] = CAP_EDGE[i - 1];
+    const [p1, y1] = CAP_EDGE[i];
+    if (a > p1) continue;
+    const u = (a - p0) / (p1 - p0);
+    // 가운데 구간만 직선이라 V 모양으로 뾰족하고, 나머지는 부드럽게 잇는다
+    return y0 + (y1 - y0) * (i === 1 ? u : (1 - Math.cos(Math.PI * u)) / 2);
+  }
+  return CAP_EDGE.at(-1)[1];
+}
+
+/** 머리 타원체를 scale배 한 표면 위의 점 (θ: 위에서 내려온 각, φ: 정면에서 돈 각) */
+const headPoint = (theta, phi, scale) =>
+  new THREE.Vector3(
+    KB_HEAD.rx * scale * Math.sin(theta) * Math.sin(phi),
+    KB_HEAD.y + KB_HEAD.ry * scale * Math.cos(theta),
+    KB_HEAD.rz * scale * Math.sin(theta) * Math.cos(phi),
+  );
+
+let kcCap = null;
+/** 정수리부터 경계까지 덮는 파란 무늬 + 경계를 따라 도톰한 테두리 (모든 고양이 공용) */
+function keychainCatCap() {
+  if (kcCap) return kcCap;
+  const COLS = 72;
+  const ROWS = 14;
+  const SCALE = 1.03;
+  const positions = [];
+  const normals = [];
+  const index = [];
+  for (let c = 0; c <= COLS; c++) {
+    const phi = Math.PI + (c / COLS) * Math.PI * 2; // 이음매는 뒤쪽에
+    const edge = Math.acos(capEdge(phi));
+    for (let r = 0; r <= ROWS; r++) {
+      const p = headPoint((edge * r) / ROWS, phi, SCALE);
+      positions.push(...p.toArray());
+      // 타원체 법선 (기울기 방향)
+      normals.push(
+        ...new THREE.Vector3(p.x / KB_HEAD.rx ** 2, (p.y - KB_HEAD.y) / KB_HEAD.ry ** 2, p.z / KB_HEAD.rz ** 2).normalize().toArray(),
+      );
+    }
+  }
+  for (let c = 0; c < COLS; c++) {
+    for (let r = 0; r < ROWS; r++) {
+      const a = c * (ROWS + 1) + r;
+      const b = a + ROWS + 1;
+      index.push(a, a + 1, b, b, a + 1, b + 1);
+    }
+  }
+  const shell = new THREE.BufferGeometry();
+  shell.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  shell.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  shell.setIndex(index);
+
+  const rimPoints = Array.from({ length: COLS }, (_, c) => {
+    const phi = (c / COLS) * Math.PI * 2;
+    return headPoint(Math.acos(capEdge(phi)), phi, 1.02);
+  });
+  const rim = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rimPoints, true), 144, 0.0024, 8, true);
+  rim.deleteAttribute('uv');
+
+  kcCap = mergeGeometries([shell.toNonIndexed(), rim.toNonIndexed()]);
+  shell.dispose();
+  rim.dispose();
+  return kcCap;
+}
+
+let kcFaceLines = null;
+/** 고양이 눈썹·볼 빗금·입·턱 선 (하나로 합침) */
+function keychainCatFaceLines() {
+  if (kcFaceLines) return kcFaceLines;
+  const lines = [];
+  for (const sx of [-1, 1]) {
+    // 눈썹: 눈 위의 짧은 선 (안쪽이 조금 높은 걱정스러운 표정)
+    lines.push(...surfaceLine([[sx * 0.025, KB_EYE_Y + 0.0138], [sx * 0.0175, KB_EYE_Y + 0.0152]], 0.0013));
+    // 볼 빗금 ||||
+    for (const dx of [-0.0054, -0.0018, 0.0018, 0.0054]) {
+      const cx = sx * 0.036 + dx;
+      const cy = KB_EYE_Y - 0.01;
+      lines.push(...surfaceLine([[cx - 0.0008, cy - 0.0034], [cx + 0.0008, cy + 0.0034]], 0.0008, 0.0026));
+    }
+  }
+  // 입: 양끝이 위로 말려 올라간 고양이 입
+  const my = KB_EYE_Y - 0.0135;
+  const half = [
+    [0.0086, my + 0.0034],
+    [0.0092, my + 0.0008],
+    [0.0076, my - 0.0022],
+    [0.0046, my - 0.003],
+    [0.0018, my - 0.0016],
+  ];
+  const mouth = [...half.map(([x, y]) => [-x, y]), [0, my + 0.0012], ...[...half].reverse()];
+  lines.push(...surfaceLine(mouth, 0.0011));
+  // 입 아래 짧은 턱 선
+  lines.push(...surfaceLine([[-0.0028, KB_EYE_Y - 0.0195], [0.0028, KB_EYE_Y - 0.0195]], 0.001));
+  kcFaceLines = mergeGeometries(lines.map((g) => g.toNonIndexed()));
+  lines.forEach((g) => g.dispose());
+  return kcFaceLines;
+}
+
+/** 니트 목도리 + 한쪽으로 늘어진 끝자락과 술 (목도리 토끼·고양이 공용) */
+function addScarf(group, { scarf, fringe }, neckY) {
+  // (토러스를 눕히면 로컬 z 스케일이 밴드 높이가 된다)
+  group.add(part(geo.ring, scarf, { pos: [0, neckY, 0.002], scale: [0.045, 0.045, 0.065], rot: [Math.PI / 2, 0, 0] }));
+  // 니트 결: 밴드 표면에서 살짝만 튀어나온 가는 줄
+  for (const dy of [-0.012, -0.004, 0.004, 0.012]) {
+    group.add(part(geo.ring, scarf, { pos: [0, neckY + dy, 0.002], scale: [0.0452, 0.0452, 0.007], rot: [Math.PI / 2, 0, 0], shadow: false }));
+  }
+  // 앞쪽(보는 사람 기준 왼쪽)으로 늘어진 끝자락 + 술
+  const tail = new THREE.Group();
+  tail.position.set(-0.034, neckY - 0.004, 0.036);
+  tail.rotation.set(0.15, -0.5, 0.45);
+  tail.add(part(geo.box, scarf, { pos: [0, -0.026, 0], scale: [0.024, 0.052, 0.009] }));
+  for (let i = 0; i < 7; i++) {
+    const x = -0.0105 + i * 0.0035;
+    tail.add(part(geo.strand, fringe, { pos: [x, -0.061, 0], scale: [0.0015, 0.02, 0.0015], rot: [0, 0, (i - 3) * 0.06], shadow: false }));
+  }
+  group.add(tail);
 }
 
 /** 표면에 납작하게 붙는 타원 (+Z를 법선 방향으로 돌린다) */
@@ -271,23 +409,7 @@ const builders = {
     group.add(part(geo.capsule, mat.chain, { pos: [0, topY + 0.003, -0.004], scale: [0.0032, 0.0055, 0.0032], rot: [0, 0, Math.PI / 2] }));
 
     // 목도리: 머리와 몸 사이를 감싸는 니트 + 결
-    const neckY = 0.02;
-    // (토러스를 눕히면 로컬 z 스케일이 밴드 높이가 된다)
-    group.add(part(geo.ring, mat.scarf, { pos: [0, neckY, 0.002], scale: [0.045, 0.045, 0.065], rot: [Math.PI / 2, 0, 0] }));
-    // 니트 결: 밴드 표면에서 살짝만 튀어나온 가는 줄
-    for (const dy of [-0.012, -0.004, 0.004, 0.012]) {
-      group.add(part(geo.ring, mat.scarf, { pos: [0, neckY + dy, 0.002], scale: [0.0452, 0.0452, 0.007], rot: [Math.PI / 2, 0, 0], shadow: false }));
-    }
-    // 앞쪽(보는 사람 기준 왼쪽)으로 늘어진 끝자락 + 술
-    const tail = new THREE.Group();
-    tail.position.set(-0.034, neckY - 0.004, 0.036);
-    tail.rotation.set(0.15, -0.5, 0.45);
-    tail.add(part(geo.box, mat.scarf, { pos: [0, -0.026, 0], scale: [0.024, 0.052, 0.009] }));
-    for (let i = 0; i < 7; i++) {
-      const x = -0.0105 + i * 0.0035;
-      tail.add(part(geo.strand, mat.fringe, { pos: [x, -0.061, 0], scale: [0.0015, 0.02, 0.0015], rot: [0, 0, (i - 3) * 0.06], shadow: false }));
-    }
-    group.add(tail);
+    addScarf(group, mat, 0.02);
 
     // 팔, 발
     for (const sx of [-1, 1]) {
@@ -320,6 +442,89 @@ const builders = {
       );
     }
     group.add(part(keychainFaceLines(), mat.ink, { shadow: false }));
+  },
+
+  /**
+   * 키링 고양이: 목도리 토끼와 같은 달걀형 몸에, 앞이마가 물결 모양인 파란 머리 무늬와 뾰족한 귀,
+   * 정수리의 볼체인, 파란 니트 목도리, 꼬리 방울, 한 손에 든 마카롱.
+   */
+  keychainCat(group, doll, { fur, sub }) {
+    const mat = { ...KEYCHAIN_MAT, ...CAT_MAT };
+    const headY = KB_HEAD.y;
+
+    group.add(
+      part(geo.sphere, fur, { pos: [0, headY, 0], scale: [KB_HEAD.rx, KB_HEAD.ry, KB_HEAD.rz] }),
+      part(geo.sphere, fur, { pos: [0, -0.008, 0.002], scale: [0.05, 0.05, 0.046] }),
+      part(keychainCatCap(), sub),
+    );
+
+    // 귀: 머리 무늬 양옆 위로 뾰족하게, 바깥으로 살짝 기운다
+    for (const sx of [-1, 1]) {
+      const tilt = [0, 0, -sx * 0.35];
+      group.add(
+        part(geo.cone, sub, { pos: [sx * 0.037, headY + 0.05, -0.006], scale: [0.024, 0.036, 0.014], rot: tilt }),
+        part(geo.cone, mat.innerEar, { pos: [sx * 0.036, headY + 0.048, 0.004], scale: [0.014, 0.024, 0.005], rot: tilt, shadow: false }),
+      );
+    }
+
+    // 볼체인: 정수리 고리에서 위로 늘어진 고리 모양
+    const hookY = headY + KB_HEAD.ry * 1.03 + 0.004;
+    group.add(part(geo.link, mat.chain, { pos: [0, hookY, 0], scale: s(0.0042), shadow: false }));
+    const baseY = hookY + 0.005;
+    const topY = baseY + 0.072;
+    const LINKS = 16;
+    for (const sx of [-1, 1]) {
+      for (let i = 0; i < LINKS; i++) {
+        const t = (i + 0.5) / LINKS;
+        // 아래는 한 점에서 모이고 위로 갈수록 벌어진다
+        const x = sx * 0.011 * Math.sin((t * Math.PI) / 2);
+        group.add(
+          part(geo.link, mat.chain, {
+            pos: [x, THREE.MathUtils.lerp(baseY, topY, t), 0],
+            scale: s(0.0022),
+            rot: [0, i % 2 ? Math.PI / 2 : 0, Math.PI / 2],
+            shadow: false,
+          }),
+        );
+      }
+    }
+    group.add(part(geo.capsule, mat.chain, { pos: [0, topY + 0.003, 0], scale: [0.0032, 0.0055, 0.0032], rot: [0, 0, Math.PI / 2] }));
+
+    addScarf(group, mat, 0.02);
+
+    // 팔, 발, 꼬리 방울
+    for (const sx of [-1, 1]) {
+      group.add(
+        part(geo.sphere, fur, { pos: [sx * 0.046, 0.002, 0.026], scale: [0.016, 0.013, 0.016] }),
+        part(geo.sphere, fur, { pos: [sx * 0.022, -0.056, 0.012], scale: [0.018, 0.014, 0.02] }),
+      );
+    }
+    group.add(part(geo.sphere, mat.scarf, { pos: [0.012, -0.042, -0.048], scale: s(0.02) }));
+
+    // 마카롱: 노란 받침 위 크림색 마카롱, 오른손(보는 사람 기준 오른쪽)에 들고 있다
+    const macaron = new THREE.Group();
+    macaron.position.set(0.064, 0.004, 0.036);
+    macaron.scale.setScalar(1.2);
+    macaron.rotation.set(1.15, 0.35, -0.55);
+    macaron.add(
+      part(geo.disc, mat.plate, { pos: [0, -0.004, 0], scale: [0.025, 0.004, 0.023] }),
+      part(geo.disc, mat.cream, { pos: [0, 0.003, 0], scale: [0.023, 0.008, 0.021] }),
+      part(geo.sphere, mat.cream, { pos: [0, 0.007, 0], scale: [0.023, 0.011, 0.021] }),
+      part(geo.disc, mat.cream, { pos: [0.003, 0.019, 0.002], scale: [0.0025, 0.004, 0.0025], shadow: false }),
+    );
+    group.add(macaron);
+
+    // 얼굴: 테두리 눈, 짧은 눈썹, |||| 볼터치, 고양이 입
+    for (const sx of [-1, 1]) {
+      const ex = sx * 0.0195;
+      group.add(
+        surfaceDot(mat.ink, ex, KB_EYE_Y, [0.0092, 0.0094, 0.0022], 0.0006), // 검은 테두리
+        surfaceDot(mat.shine, ex, KB_EYE_Y + 0.0003, [0.0063, 0.0066, 0.0016], 0.0013), // 흰자
+        surfaceDot(mat.ink, ex, KB_EYE_Y - 0.0018, [0.0046, 0.0024, 0.0016], 0.0019), // 아래쪽 눈동자
+        surfaceDot(mat.blush, sx * 0.036, KB_EYE_Y - 0.01, [0.0105, 0.0075, 0.0016], 0.0004), // 볼
+      );
+    }
+    group.add(part(keychainCatFaceLines(), mat.ink, { shadow: false }));
   },
 };
 

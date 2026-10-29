@@ -15,10 +15,14 @@ const EXTRA_SHAPES = {
     { half: [0.033, 0.04, 0.016], y: 0.154 }, // 귀 0.114 ~ 0.194
     { half: [0.02, 0.028, 0.005], y: 0.222 }, // 볼체인 0.194 ~ 0.25
   ],
+  keychainCat: [
+    { half: [0.052, 0.014, 0.012], y: 0.122 }, // 귀 0.108 ~ 0.136
+    { half: [0.014, 0.04, 0.005], y: 0.178 }, // 볼체인 0.138 ~ 0.218
+  ],
 };
 
-// 집게가 붙잡는 높이: 기본은 머리, 목도리 토끼는 귀 (체인 쪽을 집게가 감싼다)
-const GRAB_Y = { keychainBunny: 0.17 };
+// 집게가 붙잡는 높이: 기본은 머리, 목도리 토끼는 귀, 목도리 고양이는 정수리 (체인 쪽을 집게가 감싼다)
+const GRAB_Y = { keychainBunny: 0.17, keychainCat: 0.125 };
 
 const BASE_TOP = DOLL_SHAPE.headOffsetY + DOLL_SHAPE.headRadius;
 
