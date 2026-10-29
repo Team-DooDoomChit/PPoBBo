@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createDollMesh, disposeDollMesh } from './DollFactory.js';
+import { loadModel, peekModel } from './ModelLoader.js';
 
 const FRAME_PADDING = 1.2;
 
@@ -41,8 +42,16 @@ const thumbCache = new Map();
 let thumbRenderer = null;
 let thumbStage = null;
 
+/** .glb 인형 모델을 미리 받아 둔다 (썸네일·기계 안 인형이 처음부터 .glb로 보이도록) */
+export function preloadDollModels(dolls) {
+  return Promise.all(dolls.filter((d) => d.modelUrl).map((d) => loadModel(d.modelUrl)));
+}
+
 export function getDollThumbnail(doll, size = 256) {
   if (thumbCache.has(doll.id)) return thumbCache.get(doll.id);
+  // .glb가 아직 로드 전이면 절차적 모델로 임시 썸네일을 그리되 캐시하지 않는다 (다음에 다시 그림)
+  const pending = Boolean(doll.modelUrl) && !peekModel(doll.modelUrl);
+  if (pending) loadModel(doll.modelUrl);
 
   if (!thumbRenderer) {
     thumbRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
@@ -61,7 +70,7 @@ export function getDollThumbnail(doll, size = 256) {
   thumbStage.scene.remove(mesh);
   disposeDollMesh(mesh); // 이미지로 남겼으니 GPU 리소스는 바로 해제
 
-  thumbCache.set(doll.id, url);
+  if (!pending) thumbCache.set(doll.id, url);
   return url;
 }
 
@@ -81,24 +90,32 @@ export function createDollViewer(canvas, doll) {
   const mesh = createDollMesh(doll);
   scene.add(mesh);
 
-  const { center, distance } = frameObject(camera, mesh);
   const controls = new OrbitControls(camera, canvas);
-  controls.target.copy(center);
   controls.enablePan = false;
   controls.enableDamping = true;
-  controls.minDistance = distance * 0.55;
-  controls.maxDistance = distance * 1.6;
   controls.autoRotate = true;
   controls.autoRotateSpeed = 3;
 
+  // 화면 비율이 정해진 뒤 구도를 잡고, 크기가 바뀌거나 .glb로 교체되면 다시 잡는다
+  const fit = () => {
+    const { center, distance } = frameObject(camera, mesh);
+    controls.target.copy(center);
+    controls.minDistance = distance * 0.55;
+    controls.maxDistance = distance * 1.6;
+    controls.update();
+  };
   const resize = () => {
     const { clientWidth: w, clientHeight: h } = canvas;
+    if (!w || !h) return;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    fit();
   };
   const observer = new ResizeObserver(resize);
   observer.observe(canvas);
+  mesh.addEventListener('modelloaded', fit);
+  fit(); // 캔버스 크기가 아직 0이어도 일단 구도를 잡아 둔다
   resize();
 
   renderer.setAnimationLoop(() => {

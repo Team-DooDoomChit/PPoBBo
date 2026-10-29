@@ -17,6 +17,11 @@ import { inputState } from './core/InputState.js';
 import { setupKeyboardInput } from './integration/KeyboardInput.js';
 import { setupMotionBinding } from './integration/MotionBinding.js';
 import { setupMotion } from './motion/setupMotion.js';
+import { preloadDollModels } from './three/DollPreview.js';
+import { DOLLS } from './data/dolls.js';
+
+// .glb 인형 모델이 있으면 미리 받아 둔다 (기계 안 인형·썸네일이 처음부터 .glb로 보이도록)
+preloadDollModels(DOLLS);
 
 const sceneManager = new SceneManager(document.getElementById('scene'));
 const arcade = new Arcade(sceneManager);
