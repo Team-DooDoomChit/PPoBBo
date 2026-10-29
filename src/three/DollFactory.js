@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { loadModel, peekModel } from './ModelLoader.js';
 
 /**
@@ -19,7 +20,6 @@ const geo = {
   box: new THREE.BoxGeometry(1, 1, 1),
   link: new THREE.TorusGeometry(1, 0.32, 6, 12), // 체인 고리
   ring: new THREE.TorusGeometry(1, 0.3, 8, 24),
-  smile: new THREE.TorusGeometry(1, 0.22, 6, 16, Math.PI), // 반원 (입)
   strand: new THREE.CylinderGeometry(1, 1, 1, 6),
 };
 
@@ -53,6 +53,84 @@ function part(geometry, material, { pos = [0, 0, 0], scale = [1, 1, 1], rot = [0
 }
 
 const s = (r) => [r, r, r];
+
+// ---------- 목도리 토끼 얼굴: 머리(타원체) 표면에 붙여 그리는 선·점 ----------
+
+const KB_HEAD = { y: 0.07, rx: 0.062, ry: 0.058, rz: 0.056 };
+const KB_EYE_Y = 0.066;
+
+/** 머리 앞면의 (x, y) 지점 → 표면 위 점(lift만큼 띄움)과 바깥 법선 */
+function headSurface(x, y, lift = 0.0012) {
+  const nx = x / KB_HEAD.rx;
+  const ny = (y - KB_HEAD.y) / KB_HEAD.ry;
+  const z = KB_HEAD.rz * Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
+  const normal = new THREE.Vector3(x / KB_HEAD.rx ** 2, (y - KB_HEAD.y) / KB_HEAD.ry ** 2, z / KB_HEAD.rz ** 2).normalize();
+  return { point: new THREE.Vector3(x, y, z).addScaledVector(normal, lift), normal };
+}
+
+/** 표면을 따라가는 선 지오메트리 (양 끝은 작은 구로 둥글게) */
+function surfaceLine(points, radius, lift = 0.0012) {
+  const curve = new THREE.CatmullRomCurve3(points.map(([x, y]) => headSurface(x, y, lift).point));
+  const caps = [curve.getPoint(0), curve.getPoint(1)].map((p) =>
+    new THREE.SphereGeometry(radius, 8, 6).translate(p.x, p.y, p.z),
+  );
+  return [new THREE.TubeGeometry(curve, 32, radius, 6, false), ...caps];
+}
+
+const arc = (cx, cy, r, from, to, n = 12) =>
+  Array.from({ length: n + 1 }, (_, i) => {
+    const a = from + ((to - from) * i) / n;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  });
+
+let kbFaceLines = null;
+/** 눈썹·볼 빗금·입 선을 지오메트리 하나로 합친다. 모든 목도리 토끼가 같으므로 한 번만 만든다. */
+function keychainFaceLines() {
+  if (kbFaceLines) return kbFaceLines;
+  const lines = [];
+  for (const sx of [-1, 1]) {
+    // 눈썹: 눈 위로 높이, 안쪽 위에서 바깥 아래로 휘는 두꺼운 호
+    const brow = arc(-0.018, KB_EYE_Y + 0.008, 0.024, (80 * Math.PI) / 180, (172 * Math.PI) / 180);
+    lines.push(...surfaceLine(brow.map(([x, y]) => [x * -sx, y]), 0.0017));
+    // 볼 빗금 ////
+    for (const dx of [-0.0057, -0.0019, 0.0019, 0.0057]) {
+      const cx = sx * 0.037 + dx;
+      const cy = KB_EYE_Y - 0.012;
+      // 볼터치 위에 보이도록 더 띄운다
+      lines.push(...surfaceLine([[cx - 0.0016, cy - 0.0036], [cx + 0.0016, cy + 0.0036]], 0.0008, 0.0026));
+    }
+  }
+  // 입: 작은 ω, 오른쪽 끝이 살짝 올라감
+  const my = KB_EYE_Y - 0.011;
+  lines.push(
+    ...surfaceLine(
+      [
+        [-0.0085, my + 0.0022],
+        [-0.0068, my - 0.0012],
+        [-0.0042, my - 0.0024],
+        [-0.0018, my - 0.0008],
+        [-0.0004, my + 0.0012],
+        [0.0012, my - 0.0008],
+        [0.0038, my - 0.0024],
+        [0.0062, my - 0.0012],
+        [0.0074, my + 0.0012],
+        [0.0084, my + 0.0036],
+      ],
+      0.0011,
+    ),
+  );
+  kbFaceLines = mergeGeometries(lines.map((g) => g.toNonIndexed()));
+  lines.forEach((g) => g.dispose());
+  return kbFaceLines;
+}
+
+/** 표면에 납작하게 붙는 타원 (+Z를 법선 방향으로 돌린다) */
+function surfaceDot(material, x, y, scale, lift) {
+  const { point, normal } = headSurface(x, y, lift);
+  const mesh = part(geo.sphere, material, { pos: point.toArray(), scale, shadow: false });
+  mesh.lookAt(point.clone().add(normal));
+  return mesh;
+}
 
 function createMaterials(doll) {
   const fur = owned(new THREE.MeshStandardMaterial({
@@ -226,18 +304,22 @@ const builders = {
     rice.add(
       part(geo.sphere, mat.rice, { pos: [0, 0, 0], scale: [0.032, 0.026, 0.018] }),
       part(geo.sphere, mat.rice, { pos: [0, 0.017, -0.001], scale: [0.02, 0.02, 0.015] }),
+      // 앞면 가운데 작은 돌기
+      part(geo.sphere, mat.rice, { pos: [0, 0.006, 0.0172], scale: [0.0032, 0.0042, 0.0028], shadow: false }),
     );
     group.add(rice);
 
-    // 얼굴 (오리지널): 동그란 눈 + 하이라이트, 둥근 볼터치, 작은 미소
+    // 얼굴: 높이 올라간 눈썹, 아래쪽 흰 초승달이 있는 눈, 빗금 볼터치, ω 입
     for (const sx of [-1, 1]) {
+      const ex = sx * 0.0178;
       group.add(
-        part(geo.sphere, mat.ink, { pos: [sx * 0.021, headY + 0.008, 0.051], scale: [0.0085, 0.011, 0.004] }),
-        part(geo.sphere, mat.shine, { pos: [sx * 0.019 - 0.002, headY + 0.012, 0.0545], scale: s(0.0028) }),
-        part(geo.sphere, mat.blush, { pos: [sx * 0.037, headY - 0.006, 0.044], scale: [0.011, 0.007, 0.003], rot: [0, sx * 0.6, 0] }),
+        surfaceDot(mat.ink, ex, KB_EYE_Y, [0.0073, 0.0079, 0.0022], 0.0006), // 눈 (검은 테두리)
+        surfaceDot(mat.shine, ex, KB_EYE_Y - 0.0012, [0.0054, 0.0052, 0.0016], 0.0013), // 흰 초승달
+        surfaceDot(mat.ink, ex, KB_EYE_Y + 0.0014, [0.0041, 0.0037, 0.0016], 0.0019), // 눈동자
+        surfaceDot(mat.blush, sx * 0.037, KB_EYE_Y - 0.012, [0.0115, 0.0078, 0.0016], 0.0004), // 볼
       );
     }
-    group.add(part(geo.smile, mat.ink, { pos: [0, headY - 0.002, 0.055], scale: s(0.006), rot: [0, 0, Math.PI] }));
+    group.add(part(keychainFaceLines(), mat.ink, { shadow: false }));
   },
 };
 
