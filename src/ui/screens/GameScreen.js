@@ -118,7 +118,7 @@ export function GameScreen(ctx, { machineId }) {
       timerText,
       statusText,
       h('div', { class: 'game-buttons' }, coinBtn, dropBtn),
-      h('p', { class: 'hint controls-hint' }, '🕹 왼손: 이동 · ✊ 오른손 주먹/내려치기: 내리기 · 👌 OK: 코인 · 🖱 드래그: 시점 · ⌨️ 방향키 / Space / C'),
+      h('p', { class: 'hint controls-hint' }, '🕹 왼손 기울이기: 이동 · ✊ 오른손 주먹/내려치기: 내리기 · 👌 OK: 코인 · 🖱 드래그: 시점 · ⌨️ 방향키 / Space / C'),
     ),
   );
   render();
