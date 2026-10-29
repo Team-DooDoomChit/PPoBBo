@@ -47,7 +47,7 @@ inputState.reset(); // 손을 놓쳤을 때 등 모두 초기화
 
 ### 모션 입력 (`src/motion/`, B #8~#10)
 
-HUD의 **📷** 버튼으로 켜고 끕니다. 켜면 카메라 권한을 요청하고 MediaPipe 모델(손·얼굴)을 받은 뒤 인식을 시작합니다.
+기계를 골라 **게임 화면에 들어가면 카메라가 켜지고**, 게임 화면을 나가면 꺼집니다. 게임 중에는 왼쪽 아래(좁은 화면은 왼쪽 위)에 **내 모습** 카메라 창이 뜹니다. MediaPipe 모델(손·얼굴)은 기계 선택 화면에서 미리 받아 둡니다(카메라 권한은 묻지 않음).
 
 ```
 웹캠 → MotionTracker → HandTracker(#8) / HeadTracker(#9) → MotionBridge(#10) → inputState.update(..., 'motion')
@@ -62,8 +62,10 @@ HUD의 **📷** 버튼으로 켜고 끕니다. 켜면 카메라 권한을 요청
 | `gazeTarget` | yaw ±0.35rad 범위를 기계 수만큼 나눠 **1초 동안 응시**한 기계 |
 
 - 값이 **바뀐 필드만** 보냅니다. 손이 안 보일 때는 손 관련 필드를 한 번만 중립으로 되돌리고 그 뒤로는 보내지 않아서, 모션을 켠 채로 키보드를 써도 덮어쓰지 않습니다.
-- 모션이 켜져 있을 때 단축키: **V** 웹캠 미리보기 숨기기/보이기, **R** 정면과 손 가운데 위치 다시 맞추기
-- 다른 탭으로 가면 카메라를 자동으로 끕니다.
+- 게임 화면 단축키: **V** 카메라 창 숨기기/보이기, **R** 정면과 손 가운데 위치 다시 맞추기
+- 다른 탭으로 가면 카메라를 끄고, 게임 화면으로 돌아오면 다시 켭니다.
+- 카메라 권한이 거부되면 카메라 창에 안내가 뜨고, 버튼·키보드로 그대로 플레이할 수 있습니다.
+- 게임 화면에서만 카메라를 켜므로, 메인·선택 화면의 모션 입력(가리키기로 확인, `gazeTarget`)은 지금은 동작하지 않습니다.
 - 이벤트: `motion:started`, `motion:stopped`, `motion:error { reason }` (`permission-denied` / `no-camera` / `load-failed` / `unsupported`)
 
 ## 2. 이벤트 (`src/core/EventBus.js`)
@@ -128,5 +130,5 @@ const { inputState, router, games, motion } = window.__ppobbo;
 router.go('game', { machineId: 'bear' });
 inputState.update({ pointer: { x: 0.5, y: 0.8 }, isPinching: true }); // 손 커서/동전 표시 확인
 inputState.update({ headYaw: 0.3 });                                    // 시점 이동 확인
-await motion.start();                                                   // 📷 버튼과 같음 (motion.hand / motion.head 로 트래커 상태 확인)
+router.go('game', { machineId: 'bear' });                               // 카메라 켜짐 (motion.hand / motion.head 로 트래커 상태 확인)
 ```
