@@ -117,3 +117,22 @@ export function handTilt(world) {
   const dz = (m.z ?? 0) - (w.z ?? 0);
   return { x: Math.atan2(-dx, up), y: Math.atan2(-dz, up) };
 }
+
+/** 손이 수평으로 누워 있다고 볼 기준: 손목 → 중지 뿌리 방향의 위아래 성분이 이보다 작으면 수평 */
+export const FLAT_MAX_VERTICAL = 0.6; // 약 37도 (세로에서 53도 이상 눕힘)
+
+/**
+ * 손이 수평인지 (손바닥 누르기 판정용, #47).
+ * 손바닥을 아래로 향해 누를 때는 손끝이 앞이나 옆을 향해 손이 눕는다.
+ * 손을 세웠거나(손끝이 위) 그냥 내려놓아 손끝이 아래로 처진 자세는 수평이 아니다.
+ * @param {Array<{x,y,z}>} world worldLandmarks
+ */
+export function handIsFlat(world, maxVertical = FLAT_MAX_VERTICAL) {
+  const w = world[LM.WRIST];
+  const m = world[LM.MIDDLE_MCP];
+  const dx = m.x - w.x;
+  const dy = m.y - w.y;
+  const dz = (m.z ?? 0) - (w.z ?? 0);
+  const len = Math.hypot(dx, dy, dz) || 1;
+  return Math.abs(dy) / len < maxVertical;
+}

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { classifyHand, fingerState, handAnchors, handTilt } from '../../src/motion/handGestures.js';
+import { classifyHand, fingerState, handAnchors, handTilt, handIsFlat } from '../../src/motion/handGestures.js';
 import { OneEuroFilter, BoolDebouncer } from '../../src/motion/filters.js';
 import { HandTracker } from '../../src/motion/HandTracker.js';
 import { makeHand, POSES, NO_HAND } from './handFixtures.js';
@@ -208,4 +208,20 @@ test('트래커: 손 기울기를 떨림 보정해서 알려 준다', () => {
   assert.ok(Math.abs(s.tilt.y - 0.3) < 0.05, `y=${s.tilt.y}`);
   assert.ok(Math.abs(s.tilt.x + 0.2) < 0.05, `x=${s.tilt.x}`);
   assert.equal(new HandTracker().state.tilt, null, '손이 없으면 null');
+});
+
+// ---------------- 손 수평 (#47 손바닥 누르기) ----------------
+
+test('수평: 손끝을 앞이나 옆으로 눕힌 손은 수평', () => {
+  const w = (tilt) => makeHand(POSES.open, undefined, 2, tilt).worldLandmarks[0];
+  assert.equal(handIsFlat(w({ forward: Math.PI / 2 })), true, '손끝이 앞(화면 쪽)');
+  assert.equal(handIsFlat(w({ right: Math.PI / 2 })), true, '손끝이 옆');
+  assert.equal(handIsFlat(w({ forward: 1.1 })), true, '약 63도 눕힘');
+});
+
+test('수평 아님: 세운 손, 손끝이 아래로 처진 손', () => {
+  const w = (tilt) => makeHand(POSES.open, undefined, 2, tilt).worldLandmarks[0];
+  assert.equal(handIsFlat(w({})), false, '세운 손');
+  assert.equal(handIsFlat(w({ forward: 0.5 })), false, '조금만 숙임');
+  assert.equal(handIsFlat(w({ forward: Math.PI })), false, '손끝이 아래 (내려놓은 손)');
 });
