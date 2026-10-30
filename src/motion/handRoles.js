@@ -87,3 +87,27 @@ export class HandRoleAssigner {
     return roleFromLabel(handedness) ?? (p.x < 0.5 ? 'left' : 'right');
   }
 }
+
+/**
+ * 조작하는 손 하나 고르기 (#47 한 손 조작).
+ * - 한 손만 보이면 그 손
+ * - 두 손이 보이면 직전에 조작하던 손을 유지한다 (조작 중에 다른 손이 화면에 들어와도 바뀌지 않게).
+ *   단, 조작 손이 쉬고 있고(쥐지도 OK도 아님) 다른 손이 쥐거나 OK를 하면 그 손으로 넘긴다.
+ *   (예: 왼손으로 조작하는데 마우스를 쥔 오른손이 먼저 화면에 들어와 조작 손이 된 경우)
+ * - 처음이면, 한쪽만 쥐거나 OK를 하고 있으면 그 손, 아니면 오른손
+ * @param {{ left: number, right: number }} index 손별 순서 (-1 = 없음)
+ * @param {'left' | 'right' | null} prev 직전 조작 손
+ * @param {{ left?: boolean, right?: boolean }} [active] 손별로 쥐거나 OK를 하고 있는지
+ * @returns {'left' | 'right' | null}
+ */
+export function chooseControlRole(index, prev = null, active = {}) {
+  const has = (role) => index[role] >= 0;
+  if (has('left') && has('right')) {
+    if (!prev) return active.left && !active.right ? 'left' : 'right';
+    const other = prev === 'left' ? 'right' : 'left';
+    return active[other] && !active[prev] ? other : prev;
+  }
+  if (has('right')) return 'right';
+  if (has('left')) return 'left';
+  return null;
+}
