@@ -6,6 +6,21 @@ export const DOLL_MASK = GROUP.STATIC | GROUP.DOLL | GROUP.CLAW;
 export const HELD_DOLL_MASK = GROUP.STATIC | GROUP.DOLL;
 
 /**
+ * 몸통·머리 구 { r: 반지름, y: 중심 높이 }. 기본은 DOLL_SHAPE.
+ * 훌라 햄스터(#49)는 머리가 낮고 넓어서(위쪽 끝 0.103, 반폭 0.079) 따로 둔다.
+ */
+const DEFAULT_SPHERES = [
+  { r: DOLL_SHAPE.bodyRadius, y: 0 },
+  { r: DOLL_SHAPE.headRadius, y: DOLL_SHAPE.headOffsetY },
+];
+const BASE_SPHERES = {
+  hulaHamster: [
+    { r: DOLL_SHAPE.bodyRadius, y: 0 }, // 몸통 + 치마
+    { r: 0.058, y: 0.05 }, // 머리 (위쪽 끝 0.108, 귀 0.11)
+  ],
+};
+
+/**
  * 몸통·머리 구 위로 크게 튀어나오는 부분(귀, 키링 체인)에 붙이는 상자 충돌체.
  * half: 상자 반크기 [x, y, z], y: 중심 높이 (인형 원점 기준). 모델(DollFactory)의 치수와 맞춘다.
  */
@@ -15,21 +30,21 @@ const EXTRA_SHAPES = {
     { half: [0.033, 0.04, 0.016], y: 0.154 }, // 귀 0.114 ~ 0.194
     { half: [0.02, 0.028, 0.005], y: 0.222 }, // 볼체인 0.194 ~ 0.25
   ],
+  hulaHamster: [{ half: [0.076, 0.022, 0.05], y: 0.055 }], // 머리 구보다 넓은 볼 쪽 (반폭 0.079)
 };
 
 // 집게가 붙잡는 높이: 기본은 머리, 목도리 토끼는 귀 (체인 쪽을 집게가 감싼다)
-const GRAB_Y = { keychainBunny: 0.17 };
-
-const BASE_TOP = DOLL_SHAPE.headOffsetY + DOLL_SHAPE.headRadius;
+const GRAB_Y = { keychainBunny: 0.17, hulaHamster: 0.075 };
 
 /**
  * 인형 종류별 물리 치수.
  * @returns {{ top: number, grabY: number }} top: 충돌체 맨 위 높이, grabY: 집게가 붙잡는 높이
  */
 export function dollProfile(type) {
+  const spheres = BASE_SPHERES[type] ?? DEFAULT_SPHERES;
   const extras = EXTRA_SHAPES[type] ?? [];
   return {
-    top: Math.max(BASE_TOP, ...extras.map((e) => e.y + e.half[1])),
+    top: Math.max(...spheres.map((s) => s.y + s.r), ...extras.map((e) => e.y + e.half[1])),
     grabY: GRAB_Y[type] ?? DOLL_SHAPE.headOffsetY,
   };
 }
@@ -45,8 +60,9 @@ export function createDollBody(material, position, type) {
     collisionFilterGroup: GROUP.DOLL,
     collisionFilterMask: DOLL_MASK,
   });
-  body.addShape(new CANNON.Sphere(DOLL_SHAPE.bodyRadius));
-  body.addShape(new CANNON.Sphere(DOLL_SHAPE.headRadius), new CANNON.Vec3(0, DOLL_SHAPE.headOffsetY, 0));
+  for (const { r, y } of BASE_SPHERES[type] ?? DEFAULT_SPHERES) {
+    body.addShape(new CANNON.Sphere(r), new CANNON.Vec3(0, y, 0));
+  }
   for (const { half, y } of EXTRA_SHAPES[type] ?? []) {
     body.addShape(new CANNON.Box(new CANNON.Vec3(...half)), new CANNON.Vec3(0, y, 0));
   }
