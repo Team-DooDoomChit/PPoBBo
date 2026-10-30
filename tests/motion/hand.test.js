@@ -164,19 +164,30 @@ test('트래커: OK 사인은 0.25초 이상 유지해야 켜진다 (코인 잘�
   assert.equal(run(t, repeat(makeHand(POSES.ok), 4), 6 / 30).isOk, true, '0.3초');
 });
 
-test('트래커: slam 옵션을 켜면 아래로 내려치는 동작을 인식', () => {
-  const t = new HandTracker({ slam: true });
-  const frames = [0.3, 0.3, 0.38, 0.47, 0.56].map((y) => makeHand(POSES.open, { x: 0.3, y }));
-  const seen = frames.map((f, i) => t.update(f, i / 30).isSlam);
-  assert.ok(seen.includes(true));
-  assert.equal(new HandTracker().update(frames[0], 0).isSlam, false, '옵션이 꺼져 있으면 항상 false');
+const FLAT = { forward: Math.PI / 2 }; // 손바닥을 아래로 향해 수평으로 편 손
+const pushFrames = (pose, tilt, ys = [0.3, 0.3, 0.38, 0.47, 0.56]) => ys.map((y) => makeHand(pose, { x: 0.3, y }, 2, tilt));
+const pushed = (t, frames) => frames.map((f, i) => t.update(f, i / 30).isPush);
+
+test('트래커: 손바닥을 수평으로 펴고 빠르게 누르면 isPush', () => {
+  assert.ok(pushed(new HandTracker(), pushFrames(POSES.open, FLAT)).includes(true));
 });
 
-test('트래커: 내려친 직후 손이 화면 밖으로 나가도 isSlam이 잠깐 유지된다', () => {
-  const t = new HandTracker({ slam: true });
-  [0.3, 0.4, 0.5].forEach((y, i) => t.update(makeHand(POSES.open, { x: 0.3, y }), i / 30));
-  assert.equal(t.update(NO_HAND, 0.1).isSlam, true);
-  assert.equal(t.update(NO_HAND, 0.3).isSlam, false);
+test('트래커: 세운 손·처진 손·주먹으로 내리면 isPush 아님 (그냥 손을 내려놓기)', () => {
+  assert.ok(!pushed(new HandTracker(), pushFrames(POSES.open, {})).includes(true), '세운 손');
+  assert.ok(!pushed(new HandTracker(), pushFrames(POSES.open, { forward: Math.PI })).includes(true), '손끝이 아래로 처진 손');
+  assert.ok(!pushed(new HandTracker(), pushFrames(POSES.fist, FLAT)).includes(true), '주먹 (조이스틱 잡기)');
+});
+
+test('트래커: 천천히 내리면 isPush 아님', () => {
+  const ys = Array.from({ length: 30 }, (_, i) => 0.3 + i * 0.01);
+  assert.ok(!pushed(new HandTracker(), pushFrames(POSES.open, FLAT, ys)).includes(true));
+});
+
+test('트래커: 누른 직후 손이 화면 밖으로 나가도 isPush가 잠깐 유지된다', () => {
+  const t = new HandTracker();
+  pushFrames(POSES.open, FLAT, [0.3, 0.4, 0.5]).forEach((f, i) => t.update(f, i / 30));
+  assert.equal(t.update(NO_HAND, 0.1).isPush, true);
+  assert.equal(t.update(NO_HAND, 0.3).isPush, false);
 });
 
 // ---------------- 손 기울기 (#34) ----------------
