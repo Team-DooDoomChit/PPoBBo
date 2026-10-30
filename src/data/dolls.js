@@ -14,12 +14,11 @@ export const DOLLS = [
   { id: 'bear-pink', name: '핑크 곰', machineId: 'bear', type: 'bear', rarity: 'rare', color: 0xff8fc4, sub: 0xffffff },
   { id: 'bear-gold', name: '황금 곰', machineId: 'bear', type: 'bear', rarity: 'epic', color: 0xffc928, sub: 0xfff3b0, glow: true },
 
-  { id: 'bunny-white', name: '흰 토끼', machineId: 'bunny', type: 'bunny', rarity: 'common', color: 0xfafafa, sub: 0xffb3c8 },
+  // modelUrl에 public/models 의 .glb 경로를 넣으면 그 모델로 교체된다 (예: '/models/keychain-bunny.glb')
+  { id: 'bunny-scarf', name: '목도리 토끼', machineId: 'bunny', type: 'keychainBunny', rarity: 'common', color: 0xf7e4d8, sub: 0xf3a9b8, modelUrl: null },
   { id: 'bunny-gray', name: '회색 토끼', machineId: 'bunny', type: 'bunny', rarity: 'common', color: 0xa8a8b8, sub: 0xf0f0f0 },
   { id: 'bunny-mint', name: '민트 토끼', machineId: 'bunny', type: 'bunny', rarity: 'rare', color: 0x8ff0d0, sub: 0xffffff },
   { id: 'bunny-galaxy', name: '우주 토끼', machineId: 'bunny', type: 'bunny', rarity: 'epic', color: 0x6c4dff, sub: 0x3de0ff, glow: true },
-  // modelUrl에 public/models 의 .glb 경로를 넣으면 그 모델로 교체된다 (예: '/models/keychain-bunny.glb')
-  { id: 'bunny-scarf', name: '목도리 토끼', machineId: 'bunny', type: 'keychainBunny', rarity: 'epic', color: 0xf7e4d8, sub: 0xf3a9b8, modelUrl: null },
 
   { id: 'chick-yellow', name: '노랑 병아리', machineId: 'chick', type: 'chick', rarity: 'common', color: 0xffe14d, sub: 0xff9a2e },
   { id: 'chick-cotton', name: '솜 병아리', machineId: 'chick', type: 'chick', rarity: 'common', color: 0xfff8e8, sub: 0xffb02e },

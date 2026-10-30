@@ -16,7 +16,7 @@ export const MACHINES = [
   {
     id: 'bunny',
     name: '토끼 정원',
-    price: 200,
+    price: 100,
     color: 0x3de0ff,
     accent: 0xff4fa3,
     position: [0, 0, -1.4],
@@ -25,7 +25,7 @@ export const MACHINES = [
   {
     id: 'chick',
     name: '병아리 농장',
-    price: 300,
+    price: 100,
     color: 0xffd23f,
     accent: 0x6c4dff,
     position: [1.8, 0, -1.2],
