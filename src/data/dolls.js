@@ -16,6 +16,7 @@ export const DOLLS = [
 
   // modelUrl에 public/models 의 .glb 경로를 넣으면 그 모델로 교체된다 (예: '/models/keychain-bunny.glb')
   { id: 'bunny-scarf', name: '목도리 토끼', machineId: 'bunny', type: 'keychainBunny', rarity: 'common', color: 0xf7e4d8, sub: 0xf3a9b8, modelUrl: null },
+  { id: 'cat-scarf', name: '목도리 고양이', machineId: 'bunny', type: 'keychainCat', rarity: 'common', color: 0xf7f8fc, sub: 0x8badea, modelUrl: null },
   { id: 'bunny-gray', name: '회색 토끼', machineId: 'bunny', type: 'bunny', rarity: 'common', color: 0xa8a8b8, sub: 0xf0f0f0 },
   { id: 'bunny-mint', name: '민트 토끼', machineId: 'bunny', type: 'bunny', rarity: 'rare', color: 0x8ff0d0, sub: 0xffffff },
   { id: 'bunny-galaxy', name: '우주 토끼', machineId: 'bunny', type: 'bunny', rarity: 'epic', color: 0x6c4dff, sub: 0x3de0ff, glow: true },
