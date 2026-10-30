@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { HandRoleAssigner, roleFromLabel, handScreenPos } from '../../src/motion/handRoles.js';
+import { HandRoleAssigner, roleFromLabel, handScreenPos, chooseControlRole } from '../../src/motion/handRoles.js';
 import { makeHand, POSES, NO_HAND } from './handFixtures.js';
 
 /** 손 여러 개를 한 결과로 합친다. at은 카메라 원본 좌표 (화면에서는 좌우 반전) */
@@ -78,4 +78,18 @@ test('손이 없으면 둘 다 빈 결과', () => {
   assert.deepEqual(r.index, { left: -1, right: -1 });
   assert.equal(r.left.landmarks.length, 0);
   assert.equal(r.right.landmarks.length, 0);
+});
+
+// ---------------- 조작 손 고르기 (#47) ----------------
+
+test('조작 손: 한 손만 보이면 그 손, 없으면 null', () => {
+  assert.equal(chooseControlRole({ left: 0, right: -1 }), 'left');
+  assert.equal(chooseControlRole({ left: -1, right: 0 }, 'left'), 'right');
+  assert.equal(chooseControlRole({ left: -1, right: -1 }, 'right'), null);
+});
+
+test('조작 손: 두 손이 보이면 직전 손 유지, 처음이면 오른손', () => {
+  assert.equal(chooseControlRole({ left: 0, right: 1 }, 'left'), 'left');
+  assert.equal(chooseControlRole({ left: 0, right: 1 }, 'right'), 'right');
+  assert.equal(chooseControlRole({ left: 0, right: 1 }, null), 'right');
 });
