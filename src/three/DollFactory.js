@@ -640,6 +640,45 @@ const builders = {
   },
 };
 
+// 인형 종류별로 합쳐 둔 부품 지오메트리 (같은 종류 인형끼리 공유, 해제하지 않음)
+const mergedParts = new Map();
+
+/**
+ * 같은 머티리얼·그림자 설정의 부품을 메시 하나로 합친다 (그리기 호출 수 = 머티리얼 수 정도).
+ * 빌더는 종류마다 부품 구성이 같고 머티리얼만 다르므로, 지오메트리는 종류별로 한 번만 합친다.
+ */
+function mergeParts(group, type) {
+  group.updateMatrixWorld(true); // 그룹은 아직 원점이라 matrixWorld = 그룹 기준 변환
+  const buckets = [];
+  group.traverse((obj) => {
+    if (!obj.isMesh) return;
+    let bucket = buckets.find((b) => b.material === obj.material && b.castShadow === obj.castShadow);
+    if (!bucket) buckets.push((bucket = { material: obj.material, castShadow: obj.castShadow, parts: [] }));
+    bucket.parts.push(obj);
+  });
+
+  let geometries = mergedParts.get(type);
+  if (!geometries) {
+    geometries = buckets.map(({ parts }) => {
+      const indexed = parts.every((mesh) => mesh.geometry.index);
+      return mergeGeometries(parts.map((mesh) => {
+        const g = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
+        g.deleteAttribute('uv'); // 텍스처를 쓰지 않는다. 직접 만든 지오메트리에는 uv가 없어 맞춘다
+        return indexed || !g.index ? g : g.toNonIndexed();
+      }));
+    });
+    mergedParts.set(type, geometries);
+  }
+
+  group.clear();
+  buckets.forEach(({ material, castShadow }, i) => {
+    const mesh = new THREE.Mesh(geometries[i], material);
+    mesh.castShadow = castShadow;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+  });
+}
+
 const MODEL_HEIGHT = 0.21; // .glb 인형을 맞출 높이 (절차적 인형과 비슷하게)
 
 /**
@@ -681,6 +720,7 @@ export function createDollMesh(doll) {
   }
 
   builders[doll.type](group, doll, createMaterials(doll));
+  mergeParts(group, doll.type);
   if (doll.modelUrl) {
     loadModel(doll.modelUrl).then((model) => {
       // 로드 전에 제거된 인형(획득, 썸네일용 등)에는 붙이지 않는다
