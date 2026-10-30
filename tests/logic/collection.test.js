@@ -40,8 +40,8 @@ test('카탈로그에 없는 인형은 저장하지 않는다', () => {
 });
 
 test('doll:won 이벤트로 자동 저장', () => {
-  eventBus.emit('doll:won', { machineId: 'bunny', dollId: 'bunny-mint' });
-  assert.equal(collection.getCollection()['bunny-mint'].count, 1);
+  eventBus.emit('doll:won', { machineId: 'bunny', dollId: 'cat-scarf' });
+  assert.equal(collection.getCollection()['cat-scarf'].count, 1);
 });
 
 test('저장되면 collection:changed 발생', () => {
@@ -69,12 +69,12 @@ test('수집률: 전체 / 기계별', () => {
 });
 
 test('도감 목록: 카탈로그 순서 + 보유 여부', () => {
-  collection.addDoll('bunny-gray');
+  collection.addDoll('hamster-scarf');
   const entries = collection.getEntries('bunny');
   assert.deepEqual(entries.map((e) => e.doll.id), getDollsByMachine('bunny').map((d) => d.id));
-  const gray = entries.find((e) => e.doll.id === 'bunny-gray');
-  assert.equal(gray.owned, true);
-  assert.equal(gray.count, 1);
+  const hamster = entries.find((e) => e.doll.id === 'hamster-scarf');
+  assert.equal(hamster.owned, true);
+  assert.equal(hamster.count, 1);
   assert.equal(entries.find((e) => e.doll.id === 'bunny-scarf').owned, false);
 });
 

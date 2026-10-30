@@ -15,7 +15,7 @@ export const MACHINES = [
   },
   {
     id: 'bunny',
-    name: '토끼 정원',
+    name: '치이카와 겨울 시리즈',
     price: 100,
     color: 0x3de0ff,
     accent: 0xff4fa3,

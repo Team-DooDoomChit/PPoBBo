@@ -274,7 +274,8 @@
   position: absolute;
   left: 50%;
   bottom: 24px;
-  transform: translateX(-50%);
+  /* 가운데 정렬은 translate로: .btn:hover의 transform이 덮어써도 버튼이 옆으로 튀지 않는다 */
+  translate: -50% 0;
 }
 
 /* ---------- 게임 ---------- */
