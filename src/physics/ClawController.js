@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { MACHINE_SPEC } from '../three/machineSpec.js';
 import { RARITY } from '../data/dolls.js';
 import { GROUP } from './PhysicsWorld.js';
-import { DOLL_MASK, HELD_DOLL_MASK } from './DollBody.js';
+import { DOLL_MASK, HELD_DOLL_MASK, dollProfile } from './DollBody.js';
 
 const { claw: CLAW, innerHalf: INNER_HALF } = MACHINE_SPEC;
 // 집게발이 다 벌어졌을 때 머리 중심에서 발끝까지 거리 (ClawMachine 모양 기준)
@@ -30,6 +30,7 @@ const HEAD_BOTTOM = 0.06; // 집게 머리 원점 → 머리 아래면
 const PRONG_REACH = 0.1; // 머리 아래면에서 이 거리 안에 물체가 닿으면 하강을 멈춘다
 const GRAB_RADIUS = 0.1; // 수평으로 이 거리 안의 인형만 집을 수 있다 (집게발을 다 벌렸을 때)
 const MIN_GRAB_SCALE = 0.6; // 벽에 붙어 집게발이 덜 벌어지면 집는 거리도 이 비율까지 줄어든다
+const GRAB_REACH = 0.2; // 집게 머리 아래면이 인형 맨 위에서 이 거리 안이어야 집을 수 있다
 export const PLAY_TIME = 20;
 
 /**
@@ -204,7 +205,9 @@ export class ClawController {
       const p = doll.body.position;
       const offset = Math.hypot(p.x - head.x, p.z - head.z);
       const below = head.y - p.y;
-      if (offset < radius && below > 0 && below < 0.35 && (!best || offset < best.offset)) {
+      // 키가 큰 인형(귀·체인)은 그만큼 위에서 멈추므로, 인형 맨 위 기준으로 닿는 거리를 본다
+      const { top } = dollProfile(doll.data.type);
+      if (offset < radius && below > 0 && below < top + GRAB_REACH && (!best || offset < best.offset)) {
         best = { doll, offset };
       }
     }
@@ -221,8 +224,8 @@ export class ClawController {
     if (!success) return;
 
     const { body } = best.doll;
-    // 인형 머리 근처를 잡는다. 집게 기준 피벗은 현재 위치 그대로 → 처음엔 튀지 않고, 들어 올리면 매달려 흔들린다.
-    const grabPoint = body.pointToWorldFrame(new CANNON.Vec3(0, 0.09, 0));
+    // 인형 머리(목도리 토끼는 귀) 근처를 잡는다. 집게 기준 피벗은 현재 위치 그대로 → 처음엔 튀지 않고, 들어 올리면 매달려 흔들린다.
+    const grabPoint = body.pointToWorldFrame(new CANNON.Vec3(0, dollProfile(best.doll.data.type).grabY, 0));
     const pivotA = this.body.pointToLocalFrame(grabPoint);
     const pivotB = body.pointToLocalFrame(grabPoint);
     const constraint = new CANNON.PointToPointConstraint(this.body, pivotA, body, pivotB, 5);
