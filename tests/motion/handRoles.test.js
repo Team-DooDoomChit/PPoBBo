@@ -93,3 +93,18 @@ test('조작 손: 두 손이 보이면 직전 손 유지, 처음이면 오른손
   assert.equal(chooseControlRole({ left: 0, right: 1 }, 'right'), 'right');
   assert.equal(chooseControlRole({ left: 0, right: 1 }, null), 'right');
 });
+
+test('조작 손: 두 손일 때 조작 손이 쉬고 다른 손이 쥐거나 OK를 하면 넘긴다', () => {
+  const both = { left: 0, right: 1 };
+  assert.equal(chooseControlRole(both, 'right', { left: true }), 'left', '오른손(마우스) 쉼, 왼손 쥠 → 왼손');
+  assert.equal(chooseControlRole(both, 'left', { right: true }), 'right', '왼손 쉼, 오른손 OK → 오른손');
+});
+
+test('조작 손: 조작 중(쥐는 중)에는 다른 손이 쥐어도 넘기지 않는다', () => {
+  assert.equal(chooseControlRole({ left: 0, right: 1 }, 'right', { left: true, right: true }), 'right');
+});
+
+test('조작 손: 처음 두 손이 보일 때 한쪽만 쥐고 있으면 그 손', () => {
+  assert.equal(chooseControlRole({ left: 0, right: 1 }, null, { left: true }), 'left');
+  assert.equal(chooseControlRole({ left: 0, right: 1 }, null, { left: true, right: true }), 'right');
+});

@@ -18,7 +18,7 @@ import { MotionDebugView } from './MotionDebugView.js';
  *                       └→ HeadTracker(#9) ──────────────────────────────────────┴→ MotionBridge → inputState → MotionBinding(#6)
  *
  * - 한 손으로 조작한다 (#47): 주먹 쥐고 기울이기 = 이동, 펴면 멈춤, 손바닥 누르기 = 집게 내리기, OK 사인 = 코인.
- *   한 손만 보이면 그 손, 두 손이면 조작하던 손을 유지한다 (chooseControlRole).
+ *   한 손만 보이면 그 손, 두 손이면 조작하던 손을 유지한다. 조작 손이 쉴 때 다른 손이 쥐거나 OK를 하면 넘긴다 (chooseControlRole).
  * - 기계를 골라 게임 화면에 들어가면 카메라가 켜지고, 게임 화면을 나가면 꺼진다.
  * - 게임 중에는 "내 모습" 카메라 창을 보여준다. (V 키로 숨기기/보이기)
  * - 기계 선택 화면에서 모델을 미리 받아 두어 게임 시작 때 기다리는 시간을 줄인다.
@@ -55,7 +55,9 @@ export function setupMotion() {
       const right = hand.right.update(split.right, frame.t);
       // 트래커의 detected로 고른다: 손을 한두 프레임 놓쳐도 트래커가 잠깐 유지하므로 조작 손이 흔들리지 않는다
       const seen = { left: left.detected ? 0 : -1, right: right.detected ? 0 : -1 };
-      const control = chooseControlRole(seen, handState.control);
+      // 조작 손이 쉬고 있을 때 다른 손이 쥐거나 OK를 하면 그 손으로 넘긴다
+      const active = { left: left.isFist || left.isOk, right: right.isFist || right.isOk };
+      const control = chooseControlRole(seen, handState.control, active);
       handState = { left, right, index: split.index, control };
       const headState = head.update(frame.face, frame.t);
       bridge.push({ hand: control ? handState[control] : null, role: control }, headState);
