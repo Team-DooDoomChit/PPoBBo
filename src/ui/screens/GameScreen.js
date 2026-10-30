@@ -33,7 +33,7 @@ export function GameScreen(ctx, { machineId }) {
   const motionHint = h(
     'p',
     { class: 'hint controls-hint', hidden: true },
-    '✊ 왼손 쥐고 기울이기: 이동 (펴면 멈춤) · ✊ 오른손 주먹·내려치기: 내리기 · 👌 OK: 코인 · 고개 돌리기: 시점',
+    '✊ 쥐고 기울이기: 이동 (펴면 멈춤) · 🖐 손바닥 누르기: 내리기 · 👌 OK: 코인 · 고개 돌리기: 시점',
   );
   const coinBtn = h('button', { class: 'btn btn-primary btn-lg', onClick: insertCoin }, `🪙 코인 넣기 (${formatGold(machine.price)})`);
   const dropBtn = h('button', { class: 'btn btn-drop btn-lg', onClick: () => game.claw.drop() }, '▼ 내리기');

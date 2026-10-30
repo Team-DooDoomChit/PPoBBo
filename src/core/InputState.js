@@ -11,7 +11,7 @@
 const DEFAULT_STATE = Object.freeze({
   joystickX: 0, // -1(왼쪽) ~ 1(오른쪽)
   joystickY: 0, // -1(앞쪽/플레이어 방향) ~ 1(안쪽)
-  isFist: false, // 집게 내리기 (모션: 오른손 주먹 쥐기 또는 내려치기)
+  isFist: false, // 집게 내리기 (모션: 손바닥 아래로 누르기 #47, 키보드: Space)
   isPointing: false, // 검지 가리키기 → 선택/확인
   isPinching: false, // 엄지·검지 집기 (현재 게임 동작에는 쓰지 않음)
   isOk: false, // OK 사인 👌 → 코인 투입
