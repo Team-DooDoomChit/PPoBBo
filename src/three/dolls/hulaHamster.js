@@ -12,12 +12,12 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
  * 그래서 인형 하나는 재질 수만큼(9개)의 메시만 만든다. 몸 색(fur)만 인형마다 다르다.
  */
 
-// 머리 치수: 참고 이미지 앞모습(머리 폭 504px, 높이 340px)에서 잰 비율. 단위 m.
-const HEAD = { bottom: 0.0037, height: 0.1066, halfWidth: 0.079 };
+// 머리 치수: 참고 이미지 앞모습에서 잰 비율 (폭 대비 키 0.74). 단위 m.
+const HEAD = { bottom: 0.0037, height: 0.117, halfWidth: 0.079 }; // 폭 대비 키 1 : 0.74
 // 머리 앞모습 실루엣 [t: 머리 아래(목)에서 위로 0~1, w: 최대 반폭 대비]. 위는 둥근 돔, 아래쪽 1/3 높이에서 가장 넓다.
 const SILHOUETTE = [
-  [0, 0.7], [0.03, 0.82], [0.09, 0.92], [0.2, 0.975], [0.32, 1], [0.45, 0.985], [0.6, 0.945], [0.74, 0.875],
-  [0.82, 0.81], [0.91, 0.68], [0.96, 0.52], [0.99, 0.3], [1, 0],
+  [0, 0.7], [0.03, 0.82], [0.09, 0.92], [0.2, 0.975], [0.32, 1], [0.45, 0.985], [0.6, 0.94], [0.72, 0.86],
+  [0.81, 0.76], [0.89, 0.62], [0.95, 0.44], [0.985, 0.22], [1, 0],
 ];
 const HEAD_PROFILE = [
   [0, HEAD.bottom - 0.003], // 아래 가운데를 닫는다 (몸통에 가려 보이지 않음)
@@ -76,7 +76,7 @@ function placed(geometry, { pos = [0, 0, 0], scale = [1, 1, 1], rot = [0, 0, 0],
 /** 머리 표면에 붙인 납작한 원판 (눈·볼) */
 function faceDisc(x, y, rx, ry, lift) {
   const { point, normal } = headPoint(x, y, lift);
-  return placed(BASE.small, { pos: point.toArray(), scale: [rx, ry, 0.0012], quat: new THREE.Quaternion().setFromUnitVectors(Z, normal) });
+  return placed(BASE.sphere, { pos: point.toArray(), scale: [rx, ry, 0.0012], quat: new THREE.Quaternion().setFromUnitVectors(Z, normal) });
 }
 
 /** 머리 표면을 따라가는 가는 선 (눈썹·입) */
@@ -94,8 +94,8 @@ const BASE = {
 const MAT = {
   ink: new THREE.MeshStandardMaterial({ color: 0x1a1414, roughness: 0.4 }),
   white: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 }),
-  blush: new THREE.MeshStandardMaterial({ color: 0xeeb0bb, roughness: 0.9 }),
-  hatch: new THREE.MeshStandardMaterial({ color: 0x7a5560, roughness: 0.6 }),
+  blush: new THREE.MeshStandardMaterial({ color: 0xe8adb6, roughness: 0.9 }),
+  hatch: new THREE.MeshStandardMaterial({ color: 0x5e4248, roughness: 0.6 }),
   skirt: new THREE.MeshStandardMaterial({ color: 0xc2dba9, roughness: 0.95 }),
   skirtDeep: new THREE.MeshStandardMaterial({ color: 0xa9c58f, roughness: 0.95 }),
   petal: new THREE.MeshStandardMaterial({ color: 0xf3e0ee, roughness: 0.6 }),
@@ -115,7 +115,7 @@ function buildBody() {
   for (const sx of [-1, 1]) {
     parts.push(
       // 귀: 머리 꼭대기 양쪽(반폭의 절반 위치)에서 반쯤 튀어나온 공
-      placed(BASE.sphere, { pos: [sx * wx(0.5), at(1.06), -0.004], scale: [0.0102, 0.0102, 0.0095] }),
+      placed(BASE.sphere, { pos: [sx * wx(0.52), at(1.015), -0.006], scale: [0.0104, 0.0104, 0.0097] }),
       // 팔: 몸통 위쪽에서 옆(살짝 뒤)으로 짧게 뻗은 둥근 팔
       placed(BASE.sphere, { pos: [sx * 0.068, -0.003, -0.004], scale: [0.017, 0.0115, 0.0125], rot: [0, sx * 0.35, sx * -0.2] }),
     );
@@ -151,59 +151,67 @@ function buildSkirt() {
 function buildCrown() {
   const petals = [];
   const pearls = [];
-  const FLOWERS = 14;
-  const ringY = at(0.9);
+  const FLOWERS = 11;
+  const ringY = at(0.92); // 화관 아래쪽이 눈썹 바로 위에 오도록
   for (let i = 0; i < FLOWERS; i++) {
     const a = (i / FLOWERS) * Math.PI * 2;
-    const { point, normal } = headRingPoint(ringY, a, 0.0035);
+    const { point, normal: surface } = headRingPoint(ringY, a, 0.0035);
+    // 머리 표면 법선은 거의 위를 향해 꽃이 누워 보이므로, 바깥쪽으로 기울여 앞에서 꽃 모양이 보이게 한다
+    const outward = new THREE.Vector3(Math.sin(a), 0, Math.cos(a));
+    const normal = surface.clone().add(outward.multiplyScalar(0.45)).normalize();
     const q = new THREE.Quaternion().setFromUnitVectors(Z, normal);
     const twist = new THREE.Quaternion().setFromAxisAngle(Z, i * 0.7); // 꽃마다 꽃잎 방향을 조금씩 다르게
     for (let k = 0; k < 5; k++) {
       const t = (k / 5) * Math.PI * 2;
-      const offset = new THREE.Vector3(Math.cos(t) * 0.0068, Math.sin(t) * 0.0068, 0).applyQuaternion(twist).applyQuaternion(q);
-      petals.push(placed(BASE.small, { pos: point.clone().add(offset).toArray(), quat: q, scale: [0.0072, 0.0072, 0.0028] }));
+      const offset = new THREE.Vector3(Math.cos(t) * 0.0074, Math.sin(t) * 0.0074, 0).applyQuaternion(twist).applyQuaternion(q);
+      petals.push(placed(BASE.small, { pos: point.clone().add(offset).toArray(), quat: q, scale: [0.008, 0.008, 0.003] }));
     }
     pearls.push(placed(BASE.small, { pos: point.clone().addScaledVector(normal, 0.0026).toArray(), scale: [0.0028, 0.0028, 0.0028] }));
   }
   return { petals: mergeAll(petals), pearls: mergeAll(pearls) };
 }
 
+// 얼굴 좌표: 참고 이미지 앞모습에서 픽셀로 잰 값을 그대로 옮긴다.
+// 기준: 얼굴 가운데 x = 356px, 머리 반폭 233px, 머리 아래(목) y = 712px. (y는 아래가 +)
+// 가로·세로 모두 같은 비율(머리 반폭 233px = HEAD.halfWidth)로 옮겨 얼굴 요소 사이 간격을 그대로 지킨다.
+const FACE_PX = { cx: 356, halfWidth: 233, bottom: 712 };
+const PX = HEAD.halfWidth / FACE_PX.halfWidth; // 1px → m
+const px = (dx) => dx * PX; // 가로 픽셀 → m
+const py = (y) => HEAD.bottom + (FACE_PX.bottom - y) * PX; // 세로 픽셀(이미지 y) → m
+const pt = (dx, y) => [px(dx), py(y)];
+
 function buildFace() {
   const ink = [];
   const white = [];
   const blush = [];
   const hatch = [];
-  const EYE_Y = at(0.485);
-  const EYE_R = wx(0.122); // 눈 지름 = 머리 폭의 약 12%
   for (const sx of [-1, 1]) {
-    const ex = sx * wx(0.3);
-    // 눈: 굵은 검은 테두리 → 흰자 → 위쪽으로 치우친 큰 눈동자 → 눈동자 아래쪽 흰 초승달
-    ink.push(faceDisc(ex, EYE_Y, EYE_R, EYE_R, 0.0004));
-    white.push(faceDisc(ex, EYE_Y, EYE_R * 0.78, EYE_R * 0.78, 0.001));
-    ink.push(faceDisc(ex, EYE_Y + EYE_R * 0.12, EYE_R * 0.56, EYE_R * 0.56, 0.0016));
-    const arc = [];
-    for (let k = 0; k <= 6; k++) {
-      const t = THREE.MathUtils.lerp(Math.PI * 1.15, Math.PI * 1.85, k / 6);
-      arc.push([ex + Math.cos(t) * EYE_R * 0.36, EYE_Y + EYE_R * 0.12 + Math.sin(t) * EYE_R * 0.36]);
-    }
-    white.push(faceLine(arc, 0.0006, 0.0022));
-    // 눈썹: 눈 위 멀찍이 떨어진 완만한 호
-    const by = at(0.7);
-    ink.push(faceLine([[ex - wx(0.11), by - 0.0012], [ex, by + 0.0012], [ex + wx(0.11), by - 0.0006]], 0.00075));
-    // 볼터치: 분홍 타원 + 빗금 4줄
-    const cx = sx * wx(0.56);
-    const cy = at(0.34);
-    blush.push(faceDisc(cx, cy, wx(0.15), wx(0.11), 0.0004));
-    for (const dx of [-0.0057, -0.0019, 0.0019, 0.0057]) {
-      hatch.push(faceLine([[cx + dx - 0.0012, cy - 0.0034], [cx + dx + 0.0012, cy + 0.0034]], 0.0006, 0.0012));
+    const m = (dx) => sx * dx; // 오른쪽 요소는 좌우 대칭
+    // 눈 (가운데 ±79px, y 522): 가로로 긴 굵은 검은 테두리(33×26px) → 흰자(25×18px)
+    //   → 흰자 위쪽에 붙은 큰 눈동자(반지름 13px, 6px 위) → 그 아래 흰자 위에 굵은 웃는 호
+    const ex = m(79);
+    const ey = 522;
+    const [x, y] = pt(ex, ey);
+    ink.push(faceDisc(x, y, px(33), px(26), 0.0004));
+    white.push(faceDisc(x, y, px(25), px(18), 0.001)); // 테두리 두께 8px
+    ink.push(faceDisc(x, py(ey - 6), px(13), px(13), 0.0016));
+    ink.push(faceLine([[-19, 5], [-10, 13], [0, 16], [10, 13], [19, 5]].map(([dx, dy]) => pt(ex + dx, ey + dy)), px(3.3), 0.0017));
+    // 눈썹 (눈 위 y 448): 완만하게 위로 볼록한 호, 길이 48px
+    ink.push(faceLine([[-24, 4], [0, -4], [24, 3]].map(([dx, dy]) => pt(ex + m(dx), 448 + dy)), px(3.5)));
+    // 볼터치 (가운데 ±151px, y 562): 분홍 타원(41×29px) + 볼 높이만큼 긴 "/" 빗금 4줄
+    const cx = m(151);
+    const [bx, by] = pt(cx, 562);
+    blush.push(faceDisc(bx, by, px(41), px(29), 0.0004));
+    for (const dx of [-24, -8, 8, 24]) {
+      hatch.push(faceLine([pt(cx + dx - 6, 575), pt(cx + dx + 6, 549)], px(2.9), 0.0012));
     }
   }
-  // 입: ω 모양 윗선 + 그 아래 벌린 입 + 아래쪽 작은 미소 선
-  const my = at(0.324);
-  ink.push(faceLine([[-0.0066, my + 0.0002], [-0.0034, my - 0.0029], [0, my - 0.0006], [0.0034, my - 0.0029], [0.0066, my + 0.0002]], 0.0007));
-  ink.push(faceLine([[-0.0038, my - 0.0016], [-0.0033, my - 0.0068], [0, my - 0.0092], [0.0033, my - 0.0068], [0.0038, my - 0.0016]], 0.0007));
-  const sy = at(0.162);
-  ink.push(faceLine([[-0.0048, sy + 0.0012], [0, sy - 0.0012], [0.0048, sy + 0.0012]], 0.0007));
+  // 입 (가운데): 폭 57px의 ω 윗선 → 그 아래 둥글게 벌린 입(폭 20px) → 아래쪽 작은 미소 선
+  const mouth = (list) => list.map(([dx, y]) => pt(dx, y));
+  const LINE = px(3.3);
+  ink.push(faceLine(mouth([[-28, 566], [-21, 580], [-13, 583], [-5, 577], [0, 570], [5, 577], [13, 583], [21, 580], [28, 566]]), LINE));
+  ink.push(faceLine(mouth([[-8, 578], [-10, 592], [-6, 603], [0, 606], [6, 603], [10, 592], [8, 578]]), LINE));
+  ink.push(faceLine(mouth([[-13, 627], [0, 634], [13, 627]]), LINE));
   return { ink: mergeAll(ink), white: mergeAll(white), blush: mergeAll(blush), hatch: mergeAll(hatch) };
 }
 
@@ -226,7 +234,7 @@ function sharedGeometry() {
 
 /** 물리 충돌체(DollBody)와 맞춘 치수 */
 export const HULA_HAMSTER_SIZE = Object.freeze({
-  top: 0.124, // 귀 꼭대기
+  top: 0.133, // 귀 꼭대기
   bottom: -0.07, // 치마 끝
   headHalfWidth: 0.079,
 });
