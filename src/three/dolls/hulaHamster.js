@@ -187,16 +187,16 @@ function buildFace() {
   const hatch = [];
   for (const sx of [-1, 1]) {
     const m = (dx) => sx * dx; // 오른쪽 요소는 좌우 대칭
-    // 눈 (가운데 ±65px, y 512): 가로로 긴 갈색 테두리(33×25px) → 흰자(26×19px)
-    //   → 흰자 위쪽에 붙은 큰 눈동자(반지름 15px, 4px 위, 왼쪽 위에 작은 빛) → 그 아래 흰자 위에 웃는 호
-    const ex = m(65);
-    const ey = 512;
+    // 눈 (가운데 ±67px, y 510): 눈 전체가 진한 갈색 타원(27×25.5px)
+    //   → 그 안 위쪽에 큰 흰 타원(16×12px, 5px 위)
+    //   → 아래쪽 흰 초승달(폭 25px, 가운데 두께 4px): 흰 타원 위에 갈색 타원을 살짝 위로 겹쳐 아랫부분만 남긴다
+    const ex = m(67);
+    const ey = 510;
     const [x, y] = pt(ex, ey);
-    ink.push(faceDisc(x, y, px(33), px(25), 0.0004));
-    white.push(faceDisc(x, y, px(26), px(19), 0.001));
-    ink.push(faceDisc(x, py(ey - 4), px(15), px(14), 0.0016));
-    white.push(faceDisc(px(ex - 5), py(ey - 10), px(4), px(4), 0.0022));
-    ink.push(faceLine([[-18, 5], [-10, 13], [0, 16], [10, 13], [18, 5]].map(([dx, dy]) => pt(ex + dx, ey + dy)), px(3.2), 0.0017));
+    ink.push(faceDisc(x, y, px(27), px(25.5), 0.0004));
+    white.push(faceDisc(x, py(ey - 5), px(16), px(12), 0.001));
+    white.push(faceDisc(x, py(ey + 15), px(12.5), px(4.6), 0.001));
+    ink.push(faceDisc(x, py(ey + 11.5), px(11.5), px(4.5), 0.0013)); // 위쪽 흰 타원(아래 끝 +7px)과 겹치지 않게
     // 눈썹 (y 441): 눈 위의 완만한 호, 길이 46px
     ink.push(faceLine([[-23, 3], [0, -3], [23, 3]].map(([dx, dy]) => pt(m(67) + m(dx), 441 + dy)), px(3.4)));
     // 볼터치 (가운데 ±133px, y 547): 분홍 타원(37×27px) + "/" 빗금 4줄
