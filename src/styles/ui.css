@@ -1,5 +1,7 @@
 /* ---------- 공통 ---------- */
-.screen {
+/* 화면은 #ui 바로 아래의 전체 화면 요소라, #ui > * { pointer-events: auto } 보다 우선하도록 #ui를 붙인다.
+   (그렇지 않으면 투명한 화면이 마우스를 가로채 3D 캔버스의 시점 드래그·기계 클릭이 안 된다) */
+#ui > .screen {
   position: absolute;
   inset: 0;
   pointer-events: none;
