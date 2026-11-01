@@ -7,7 +7,7 @@ export const HELD_DOLL_MASK = GROUP.STATIC | GROUP.DOLL;
 
 /**
  * 몸통·머리 구 { r: 반지름, y: 중심 높이 }. 기본은 DOLL_SHAPE.
- * 훌라 햄스터(#49)는 머리가 크고 넓어서(위쪽 끝 0.106, 반폭 0.074) 따로 둔다.
+ * 훌라 햄스터(#49)는 머리가 넓고 몸이 가늘어서(머리 반폭 0.06, 치마 반폭 0.055) 따로 둔다.
  */
 const DEFAULT_SPHERES = [
   { r: DOLL_SHAPE.bodyRadius, y: 0 },
@@ -15,8 +15,8 @@ const DEFAULT_SPHERES = [
 ];
 const BASE_SPHERES = {
   hulaHamster: [
-    { r: DOLL_SHAPE.bodyRadius, y: 0 }, // 몸통 + 치마
-    { r: 0.056, y: 0.056 }, // 머리 (위쪽 끝 0.112 = 귀 꼭대기, 앞뒤 두께 0.056)
+    { r: 0.055, y: -0.013 }, // 몸통 + 치마 (치마 끝 반폭 0.055, 아래 끝 -0.068)
+    { r: 0.05, y: 0.047 }, // 머리 (위쪽 끝 0.097 = 귀 꼭대기, 앞뒤 두께 0.05)
   ],
 };
 
@@ -30,11 +30,11 @@ const EXTRA_SHAPES = {
     { half: [0.033, 0.04, 0.016], y: 0.154 }, // 귀 0.114 ~ 0.194
     { half: [0.02, 0.028, 0.005], y: 0.222 }, // 볼체인 0.194 ~ 0.25
   ],
-  hulaHamster: [{ half: [0.071, 0.024, 0.05], y: 0.04 }], // 머리 구보다 넓은 볼 쪽 (반폭 0.074)
+  hulaHamster: [{ half: [0.059, 0.02, 0.045], y: 0.032 }], // 머리 구보다 넓은 볼 쪽 (반폭 0.061)
 };
 
 // 집게가 붙잡는 높이: 기본은 머리, 목도리 토끼는 귀 (체인 쪽을 집게가 감싼다)
-const GRAB_Y = { keychainBunny: 0.17, hulaHamster: 0.07 };
+const GRAB_Y = { keychainBunny: 0.17, hulaHamster: 0.065 };
 
 /**
  * 인형 종류별 물리 치수.
