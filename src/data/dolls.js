@@ -9,11 +9,7 @@ export const RARITY = {
 };
 
 export const DOLLS = [
-  { id: 'bear-brown', name: '갈색 곰', machineId: 'bear', type: 'bear', rarity: 'common', color: 0x9b6a43, sub: 0xe8c9a0 },
-  { id: 'bear-white', name: '하얀 곰', machineId: 'bear', type: 'bear', rarity: 'common', color: 0xf3efe8, sub: 0xffd6e0 },
-  { id: 'bear-pink', name: '핑크 곰', machineId: 'bear', type: 'bear', rarity: 'rare', color: 0xff8fc4, sub: 0xffffff },
-  { id: 'bear-gold', name: '황금 곰', machineId: 'bear', type: 'bear', rarity: 'epic', color: 0xffc928, sub: 0xfff3b0, glow: true },
-  // 꽃 화관 + 풀 치마 햄스터 (#49)
+  // 곰돌이 하우스: 꽃 화관 + 풀 치마 햄스터만 (#49)
   { id: 'hamster-hula', name: '훌라 햄스터', machineId: 'bear', type: 'hulaHamster', rarity: 'common', color: 0xfbfbfd, sub: 0xf3e0ee },
 
   { id: 'bunny-white', name: '흰 토끼', machineId: 'bunny', type: 'bunny', rarity: 'common', color: 0xfafafa, sub: 0xffb3c8 },
