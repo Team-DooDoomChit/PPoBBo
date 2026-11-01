@@ -5,14 +5,14 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
  * 훌라 햄스터 (#49): 꽃 화관 + 풀 치마를 입은 흰 햄스터.
  *
  * 원점 = 몸통 중심, +Y = 위, +Z = 얼굴 정면 (DollFactory와 같다). 단위 m.
- * 치수는 봉제 인형 사진 앞모습에서 잰 비율(머리 폭 455px = 0.148m)로 맞췄다.
+ * 치수는 봉제 인형 사진 앞모습에서 잰 비율(머리 폭 442px = 0.148m)로 맞췄다.
  * 얼굴은 앞쪽에만 있고 뒷면은 흰색이다. 키링(볼체인·잎사귀)은 넣지 않는다.
  *
  * 모양이 고정이라, 같은 재질의 부품은 처음 한 번만 지오메트리를 합쳐 두고 모든 인형이 공유한다.
- * 그래서 인형 하나는 재질 수만큼(9개)의 메시만 만든다. 몸 색(fur)만 인형마다 다르다.
+ * 그래서 인형 하나는 재질 수만큼(8개)의 메시만 만든다. 몸 색(fur)만 인형마다 다르다.
  */
 
-// 머리 치수: 봉제 인형 사진(머리 폭 455px, 목~꼭대기 340px)에서 잰 비율. 단위 m.
+// 머리 치수: 봉제 인형 사진(머리 폭 442px, 목~꼭대기 330px)에서 잰 비율. 단위 m.
 const HEAD = { bottom: -0.004, height: 0.11, halfWidth: 0.074 }; // 폭 대비 키 1 : 0.74
 // 머리 앞모습 실루엣 [t: 머리 아래(목)에서 위로 0~1, w: 최대 반폭 대비]. 공처럼 둥글고 볼 높이에서 가장 넓다.
 const SILHOUETTE = [
@@ -43,9 +43,9 @@ function headRadius(y) {
 /** 머리 앞면 (x, y) → 표면 위 점(lift만큼 띄움)과 바깥 법선 */
 function headPoint(x, y, lift = 0.0008) {
   const R = headRadius(y);
-  const zAt = (px, py) => {
-    const r = headRadius(py);
-    return HEAD_DEPTH * r * Math.sqrt(Math.max(0, 1 - (px / r) ** 2));
+  const zAt = (qx, qy) => {
+    const r = headRadius(qy);
+    return HEAD_DEPTH * r * Math.sqrt(Math.max(0, 1 - (qx / r) ** 2));
   };
   const z = HEAD_DEPTH * R * Math.sqrt(Math.max(0, 1 - (x / R) ** 2));
   const h = 0.0005;
@@ -95,7 +95,6 @@ const MAT = {
   ink: new THREE.MeshStandardMaterial({ color: 0x3a2823, roughness: 0.7 }), // 수놓은 진한 갈색
   white: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 }),
   blush: new THREE.MeshStandardMaterial({ color: 0xf0a9b4, roughness: 0.9 }),
-  hatch: new THREE.MeshStandardMaterial({ color: 0x3a2823, roughness: 0.7 }),
   skirt: new THREE.MeshStandardMaterial({ color: 0xbde3a1, roughness: 1 }), // 털실
   skirtDeep: new THREE.MeshStandardMaterial({ color: 0xa6d28b, roughness: 1 }),
   petal: new THREE.MeshStandardMaterial({ color: 0xf8d6de, roughness: 0.8 }),
@@ -184,7 +183,6 @@ function buildFace() {
   const ink = [];
   const white = [];
   const blush = [];
-  const hatch = [];
   for (const sx of [-1, 1]) {
     const m = (dx) => sx * dx; // 오른쪽 요소는 좌우 대칭
     // 눈 (가운데 ±67px, y 510): 눈 전체가 진한 갈색 타원(27×25.5px)
@@ -204,7 +202,7 @@ function buildFace() {
     const [bx, by] = pt(cx, 547);
     blush.push(faceDisc(bx, by, px(37), px(27), 0.0004));
     for (const dx of [-20, -7, 7, 20]) {
-      hatch.push(faceLine([pt(cx + dx - 5, 561), pt(cx + dx + 5, 533)], px(3), 0.0012));
+      ink.push(faceLine([pt(cx + dx - 5, 561), pt(cx + dx + 5, 533)], px(3), 0.0012));
     }
   }
   // 입 (가운데): 폭 50px의 ω 윗선 → 그 아래 둥글게 벌린 입(폭 22px) → 아래쪽 작은 미소 선
@@ -213,7 +211,7 @@ function buildFace() {
   ink.push(faceLine(mouth([[-25, 547], [-19, 559], [-11, 563], [-4, 559], [0, 553], [4, 559], [11, 563], [19, 559], [25, 547]]), LINE));
   ink.push(faceLine(mouth([[-8, 560], [-11, 571], [-6, 581], [0, 583], [6, 581], [11, 571], [8, 560]]), LINE));
   ink.push(faceLine(mouth([[-10, 599], [0, 605], [10, 599]]), LINE));
-  return { ink: mergeAll(ink), white: mergeAll(white), blush: mergeAll(blush), hatch: mergeAll(hatch) };
+  return { ink: mergeAll(ink), white: mergeAll(white), blush: mergeAll(blush) };
 }
 
 /** 속성 구성을 맞춰 하나로 합친다 (Lathe·Tube 등 모두 index + position/normal/uv) */
@@ -232,13 +230,6 @@ function sharedGeometry() {
   }
   return shared;
 }
-
-/** 물리 충돌체(DollBody)와 맞춘 치수 */
-export const HULA_HAMSTER_SIZE = Object.freeze({
-  top: 0.117, // 귀 꼭대기
-  bottom: -0.08, // 발바닥
-  headHalfWidth: 0.074,
-});
 
 /**
  * @param {THREE.Group} group 인형 그룹
@@ -262,6 +253,5 @@ export function buildHulaHamster(group, doll, { fur }) {
     mesh(g.face.ink, MAT.ink, false),
     mesh(g.face.white, MAT.white, false),
     mesh(g.face.blush, MAT.blush, false),
-    mesh(g.face.hatch, MAT.hatch, false),
   );
 }
