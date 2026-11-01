@@ -5,25 +5,28 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
  * 훌라 햄스터 (#49): 꽃 화관 + 풀 치마를 입은 흰 햄스터.
  *
  * 원점 = 몸통 중심, +Y = 위, +Z = 얼굴 정면 (DollFactory와 같다). 단위 m.
- * 치수는 봉제 인형 사진 앞모습에서 잰 비율(머리 폭 442px = 0.148m)로 맞췄다.
+ * 얼굴은 봉제 인형 사진 앞모습에서 잰 비율로, 크기는 같은 기계에 놓이는 목도리 토끼와 비슷하게 맞췄다(머리 폭 0.12m).
  * 얼굴은 앞쪽에만 있고 뒷면은 흰색이다. 키링(볼체인·잎사귀)은 넣지 않는다.
  *
  * 모양이 고정이라, 같은 재질의 부품은 처음 한 번만 지오메트리를 합쳐 두고 모든 인형이 공유한다.
  * 그래서 인형 하나는 재질 수만큼(8개)의 메시만 만든다. 몸 색(fur)만 인형마다 다르다.
  */
 
-// 머리 치수: 봉제 인형 사진(머리 폭 442px, 목~꼭대기 330px)에서 잰 비율. 단위 m.
-const HEAD = { bottom: -0.004, height: 0.11, halfWidth: 0.074 }; // 폭 대비 키 1 : 0.74
-// 머리 앞모습 실루엣 [t: 머리 아래(목)에서 위로 0~1, w: 최대 반폭 대비]. 공처럼 둥글고 볼 높이에서 가장 넓다.
-const SILHOUETTE = [
-  [0, 0.74], [0.04, 0.86], [0.1, 0.93], [0.2, 0.98], [0.3, 1], [0.4, 0.995], [0.5, 0.97], [0.6, 0.92],
-  [0.7, 0.85], [0.8, 0.74], [0.88, 0.6], [0.94, 0.42], [0.98, 0.22], [1, 0],
-];
+// 머리 치수 (단위 m). 같은 기계에 놓이는 목도리 토끼와 크기를 맞춘다.
+const HEAD = { bottom: -0.008, height: 0.097, halfWidth: 0.061 }; // 목도리 토끼(머리 반폭 0.062)와 비슷한 폭, 폭 대비 키 0.8로 짧고 동글게
+// 머리 앞모습 실루엣 [t: 머리 아래(목)에서 위로 0~1, w: 최대 반폭 대비]. 네모나지 않게 둥근 타원형.
+// 볼 높이(t = 0.42)를 가운데로 위는 반지름 0.58, 아래는 0.6인 반타원 두 개. 아래 끝(목)에서 반폭 0.71로 몸통과 이어진다.
+const SILHOUETTE = Array.from({ length: 25 }, (_, i) => {
+  const t = i / 24;
+  const c = 0.42;
+  const r = t >= c ? 1 - c : 0.6;
+  return [t, Math.sqrt(Math.max(0, 1 - ((t - c) / r) ** 2))];
+});
 const HEAD_PROFILE = [
   [0, HEAD.bottom - 0.003], // 아래 가운데를 닫는다 (몸통에 가려 보이지 않음)
   ...SILHOUETTE.map(([t, w]) => [w * HEAD.halfWidth, HEAD.bottom + t * HEAD.height]),
 ];
-const HEAD_DEPTH = 0.75; // 앞뒤 두께 / 좌우 폭 (옆모습에서 잰 비율)
+const HEAD_DEPTH = 0.82; // 앞뒤 두께 / 좌우 폭 (둥글게 보이도록)
 const at = (t) => HEAD.bottom + t * HEAD.height; // 머리 높이 비율 → y
 const wx = (w) => w * HEAD.halfWidth; // 반폭 비율 → x
 
@@ -108,17 +111,17 @@ function buildBody() {
   head.scale(1, 1, HEAD_DEPTH);
   const parts = [
     head,
-    // 몸통: 머리와 치마 사이로 조금만 보이는 흰 원통 (머리 반폭의 0.74)
-    placed(new THREE.CylinderGeometry(0.054, 0.056, 0.03, 40), { pos: [0, -0.015, 0], scale: [1, 1, HEAD_DEPTH] }),
+    // 몸통: 머리와 치마 사이로 조금만 보이는 흰 원통 (머리 반폭의 0.7)
+    placed(new THREE.CylinderGeometry(0.043, 0.045, 0.03, 40), { pos: [0, -0.02, 0], scale: [1, 1, HEAD_DEPTH] }),
   ];
   for (const sx of [-1, 1]) {
     parts.push(
       // 귀: 머리 꼭대기 양쪽, 화관 뒤로 반쯤 가려지는 작은 공
-      placed(BASE.sphere, { pos: [sx * wx(0.5), at(0.97), -0.008], scale: [0.0088, 0.0088, 0.0082] }),
+      placed(BASE.sphere, { pos: [sx * wx(0.48), at(0.96), -0.006], scale: [0.0078, 0.0078, 0.0073] }),
       // 팔: 머리 아래(몸통 위쪽) 옆으로 짧게 뻗은 둥근 팔
-      placed(BASE.sphere, { pos: [sx * 0.064, -0.009, 0.004], scale: [0.016, 0.0105, 0.0115], rot: [0, sx * 0.3, sx * -0.3] }),
+      placed(BASE.sphere, { pos: [sx * 0.051, -0.013, 0.004], scale: [0.013, 0.009, 0.01], rot: [0, sx * 0.3, sx * -0.3] }),
       // 발: 치마 아래로 살짝 보이는 작은 발
-      placed(BASE.sphere, { pos: [sx * 0.015, -0.071, 0.014], scale: [0.013, 0.008, 0.015] }), // 발바닥 -0.079 (곰과 같은 높이)
+      placed(BASE.sphere, { pos: [sx * 0.012, -0.063, 0.01], scale: [0.011, 0.007, 0.012] }), // 발바닥 -0.07
     );
   }
   return mergeAll(parts);
@@ -128,7 +131,7 @@ function buildSkirt() {
   const front = [];
   const back = [];
   // 허리: 털실을 모아 묶은 도톰한 띠 하나
-  front.push(placed(new THREE.TorusGeometry(1, 0.1, 8, 64), { pos: [0, -0.021, 0], rot: [Math.PI / 2, 0, 0], scale: [0.061, 0.061 * HEAD_DEPTH, 0.05] }));
+  front.push(placed(new THREE.TorusGeometry(1, 0.1, 8, 64), { pos: [0, -0.022, 0], rot: [Math.PI / 2, 0, 0], scale: [0.047, 0.047 * HEAD_DEPTH, 0.045] }));
   // 가닥: 굵은 털실이 느슨하게 늘어지고 아래로 조금 퍼진다. 가닥마다 두 줄을 꼬아 털실 결을 낸다.
   const layer = (list, count, r, tilt, height, offset, width) => {
     for (let i = 0; i < count; i++) {
@@ -136,21 +139,21 @@ function buildSkirt() {
       const qy = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), a);
       for (const side of [-1, 1]) {
         const q = qy.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-tilt, 0, side * 0.14)));
-        const local = new THREE.Vector3(side * 0.0022, -0.0455, r).applyQuaternion(qy);
+        const local = new THREE.Vector3(side * 0.002, -0.042, r).applyQuaternion(qy);
         local.z *= HEAD_DEPTH;
         list.push(placed(BASE.capsule, { pos: local.toArray(), quat: q, scale: [width, height / 5, 0.0034] }));
       }
     }
   };
-  layer(front, 42, 0.063, 0.12, 0.05, 0, 0.0043);
-  layer(back, 42, 0.059, 0.09, 0.048, 0.5, 0.0041);
+  layer(front, 36, 0.049, 0.12, 0.042, 0, 0.0038);
+  layer(back, 36, 0.045, 0.1, 0.04, 0.5, 0.0036);
   return { front: mergeAll(front), back: mergeAll(back) };
 }
 
 function buildCrown() {
   const petals = [];
   const pearls = [];
-  const FLOWERS = 12;
+  const FLOWERS = 11;
   const ringY = at(0.84); // 사진처럼 눈썹 위 이마 쪽
   for (let i = 0; i < FLOWERS; i++) {
     const a = (i / FLOWERS) * Math.PI * 2;
@@ -162,10 +165,10 @@ function buildCrown() {
     const twist = new THREE.Quaternion().setFromAxisAngle(Z, i * 0.7); // 꽃마다 꽃잎 방향을 조금씩 다르게
     for (let k = 0; k < 5; k++) {
       const t = (k / 5) * Math.PI * 2;
-      const offset = new THREE.Vector3(Math.cos(t) * 0.0071, Math.sin(t) * 0.0071, 0).applyQuaternion(twist).applyQuaternion(q);
-      petals.push(placed(BASE.small, { pos: point.clone().add(offset).toArray(), quat: q, scale: [0.0079, 0.0079, 0.0029] }));
+      const offset = new THREE.Vector3(Math.cos(t) * 0.006, Math.sin(t) * 0.006, 0).applyQuaternion(twist).applyQuaternion(q);
+      petals.push(placed(BASE.small, { pos: point.clone().add(offset).toArray(), quat: q, scale: [0.0066, 0.0066, 0.0025] }));
     }
-    pearls.push(placed(BASE.small, { pos: point.clone().addScaledVector(normal, 0.0026).toArray(), scale: [0.0028, 0.0028, 0.0028] }));
+    pearls.push(placed(BASE.small, { pos: point.clone().addScaledVector(normal, 0.0026).toArray(), scale: [0.0024, 0.0024, 0.0024] }));
   }
   return { petals: mergeAll(petals), pearls: mergeAll(pearls) };
 }
@@ -176,7 +179,8 @@ function buildCrown() {
 const FACE_PX = { cx: 335, halfWidth: 221, bottom: 650 };
 const PX = HEAD.halfWidth / FACE_PX.halfWidth; // 1px → m
 const px = (dx) => dx * PX; // 가로 픽셀 → m
-const py = (y) => HEAD.bottom + (FACE_PX.bottom - y) * PX; // 세로 픽셀(이미지 y) → m
+const STRETCH_Y = HEAD.height / 0.11; // 사진 비율(머리 키 0.11)보다 머리를 늘린 만큼 얼굴 위치도 위아래로 늘린다
+const py = (y) => HEAD.bottom + (FACE_PX.bottom - y) * PX * STRETCH_Y; // 세로 픽셀(이미지 y) → m
 const pt = (dx, y) => [px(dx), py(y)];
 
 function buildFace() {
