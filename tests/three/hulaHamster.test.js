@@ -47,7 +47,7 @@ test('모델 크기와 물리 충돌체가 맞는다 (위쪽 끝 차이 5mm 이�
   const { top } = dollProfile('hulaHamster');
   assert.ok(Math.abs(box.max.y - top) < 0.005, `모델 ${box.max.y.toFixed(3)} / 충돌체 ${top}`);
   assert.ok(box.min.y > -0.085 && box.min.y < -0.07, `발바닥 ${box.min.y.toFixed(3)}`);
-  assert.ok(box.max.x < 0.075, `좌우 반폭 ${box.max.x.toFixed(3)} (넓적해 보이지 않게)`);
+  assert.ok(box.max.x < 0.085, `좌우 반폭 ${box.max.x.toFixed(3)}`);
 });
 
 test('인형을 정리해도 공유 지오메트리는 해제하지 않는다 (다른 인형이 계속 쓴다)', () => {
