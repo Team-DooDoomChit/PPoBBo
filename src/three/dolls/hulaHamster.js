@@ -118,7 +118,7 @@ function buildBody() {
       // 팔: 머리 아래(몸통 위쪽) 옆으로 짧게 뻗은 둥근 팔
       placed(BASE.sphere, { pos: [sx * 0.064, -0.009, 0.004], scale: [0.016, 0.0105, 0.0115], rot: [0, sx * 0.3, sx * -0.3] }),
       // 발: 치마 아래로 살짝 보이는 작은 발
-      placed(BASE.sphere, { pos: [sx * 0.015, -0.072, 0.014], scale: [0.013, 0.008, 0.015] }),
+      placed(BASE.sphere, { pos: [sx * 0.015, -0.071, 0.014], scale: [0.013, 0.008, 0.015] }), // 발바닥 -0.079 (곰과 같은 높이)
     );
   }
   return mergeAll(parts);

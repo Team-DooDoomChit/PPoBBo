@@ -16,7 +16,7 @@ const DEFAULT_SPHERES = [
 const BASE_SPHERES = {
   hulaHamster: [
     { r: DOLL_SHAPE.bodyRadius, y: 0 }, // 몸통 + 치마
-    { r: 0.058, y: 0.058 }, // 머리 (위쪽 끝 0.116, 귀 0.117)
+    { r: 0.056, y: 0.056 }, // 머리 (위쪽 끝 0.112 = 귀 꼭대기, 앞뒤 두께 0.056)
   ],
 };
 
