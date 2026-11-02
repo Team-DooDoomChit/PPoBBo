@@ -161,15 +161,16 @@ function omegaMouthGeometry() {
 }
 
 let closedMouth = null;
-/** 다문 입: ω 선 + 아래 짧은 턱 선 (고양이) */
+/** 다문 입: 양 끝이 위로 말려 올라간 둥근 ω 선 + 아래 짧은 턱 선 (고양이) */
 function closedMouthGeometry() {
   if (!closedMouth) {
     const { px, pt } = photoMapper(HEAD, PHOTO);
-    const line = (list) => HEAD.faceLine(list.map(([dx, y]) => pt(dx, y)), px(2.4));
+    const line = (list) => HEAD.faceLine(list.map(([dx, y]) => pt(dx, y)), px(2.6));
+    const half = [[24.2, 266.4], [25.9, 273.7], [21.4, 282.2], [13, 284.5], [5, 280.5]]; // 바깥 위 → 안쪽 아래
     closedMouth = {
       ink: mergeAll([
-        line([[-20.25, 272], [-17.25, 276.25], [-11, 277.5], [-4.75, 274.5], [0, 268.75], [4.75, 274.5], [11, 277.5], [17.25, 276.25], [20.25, 272]]),
-        line([[-7, 292], [0, 295], [7, 292]]),
+        line([...half.map(([dx, y]) => [-dx, y]), [0, 272.6], ...[...half].reverse()]),
+        line([[-7, 291.5], [0, 294], [7, 291.5]]),
       ]),
     };
   }
