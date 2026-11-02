@@ -239,7 +239,7 @@ let archedBrows = null;
 /** 토끼의 포인트: 눈 위로 높이 올라간 굵은 호 눈썹. 안쪽 위에서 바깥 아래로 휘고 양 끝이 둥글다 */
 function archedBrowsGeometry() {
   if (archedBrows) return archedBrows;
-  const RADIUS = 0.0017;
+  const RADIUS = 0.0012;
   const LIFT = 0.0016;
   const parts = [];
   for (const sx of [-1, 1]) {
