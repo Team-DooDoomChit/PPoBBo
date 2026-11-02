@@ -48,9 +48,10 @@ const FACE_MAT = {
 };
 
 const mat = (color, roughness = 0.9) => new THREE.MeshStandardMaterial({ color, roughness });
-const BUNNY_MAT = { scarf: mat(0xe6bd45, 0.95), fringe: mat(0xf2db74), hoppang: mat(0xfbf9f4, 0.75) };
+const HOPPANG_MAT = mat(0xfbf9f4, 0.75);
+const BUNNY_MAT = { scarf: mat(0xe6bd45, 0.95), fringe: mat(0xf2db74) };
 const CAT_MAT = { scarf: mat(0x7f9fe0, 0.95), fringe: mat(0x92afea), cream: mat(0xf3e3c6, 0.8), plate: mat(0xe2b85a, 0.6) };
-const HAMSTER_MAT = { scarf: mat(0xe88ba0, 0.95), fringe: mat(0xef9fb2), bun: mat(0xf5efd9, 0.85) };
+const HAMSTER_MAT = { scarf: mat(0xe88ba0, 0.95), fringe: mat(0xef9fb2) };
 
 /** 부품 메시 하나. 부품은 DollFactory의 mergeParts가 재질별로 합친다. */
 function part(geometry, material, { pos = [0, 0, 0], scale = [1, 1, 1], rot = [0, 0, 0], shadow = true } = {}) {
@@ -76,7 +77,7 @@ function bodyGeometry() {
 }
 
 let sideArms = null;
-/** 옆으로 뻗은 짧은 팔 (고양이·햄스터) */
+/** 옆으로 뻗은 짧은 팔 (고양이) */
 function sideArmsGeometry() {
   sideArms ??= mergeAll([-1, 1].map((sx) =>
     placed(BASE.sphere, { pos: [sx * 0.051, -0.0155, 0.01], scale: [0.0135, 0.0078, 0.0105], rot: [0, -sx * 0.45, -sx * 0.35] }),
@@ -134,7 +135,7 @@ function faceGeometry() {
   return sharedFace;
 }
 
-/** 공통 몸과 얼굴. 팔과 눈썹은 기본값이 옆으로 뻗은 팔·짧은 눈썹이고, 토끼만 자기 것을 쓴다 */
+/** 공통 몸과 얼굴. 팔과 눈썹은 기본값이 옆으로 뻗은 팔·짧은 눈썹이다 */
 function addBase(group, fur, { arms = sideArmsGeometry(), brows = shortBrowsGeometry() } = {}) {
   const face = faceGeometry();
   group.add(
@@ -231,7 +232,7 @@ function capGeometry() {
   return sharedCap;
 }
 
-// ---------- 목도리 토끼 눈썹·팔 ----------
+// ---------- 목도리 토끼 눈썹, 호빵을 쥔 팔 ----------
 
 const EYE_Y = 0.0277; // 눈 높이 (사진 y 241.5px)
 
@@ -239,7 +240,7 @@ let archedBrows = null;
 /** 토끼의 포인트: 눈 위로 높이 올라간 굵은 호 눈썹. 안쪽 위에서 바깥 아래로 휘고 양 끝이 둥글다 */
 function archedBrowsGeometry() {
   if (archedBrows) return archedBrows;
-  const RADIUS = 0.0012;
+  const RADIUS = 0.0009;
   const LIFT = 0.0016;
   const parts = [];
   for (const sx of [-1, 1]) {
@@ -256,7 +257,7 @@ function archedBrowsGeometry() {
   return archedBrows;
 }
 
-// 호빵 위치·크기: 몸 앞에 두 손으로 쥔다
+// 호빵 위치·크기: 몸 앞에 두 손으로 쥔다 (토끼·햄스터)
 const HOPPANG = { pos: [0, -0.031, 0.036], rx: 0.027, ry: 0.023, rz: 0.021 };
 
 let holdingArms = null;
@@ -275,6 +276,18 @@ function holdingArmsGeometry() {
   return holdingArms;
 }
 
+/** 호빵: 둥글고 위가 살짝 볼록한 찐빵, 윗면이 보는 쪽으로 조금 기운다 */
+function addHoppang(group) {
+  const hoppang = new THREE.Group();
+  hoppang.position.set(...HOPPANG.pos);
+  hoppang.rotation.x = 0.3;
+  hoppang.add(
+    part(GEO.sphere, HOPPANG_MAT, { scale: [HOPPANG.rx, HOPPANG.ry, HOPPANG.rz] }),
+    part(GEO.sphere, HOPPANG_MAT, { pos: [0, HOPPANG.ry - 0.0005, 0], scale: [0.0035, 0.002, 0.0035], shadow: false }),
+  );
+  group.add(hoppang);
+}
+
 // ---------- 인형별 빌더 ----------
 
 /** 목도리 토끼: 긴 귀(안쪽 분홍), 높이 올라간 호 눈썹, 노란 목도리, 두 손으로 쥔 호빵 */
@@ -289,15 +302,7 @@ export function buildScarfBunny(group, doll, { fur, sub }) {
     );
   }
   addScarf(group, BUNNY_MAT);
-  // 호빵: 둥글고 위가 살짝 볼록한 찐빵, 윗면이 보는 쪽으로 조금 기운다
-  const hoppang = new THREE.Group();
-  hoppang.position.set(...HOPPANG.pos);
-  hoppang.rotation.x = 0.3;
-  hoppang.add(
-    part(GEO.sphere, BUNNY_MAT.hoppang, { scale: [HOPPANG.rx, HOPPANG.ry, HOPPANG.rz] }),
-    part(GEO.sphere, BUNNY_MAT.hoppang, { pos: [0, HOPPANG.ry - 0.0005, 0], scale: [0.0035, 0.002, 0.0035], shadow: false }),
-  );
-  group.add(hoppang);
+  addHoppang(group);
 }
 
 /** 목도리 고양이: 파란 머리 무늬와 뾰족한 귀, 파란 목도리, 꼬리 방울, 한 손에 든 마카롱 */
@@ -319,26 +324,12 @@ export function buildScarfCat(group, doll, { fur, sub }) {
   group.add(macaron);
 }
 
-/** 목도리 햄스터: 머리 위 양쪽의 둥근 귀, 분홍 목도리, 두 손으로 안은 만두 */
+/** 목도리 햄스터: 머리 위 양쪽의 둥근 귀, 분홍 목도리, 두 손으로 쥔 호빵 */
 export function buildScarfHamster(group, doll, { fur }) {
-  addBase(group, fur);
+  addBase(group, fur, { arms: holdingArmsGeometry() });
   for (const sx of [-1, 1]) {
     group.add(part(GEO.sphere, fur, { pos: [sx * 0.036, HEAD_TOP - 0.008, -0.004], scale: [0.0125, 0.0115, 0.0095] }));
   }
   addScarf(group, HAMSTER_MAT);
-  const bun = new THREE.Group();
-  bun.position.set(0, -0.037, 0.04);
-  bun.rotation.x = 0.5;
-  bun.scale.setScalar(0.72);
-  bun.add(
-    part(GEO.sphere, HAMSTER_MAT.bun, { scale: [0.03, 0.027, 0.026] }),
-    part(GEO.sphere, HAMSTER_MAT.bun, { pos: [0, 0.026, 0], scale: [0.004, 0.005, 0.004], shadow: false }),
-  );
-  for (let i = 0; i < 7; i++) {
-    const pleat = new THREE.Group();
-    pleat.rotation.y = (i / 7) * Math.PI * 2;
-    pleat.add(part(GEO.sphere, HAMSTER_MAT.bun, { pos: [0, 0.022, 0.009], scale: [0.0022, 0.0018, 0.011], rot: [0.75, 0, 0], shadow: false }));
-    bun.add(pleat);
-  }
-  group.add(bun);
+  addHoppang(group);
 }
