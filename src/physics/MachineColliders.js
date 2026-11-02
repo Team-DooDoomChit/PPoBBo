@@ -2,6 +2,7 @@ import { MACHINE_SPEC, PLAY_FLOOR_Y, GLASS_TOP_Y } from '../three/machineSpec.js
 
 const { innerHalf, chute } = MACHINE_SPEC;
 const WALL = 0.02; // 충돌체 반두께
+const CHUTE_GUARD_HEIGHT = 0.32;
 
 /**
  * 기계 내부의 정적 충돌체: 바닥(배출구 구멍 제외), 유리 벽, 천장, 배출구 칸막이.
@@ -29,8 +30,9 @@ export function buildMachineColliders(physics) {
   // 천장
   physics.addStaticBox([outer, WALL, outer], [0, GLASS_TOP_Y + WALL, 0]);
 
-  // 배출구 칸막이 (인형이 굴러 들어가지 않도록)
-  const wh = chute.wallHeight / 2;
+  // 배출구 칸막이 (인형이 굴러 들어가지 않도록). 쌓인 인형이 넘어 들어가지 않게 보이는 칸막이보다 높게 둔다.
+  // 집게에 매달린 인형은 이보다 훨씬 높은 곳에서 옮기므로 걸리지 않는다
+  const wh = CHUTE_GUARD_HEIGHT / 2;
   const chuteDepth = chute.maxZ - chute.minZ;
   const chuteWidth = chute.maxX - chute.minX;
   physics.addStaticBox([0.005, wh, chuteDepth / 2], [chute.minX, PLAY_FLOOR_Y + wh, (chute.minZ + chute.maxZ) / 2]);
