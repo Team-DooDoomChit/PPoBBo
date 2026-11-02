@@ -67,9 +67,10 @@ test('인형을 정리해도 공유 지오메트리는 해제하지 않는다 (�
   assert.equal(meshes(createDollMesh(getDoll('cat-hula'))).length, 10, '정리한 뒤에도 새 인형을 만들 수 있다');
 });
 
-test('곰돌이 하우스에 훌라 햄스터와 함께 등록돼 있다', () => {
+test('인어섬 시리즈 기계(bear)에 인어섬 치이카와와 함께 인어섬 하치와레로 등록돼 있다', () => {
   const doll = getDoll('cat-hula');
   assert.equal(doll.machineId, 'bear');
   assert.equal(doll.type, 'hulaCat');
+  assert.equal(doll.name, '인어섬 하치와레');
   assert.deepEqual(getDollsByMachine('bear').map((d) => d.id), ['hamster-hula', 'cat-hula']);
 });
