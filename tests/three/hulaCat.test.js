@@ -72,5 +72,5 @@ test('인어섬 시리즈 기계(bear)에 인어섬 치이카와와 함께 인�
   assert.equal(doll.machineId, 'bear');
   assert.equal(doll.type, 'hulaCat');
   assert.equal(doll.name, '인어섬 하치와레');
-  assert.deepEqual(getDollsByMachine('bear').map((d) => d.id), ['hamster-hula', 'cat-hula']);
+  assert.deepEqual(getDollsByMachine('bear').map((d) => d.id), ['hamster-hula', 'cat-hula', 'bunny-hula']);
 });
