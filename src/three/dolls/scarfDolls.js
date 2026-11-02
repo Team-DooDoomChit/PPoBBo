@@ -165,12 +165,12 @@ let closedMouth = null;
 function closedMouthGeometry() {
   if (!closedMouth) {
     const { px, pt } = photoMapper(HEAD, PHOTO);
-    const line = (list) => HEAD.faceLine(list.map(([dx, y]) => pt(dx, y)), px(2.6));
-    const half = [[24.2, 266.4], [25.9, 273.7], [21.4, 282.2], [13, 284.5], [5, 280.5]]; // 바깥 위 → 안쪽 아래
+    const line = (list) => HEAD.faceLine(list.map(([dx, y]) => pt(dx, y)), px(2.4));
+    const half = [[19.4, 268.3], [20.7, 274.2], [17.1, 280.6], [10.4, 282.4], [4, 279.2]]; // 바깥 위 → 안쪽 아래
     closedMouth = {
       ink: mergeAll([
-        line([...half.map(([dx, y]) => [-dx, y]), [0, 272.6], ...[...half].reverse()]),
-        line([[-7, 291.5], [0, 294], [7, 291.5]]),
+        line([...half.map(([dx, y]) => [-dx, y]), [0, 273.3], ...[...half].reverse()]),
+        line([[-6, 289.5], [0, 291.5], [6, 289.5]]),
       ]),
     };
   }
