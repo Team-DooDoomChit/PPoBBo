@@ -20,16 +20,16 @@ test('처음엔 비어 있다', () => {
 });
 
 test('처음 얻으면 새 인형으로 저장', () => {
-  const r = collection.addDoll('bear-brown');
+  const r = collection.addDoll('chick-yellow');
   assert.equal(r.ok, true);
   assert.equal(r.isNew, true);
-  assert.deepEqual(collection.getCollection()['bear-brown'], { count: 1, obtainedAt: 1000, lastObtainedAt: 1000 });
+  assert.deepEqual(collection.getCollection()['chick-yellow'], { count: 1, obtainedAt: 1000, lastObtainedAt: 1000 });
 });
 
 test('중복 획득 시 개수 증가, 첫 획득 시각은 유지', () => {
-  collection.addDoll('bear-brown');
+  collection.addDoll('chick-yellow');
   t = 5_000;
-  const r = collection.addDoll('bear-brown');
+  const r = collection.addDoll('chick-yellow');
   assert.equal(r.isNew, false);
   assert.deepEqual(r.entry, { count: 2, obtainedAt: 1000, lastObtainedAt: 5000 });
 });
@@ -53,15 +53,15 @@ test('저장되면 collection:changed 발생', () => {
 });
 
 test('getCollection은 복사본 (밖에서 바꿔도 저장값 그대로)', () => {
-  collection.addDoll('bear-brown');
-  collection.getCollection()['bear-brown'].count = 999;
-  assert.equal(collection.getCollection()['bear-brown'].count, 1);
+  collection.addDoll('chick-yellow');
+  collection.getCollection()['chick-yellow'].count = 999;
+  assert.equal(collection.getCollection()['chick-yellow'].count, 1);
 });
 
 test('수집률: 전체 / 기계별', () => {
   const bears = getDollsByMachine('bear');
   bears.forEach((d) => collection.addDoll(d.id));
-  collection.addDoll('bear-brown'); // 중복은 수집률에 영향 없음
+  collection.addDoll(bears[0].id); // 중복은 수집률에 영향 없음
   assert.deepEqual(collection.getStats('bear'), { owned: bears.length, total: bears.length, rate: 100 });
   const all = collection.getStats();
   assert.equal(all.owned, bears.length);
@@ -84,21 +84,21 @@ test('새로고침 후에도 유지 (저장소에서 다시 읽음)', () => {
 });
 
 test('다른 탭에서 얻은 인형을 덮어쓰지 않는다', () => {
-  collection.addDoll('bear-brown');
-  // 다른 탭이 bear-white를 저장
-  save('collection', { ...load('collection', {}), 'bear-white': { count: 1, obtainedAt: 2, lastObtainedAt: 2 } });
-  collection.addDoll('bear-pink');
-  assert.deepEqual(Object.keys(collection.getCollection()).sort(), ['bear-brown', 'bear-pink', 'bear-white']);
+  collection.addDoll('chick-yellow');
+  // 다른 탭이 chick-cotton을 저장
+  save('collection', { ...load('collection', {}), 'chick-cotton': { count: 1, obtainedAt: 2, lastObtainedAt: 2 } });
+  collection.addDoll('cat-black');
+  assert.deepEqual(Object.keys(collection.getCollection()).sort(), ['cat-black', 'chick-cotton', 'chick-yellow']);
 });
 
 test('깨진 항목과 카탈로그에 없는 항목은 버리고 나머지는 살린다', () => {
   save('collection', {
-    'bear-brown': { count: 2, obtainedAt: 10 },
-    'bear-white': { count: -1, obtainedAt: 10 },
-    'bear-pink': 'broken',
+    'chick-yellow': { count: 2, obtainedAt: 10 },
+    'chick-cotton': { count: -1, obtainedAt: 10 },
+    'cat-black': 'broken',
     'removed-doll': { count: 1, obtainedAt: 10 },
   });
-  assert.deepEqual(Object.keys(collection.getCollection()), ['bear-brown']);
+  assert.deepEqual(Object.keys(collection.getCollection()), ['chick-yellow']);
   save('collection', ['not', 'an', 'object']);
   assert.deepEqual(collection.getCollection(), {});
 });
@@ -106,22 +106,22 @@ test('깨진 항목과 카탈로그에 없는 항목은 버리고 나머지는 �
 test('카탈로그에서 빠진 인형 기록은 숨기기만 하고 저장소에서 지우지 않는다', () => {
   save('collection', {
     'renamed-doll': { count: 3, obtainedAt: 10 }, // dolls.js에서 ID가 바뀐 경우
-    'bear-white': { count: -1, obtainedAt: 10 }, // 깨진 항목
+    'chick-cotton': { count: -1, obtainedAt: 10 }, // 깨진 항목
   });
-  collection.addDoll('bear-brown');
+  collection.addDoll('chick-yellow');
   const stored = load('collection', {});
   assert.deepEqual(stored['renamed-doll'], { count: 3, obtainedAt: 10 }, '원본 기록 보존');
-  assert.equal(stored['bear-white'], undefined, '깨진 항목은 정리');
-  assert.deepEqual(Object.keys(collection.getCollection()), ['bear-brown'], '화면에는 카탈로그 인형만');
+  assert.equal(stored['chick-cotton'], undefined, '깨진 항목은 정리');
+  assert.deepEqual(Object.keys(collection.getCollection()), ['chick-yellow'], '화면에는 카탈로그 인형만');
   assert.equal(collection.getStats().owned, 1);
 });
 
 test('저장 실패 시 ok=false, collection:error 발생', () => {
   useStorageBackend({ getItem: () => null, setItem: () => { throw new Error('quota'); }, removeItem() {} });
-  assert.deepEqual(collection.addDoll('bear-brown'), { ok: false, reason: 'save-failed' });
+  assert.deepEqual(collection.addDoll('chick-yellow'), { ok: false, reason: 'save-failed' });
   const errors = [];
   const off = eventBus.on('collection:error', (p) => errors.push(p));
-  eventBus.emit('doll:won', { dollId: 'bear-brown' });
+  eventBus.emit('doll:won', { dollId: 'chick-yellow' });
   off();
-  assert.deepEqual(errors, [{ dollId: 'bear-brown', reason: 'save-failed' }]);
+  assert.deepEqual(errors, [{ dollId: 'chick-yellow', reason: 'save-failed' }]);
 });
