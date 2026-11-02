@@ -96,14 +96,13 @@ function shortBrowsGeometry() {
 }
 
 let sharedFace = null;
-/** 눈썹을 뺀 얼굴: 큰 눈(갈색 + 흰 타원 + 아래 초승달), 빗금 볼터치, ω + 벌린 입과 혀 + 미소 선 */
+/** 눈썹·입을 뺀 얼굴: 큰 눈(갈색 + 흰 타원 + 아래 초승달), 빗금 볼터치 */
 function faceGeometry() {
   if (sharedFace) return sharedFace;
   const { px, py, pt } = photoMapper(HEAD, PHOTO);
   const ink = [];
   const white = [];
   const blush = [];
-  const tongue = [];
   for (const sx of [-1, 1]) {
     const m = (dx) => sx * dx; // 오른쪽 요소는 좌우 대칭
     const [x] = pt(m(51), 0);
@@ -118,25 +117,50 @@ function faceGeometry() {
       ink.push(HEAD.faceLine([pt(cx + dx - 3.75, 278.75), pt(cx + dx + 3.75, 262.5)], px(2.2), 0.0012));
     }
   }
+  sharedFace = { ink: mergeAll(ink), white: mergeAll(white), blush: mergeAll(blush) };
+  return sharedFace;
+}
+
+/**
+ * 입: 윗선 + 벌린 U자 입(안쪽 갈색) + 혀 + 아래 미소 선. 좌표는 사진 px.
+ * @param {Array<[number, number]>} upper 윗선 (dx, y)
+ * @param {[number, number, number]} u U자 입 [top, bottom, peak] (폭 ±14.5px)
+ * @param {[number, number, number]} t 혀 [top, bottom, peak] (폭 ±8px)
+ */
+function mouthGeometry(upper, u, t) {
+  const { px, pt } = photoMapper(HEAD, PHOTO);
   const mouth = (list) => list.map(([dx, y]) => pt(dx, y));
   const LINE = px(2.4);
-  ink.push(HEAD.faceLine(mouth([[-20.25, 272], [-17.25, 276.25], [-11, 277.5], [-4.75, 274.5], [0, 268.75], [4.75, 274.5], [11, 277.5], [17.25, 276.25], [20.25, 272]]), LINE));
-  // U자 입 윤곽: 오른쪽 위에서 아래로 내려가 왼쪽 위로, 윗변은 ω 아래쪽을 따라간다
+  // U자 입 윤곽: 오른쪽 위에서 아래로 내려가 왼쪽 위로, 윗변은 윗선 아래쪽을 따라간다
   const uShape = (half, top, bottom, peak) => {
     const side = [[1, 0], [1.03, 0.3], [0.95, 0.55], [0.78, 0.76], [0.45, 0.93], [0, 1]].map(([w, f]) => [half * w, top + (bottom - top) * f]);
     const right = side.slice(0, -1);
     const left = right.map(([dx, y]) => [-dx, y]).reverse();
     return mouth([...right, side.at(-1), ...left, [-half * 0.5, top - 0.5], [0, peak], [half * 0.5, top - 0.5]]);
   };
-  ink.push(HEAD.faceShape(uShape(14.5, 276.5, 305, 272), 0.0004));
-  tongue.push(HEAD.faceShape(uShape(8, 280, 299.5, 279), 0.001));
-  ink.push(HEAD.faceLine(mouth([[-10, 312], [0, 317], [10, 312]]), LINE));
-  sharedFace = { ink: mergeAll(ink), white: mergeAll(white), blush: mergeAll(blush), tongue: mergeAll(tongue) };
-  return sharedFace;
+  return {
+    ink: mergeAll([
+      HEAD.faceLine(mouth(upper), LINE),
+      HEAD.faceShape(uShape(14.5, ...u), 0.0004),
+      HEAD.faceLine(mouth([[-10, 312], [0, 317], [10, 312]]), LINE),
+    ]),
+    tongue: HEAD.faceShape(uShape(8, ...t), 0.001),
+  };
 }
 
-/** 공통 몸과 얼굴. 팔과 눈썹은 기본값이 옆으로 뻗은 팔·짧은 눈썹이다 */
-function addBase(group, fur, { arms = sideArmsGeometry(), brows = shortBrowsGeometry() } = {}) {
+let omegaMouth = null;
+/** 기본 입: ω 윗선 (토끼·고양이) */
+function omegaMouthGeometry() {
+  omegaMouth ??= mouthGeometry(
+    [[-20.25, 272], [-17.25, 276.25], [-11, 277.5], [-4.75, 274.5], [0, 268.75], [4.75, 274.5], [11, 277.5], [17.25, 276.25], [20.25, 272]],
+    [276.5, 305, 272],
+    [280, 299.5, 279],
+  );
+  return omegaMouth;
+}
+
+/** 공통 몸과 얼굴. 팔·눈썹·입은 기본값이 옆으로 뻗은 팔·짧은 눈썹·ω 입이다 */
+function addBase(group, fur, { arms = sideArmsGeometry(), brows = shortBrowsGeometry(), mouth = omegaMouthGeometry() } = {}) {
   const face = faceGeometry();
   group.add(
     hulaMesh(bodyGeometry(), fur),
@@ -145,7 +169,8 @@ function addBase(group, fur, { arms = sideArmsGeometry(), brows = shortBrowsGeom
     hulaMesh(face.ink, FACE_MAT.ink, false),
     hulaMesh(face.white, FACE_MAT.white, false),
     hulaMesh(face.blush, FACE_MAT.blush, false),
-    hulaMesh(face.tongue, FACE_MAT.tongue, false),
+    hulaMesh(mouth.ink, FACE_MAT.ink, false),
+    hulaMesh(mouth.tongue, FACE_MAT.tongue, false),
   );
 }
 
@@ -276,6 +301,42 @@ function holdingArmsGeometry() {
   return holdingArms;
 }
 
+// ---------- 목도리 햄스터 표정 ----------
+
+let hamsterBrows = null;
+/** 왼쪽은 물결(~), 오른쪽은 위로 볼록한 호 눈썹. 각 눈 위에 오도록 눈 위치 기준으로 둔다 */
+function hamsterBrowsGeometry() {
+  if (hamsterBrows) return hamsterBrows;
+  const EYE_X = 51 * K;
+  const RADIUS = 0.001;
+  const LIFT = 0.0016;
+  const brows = [
+    [-EYE_X, [[-0.0058, 0.0173], [-0.0038, 0.0192], [-0.0014, 0.0186], [0.0011, 0.0171], [0.0035, 0.0175], [0.0054, 0.0191]]],
+    [EYE_X, [[-0.0061, 0.0183], [-0.003, 0.0198], [0.0008, 0.0201], [0.0039, 0.0192], [0.0063, 0.0178]]],
+  ];
+  const parts = [];
+  for (const [ex, line] of brows) {
+    const points = line.map(([dx, dy]) => [ex + dx, EYE_Y + dy]);
+    parts.push(HEAD.faceLine(points, RADIUS, LIFT));
+    for (const [x, y] of [points[0], points.at(-1)]) {
+      parts.push(placed(BASE.small, { pos: HEAD.point(x, y, LIFT).point.toArray(), scale: [RADIUS, RADIUS, RADIUS] }));
+    }
+  }
+  hamsterBrows = mergeAll(parts);
+  return hamsterBrows;
+}
+
+let hamsterMouth = null;
+/** 양 끝(입꼬리)이 올라가고 가운데가 뾰족한 윗선. ω보다 넓다 */
+function hamsterMouthGeometry() {
+  hamsterMouth ??= mouthGeometry(
+    [[-28, 277.8], [-21.6, 283.2], [-14.8, 285.5], [-7.4, 280.2], [0, 272.8], [7.4, 280.2], [14.8, 285.5], [21.6, 283.2], [28, 277.8]],
+    [283.5, 305, 274],
+    [286, 299.5, 285],
+  );
+  return hamsterMouth;
+}
+
 /** 호빵: 둥글고 위가 살짝 볼록한 찐빵, 윗면이 보는 쪽으로 조금 기운다 */
 function addHoppang(group) {
   const hoppang = new THREE.Group();
@@ -324,9 +385,9 @@ export function buildScarfCat(group, doll, { fur, sub }) {
   group.add(macaron);
 }
 
-/** 목도리 햄스터: 머리 위 양쪽의 둥근 귀, 분홍 목도리, 두 손으로 쥔 호빵 */
+/** 목도리 햄스터: 둥근 귀, 물결·호 눈썹, 입꼬리가 올라간 입, 분홍 목도리, 두 손으로 쥔 호빵 */
 export function buildScarfHamster(group, doll, { fur }) {
-  addBase(group, fur, { arms: holdingArmsGeometry() });
+  addBase(group, fur, { arms: holdingArmsGeometry(), brows: hamsterBrowsGeometry(), mouth: hamsterMouthGeometry() });
   for (const sx of [-1, 1]) {
     group.add(part(GEO.sphere, fur, { pos: [sx * 0.036, HEAD_TOP - 0.008, -0.004], scale: [0.0125, 0.0115, 0.0095] }));
   }
