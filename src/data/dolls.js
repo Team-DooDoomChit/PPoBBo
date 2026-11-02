@@ -11,7 +11,7 @@ export const RARITY = {
 export const DOLLS = [
   // 인어섬 시리즈 (기계 id 'bear'): 꽃 화관 + 풀 치마 인형 (#49, #53)
   { id: 'hamster-hula', name: '인어섬 치이카와', machineId: 'bear', type: 'hulaHamster', rarity: 'common', color: 0xfbfbfd, sub: 0xf3e0ee },
-  { id: 'cat-hula', name: '훌라 고양이', machineId: 'bear', type: 'hulaCat', rarity: 'common', color: 0xfbfbfd, sub: 0x8fa3ea },
+  { id: 'cat-hula', name: '인어섬 하치와레', machineId: 'bear', type: 'hulaCat', rarity: 'common', color: 0xfbfbfd, sub: 0x8fa3ea },
 
   { id: 'bunny-white', name: '흰 토끼', machineId: 'bunny', type: 'bunny', rarity: 'common', color: 0xfafafa, sub: 0xffb3c8 },
   { id: 'bunny-gray', name: '회색 토끼', machineId: 'bunny', type: 'bunny', rarity: 'common', color: 0xa8a8b8, sub: 0xf0f0f0 },
