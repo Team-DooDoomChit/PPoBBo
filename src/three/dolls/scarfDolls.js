@@ -37,7 +37,6 @@ const GEO = {
   box: new THREE.BoxGeometry(1, 1, 1),
   ring: new THREE.TorusGeometry(1, 0.3, 8, 40),
   strand: new THREE.CylinderGeometry(1, 1, 1, 6),
-  disc: new THREE.CylinderGeometry(1, 1, 1, 24),
 };
 
 const FACE_MAT = {
@@ -50,7 +49,7 @@ const FACE_MAT = {
 const mat = (color, roughness = 0.9) => new THREE.MeshStandardMaterial({ color, roughness });
 const HOPPANG_MAT = mat(0xfbf9f4, 0.75);
 const BUNNY_MAT = { scarf: mat(0xe6bd45, 0.95), fringe: mat(0xf2db74) };
-const CAT_MAT = { scarf: mat(0x7f9fe0, 0.95), fringe: mat(0x92afea), cream: mat(0xf3e3c6, 0.8), plate: mat(0xe2b85a, 0.6) };
+const CAT_MAT = { scarf: mat(0x7f9fe0, 0.95), fringe: mat(0x92afea) };
 const HAMSTER_MAT = { scarf: mat(0xe88ba0, 0.95), fringe: mat(0xef9fb2) };
 
 /** 부품 메시 하나. 부품은 DollFactory의 mergeParts가 재질별로 합친다. */
@@ -65,7 +64,7 @@ function part(geometry, material, { pos = [0, 0, 0], scale = [1, 1, 1], rot = [0
 // ---------- 세 인형이 함께 쓰는 지오메트리 (한 번만 만든다) ----------
 
 let sharedBody = null;
-/** 머리 + 둥근 몸 + 짧은 다리 */
+/** 머리 + 둥근 몸 + 짧은 다리 (팔은 holdingArmsGeometry) */
 function bodyGeometry() {
   if (sharedBody) return sharedBody;
   const parts = [HEAD.geometry(), placed(BASE.sphere, { pos: [0, -0.03, 0], scale: [0.043, 0.03, 0.043 * HEAD.depth] })];
@@ -74,15 +73,6 @@ function bodyGeometry() {
   }
   sharedBody = mergeAll(parts);
   return sharedBody;
-}
-
-let sideArms = null;
-/** 옆으로 뻗은 짧은 팔 (고양이) */
-function sideArmsGeometry() {
-  sideArms ??= mergeAll([-1, 1].map((sx) =>
-    placed(BASE.sphere, { pos: [sx * 0.051, -0.0155, 0.01], scale: [0.0135, 0.0078, 0.0105], rot: [0, -sx * 0.45, -sx * 0.35] }),
-  ));
-  return sideArms;
 }
 
 let shortBrows = null;
@@ -177,12 +167,12 @@ function closedMouthGeometry() {
   return closedMouth;
 }
 
-/** 공통 몸과 얼굴. 팔·눈썹·입은 기본값이 옆으로 뻗은 팔·짧은 눈썹·ω 입이다 */
-function addBase(group, fur, { arms = sideArmsGeometry(), brows = shortBrowsGeometry(), mouth = omegaMouthGeometry() } = {}) {
+/** 공통 몸과 얼굴. 눈썹·입은 기본값이 짧은 눈썹·ω 입이다 */
+function addBase(group, fur, { brows = shortBrowsGeometry(), mouth = omegaMouthGeometry() } = {}) {
   const face = faceGeometry();
   group.add(
     hulaMesh(bodyGeometry(), fur),
-    hulaMesh(arms, fur),
+    hulaMesh(holdingArmsGeometry(), fur),
     hulaMesh(brows, FACE_MAT.ink, false),
     hulaMesh(face.ink, FACE_MAT.ink, false),
     hulaMesh(face.white, FACE_MAT.white, false),
@@ -275,7 +265,7 @@ function capGeometry() {
   return sharedCap;
 }
 
-// ---------- 호빵 우사기 눈썹, 호빵을 쥔 팔 ----------
+// ---------- 호빵 우사기 눈썹, 세 인형의 호빵을 쥔 팔 ----------
 
 const EYE_Y = 0.0277; // 눈 높이 (사진 y 241.5px)
 
@@ -300,7 +290,7 @@ function archedBrowsGeometry() {
   return archedBrows;
 }
 
-// 호빵 위치·크기: 몸 앞에 두 손으로 쥔다 (토끼·햄스터)
+// 호빵 위치·크기: 몸 앞에 두 손으로 쥔다
 const HOPPANG = { pos: [0, -0.031, 0.036], rx: 0.027, ry: 0.023, rz: 0.021 };
 
 let holdingArms = null;
@@ -372,7 +362,7 @@ function addHoppang(group) {
 
 /** 호빵 우사기: 긴 귀(안쪽 분홍), 높이 올라간 호 눈썹, 노란 목도리, 두 손으로 쥔 호빵 */
 export function buildScarfBunny(group, doll, { fur, sub }) {
-  addBase(group, fur, { arms: holdingArmsGeometry(), brows: archedBrowsGeometry() });
+  addBase(group, fur, { brows: archedBrowsGeometry() });
   const earY = HEAD_TOP + 0.024; // 아래쪽이 머리에 묻히도록
   for (const sx of [-1, 1]) {
     const tilt = [0, 0, -sx * 0.04];
@@ -385,28 +375,18 @@ export function buildScarfBunny(group, doll, { fur, sub }) {
   addHoppang(group);
 }
 
-/** 호빵 하치와레: 파란 머리 무늬와 뾰족한 귀, 다문 입, 파란 목도리, 꼬리 방울, 한 손에 든 마카롱 */
+/** 호빵 하치와레: 파란 머리 무늬와 뾰족한 귀, 다문 입, 파란 목도리, 꼬리 방울, 두 손으로 쥔 호빵 */
 export function buildScarfCat(group, doll, { fur, sub }) {
   addBase(group, fur, { mouth: closedMouthGeometry() });
   group.add(hulaMesh(capGeometry(), sub));
   addScarf(group, CAT_MAT);
   group.add(part(GEO.sphere, CAT_MAT.scarf, { pos: [0.008, -0.044, -0.034], scale: [0.014, 0.014, 0.014] }));
-  const macaron = new THREE.Group();
-  macaron.position.set(0.058, -0.02, 0.03);
-  macaron.rotation.set(1.15, 0.35, -0.55);
-  macaron.scale.setScalar(0.85);
-  macaron.add(
-    part(GEO.disc, CAT_MAT.plate, { pos: [0, -0.004, 0], scale: [0.025, 0.004, 0.023] }),
-    part(GEO.disc, CAT_MAT.cream, { pos: [0, 0.003, 0], scale: [0.023, 0.008, 0.021] }),
-    part(GEO.sphere, CAT_MAT.cream, { pos: [0, 0.007, 0], scale: [0.023, 0.011, 0.021] }),
-    part(GEO.disc, CAT_MAT.cream, { pos: [0.003, 0.019, 0.002], scale: [0.0025, 0.004, 0.0025], shadow: false }),
-  );
-  group.add(macaron);
+  addHoppang(group);
 }
 
 /** 호빵 치이카와: 둥근 귀, 물결·호 눈썹, 입꼬리가 올라간 입, 분홍 목도리, 두 손으로 쥔 호빵 */
 export function buildScarfHamster(group, doll, { fur }) {
-  addBase(group, fur, { arms: holdingArmsGeometry(), brows: hamsterBrowsGeometry(), mouth: hamsterMouthGeometry() });
+  addBase(group, fur, { brows: hamsterBrowsGeometry(), mouth: hamsterMouthGeometry() });
   for (const sx of [-1, 1]) {
     group.add(part(GEO.sphere, fur, { pos: [sx * 0.036, HEAD_TOP - 0.008, -0.004], scale: [0.0125, 0.0115, 0.0095] }));
   }
