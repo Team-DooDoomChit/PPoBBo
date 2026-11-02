@@ -6,6 +6,7 @@ import { buildHulaHamster } from '../../src/three/dolls/hulaHamster.js';
 import { createDollMesh, disposeDollMesh } from '../../src/three/DollFactory.js';
 import { dollProfile } from '../../src/physics/DollBody.js';
 import { getDoll } from '../../src/data/dolls.js';
+import { MACHINES } from '../../src/data/machines.js';
 
 const build = (fur = new THREE.MeshStandardMaterial()) => {
   const group = new THREE.Group();
@@ -59,8 +60,10 @@ test('인형을 정리해도 공유 지오메트리는 해제하지 않는다 (�
   assert.equal(meshes(createDollMesh(getDoll('hamster-hula'))).length, 8, '정리한 뒤에도 새 인형을 만들 수 있다');
 });
 
-test('곰돌이 하우스의 인형으로 등록돼 있다', () => {
+test('인어섬 시리즈 기계(bear)의 인어섬 치이카와로 등록돼 있다', () => {
   const doll = getDoll('hamster-hula');
   assert.equal(doll.machineId, 'bear');
   assert.equal(doll.type, 'hulaHamster');
+  assert.equal(doll.name, '인어섬 치이카와');
+  assert.equal(MACHINES.find((m) => m.id === 'bear').name, '인어섬 시리즈');
 });
