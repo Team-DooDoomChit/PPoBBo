@@ -37,7 +37,7 @@ const MAT = {
   white: mat(0xffffff, 0.3),
   blush: mat(0xe7b0bd),
   tongue: mat(0xf1c0cd),
-  earPink: mat(0xeec3d2, 1), // 귀 안쪽 보송한 분홍
+  earPink: mat(0xeaafc5, 1), // 귀 안쪽 보송한 분홍
   skirt: mat(0xbde3a1, 1), // 털실
   skirtDeep: mat(0xa6d28b, 1),
   petal: mat(0xf3eeb4, 0.8), // 연노랑 꽃
@@ -51,8 +51,8 @@ const { px, py, pt } = photoMapper(HEAD, PHOTO);
 
 // ---------- 부품별 지오메트리 (한 번만 만든다) ----------
 
-// 귀: 머리 위로 곧게 선 긴 귀 두 개 (가운데에서 ±54px, 반폭 53px, 끝 22px). 옆모습 두께는 폭의 1.2배.
-const EAR = { dx: 54, r: 53 * K, top: Y(22), base: Y(300), depth: 1.2 };
+// 귀: 머리 위로 곧게 선 통통하고 긴 귀 두 개 (가운데에서 ±58px, 반폭 58px로 서로 맞닿음, 끝 22px). 옆모습 두께는 폭의 1.15배.
+const EAR = { dx: 58, r: 58 * K, top: Y(22), base: Y(300), depth: 1.15 };
 
 function buildBody() {
   const parts = [
@@ -77,18 +77,54 @@ function buildBody() {
   return mergeAll(parts);
 }
 
-/** 귀 안쪽 분홍: 귀 바깥 앞쪽(정면에서 바깥으로 50°)을 덮는 납작한 타원 (60~195px) */
+/**
+ * 귀 안쪽 분홍: 귀 바깥 앞쪽(정면에서 바깥으로 26°)을 귀 끝 바로 아래(58px)부터 밑동(270px, 화관 뒤)까지
+ * 길게 덮는 띠. 귀 표면을 따라 휘어지고 위 끝은 둥글다. 띠 폭은 귀 폭의 절반 남짓(약 60px).
+ */
 function buildEarPink() {
   const parts = [];
+  const NU = 10; // 띠 폭 방향 칸 수
+  const NV = 28; // 띠 길이 방향 칸 수
+  const LIFT = 1.04; // 귀 표면에서 살짝 띄운다 (반지름 배율)
+  const top = Y(58);
+  const bottom = Y(270);
+  const capStart = EAR.top - EAR.r; // 이보다 위는 귀 끝의 반구
+  const roundFrom = top - 0.012; // 띠 위 끝을 둥글게 좁히기 시작하는 높이
   for (const sx of [-1, 1]) {
-    const theta = sx * 0.5;
+    const theta = sx * 0.45; // 띠 가운데 방향
+    const HALF = 0.62; // 띠 반폭 (rad)
     const ex = sx * px(EAR.dx);
-    const rz = EAR.r * EAR.depth;
-    parts.push(placed(BASE.sphere, {
-      pos: [ex + Math.sin(theta) * EAR.r * 0.93, Y(127), Math.cos(theta) * rz * 0.93 - 0.002],
-      scale: [px(30), px(72), 0.003],
-      rot: [0, theta, 0],
-    }));
+    const positions = [];
+    const uvs = [];
+    for (let j = 0; j <= NV; j++) {
+      const y = bottom + ((top - bottom) * j) / NV;
+      const shrink = y > capStart ? Math.sqrt(Math.max(0, 1 - ((y - capStart) / EAR.r) ** 2)) : 1;
+      const half = y > roundFrom ? HALF * Math.sqrt(Math.max(0, 1 - ((y - roundFrom) / (top - roundFrom)) ** 2)) : HALF;
+      for (let i = 0; i <= NU; i++) {
+        const phi = theta + half * ((2 * i) / NU - 1);
+        positions.push(
+          ex + Math.sin(phi) * EAR.r * shrink * LIFT,
+          y,
+          -0.002 + Math.cos(phi) * EAR.r * EAR.depth * shrink * LIFT,
+        );
+        uvs.push(i / NU, j / NV);
+      }
+    }
+    const index = [];
+    for (let j = 0; j < NV; j++) {
+      for (let i = 0; i < NU; i++) {
+        const p = j * (NU + 1) + i;
+        const q = p + NU + 1;
+        // 바깥(귀 표면 밖)을 앞면으로
+        index.push(p, p + 1, q, p + 1, q + 1, q);
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    g.setIndex(index);
+    g.computeVertexNormals();
+    parts.push(g);
   }
   return mergeAll(parts);
 }
