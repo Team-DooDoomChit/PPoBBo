@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { loadModel, peekModel } from './ModelLoader.js';
 import { buildHulaHamster } from './dolls/hulaHamster.js';
 import { buildHulaCat } from './dolls/hulaCat.js';
+import { buildHulaBunny } from './dolls/hulaBunny.js';
 
 /**
  * 인형 3D 모델(절차적) 생성.
@@ -307,6 +308,7 @@ const builders = {
 // 별도 파일로 만든 인형 (#49)
 builders.hulaHamster = buildHulaHamster;
 builders.hulaCat = buildHulaCat; // #53
+builders.hulaBunny = buildHulaBunny; // #59
 
 const MODEL_HEIGHT = 0.21; // .glb 인형을 맞출 높이 (절차적 인형과 비슷하게)
 
