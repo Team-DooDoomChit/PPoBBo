@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BASE, createHead, hulaMesh, mergeAll, photoMapper, placed } from './hulaBase.js';
+import { BASE, Z, createHead, hulaMesh, mergeAll, photoMapper, placed } from './hulaBase.js';
 
 /**
  * 목도리 시리즈 (토끼·고양이·햄스터, #55): 훌라 인형과 같은 체형·얼굴에 니트 목도리를 두르고 소품을 안았다.
@@ -48,7 +48,7 @@ const FACE_MAT = {
 };
 
 const mat = (color, roughness = 0.9) => new THREE.MeshStandardMaterial({ color, roughness });
-const BUNNY_MAT = { scarf: mat(0xe6bd45, 0.95), fringe: mat(0xf2db74), rice: mat(0xfbf9f4, 0.75) };
+const BUNNY_MAT = { scarf: mat(0xe6bd45, 0.95), fringe: mat(0xf2db74), hoppang: mat(0xfbf9f4, 0.75) };
 const CAT_MAT = { scarf: mat(0x7f9fe0, 0.95), fringe: mat(0x92afea), cream: mat(0xf3e3c6, 0.8), plate: mat(0xe2b85a, 0.6) };
 const HAMSTER_MAT = { scarf: mat(0xe88ba0, 0.95), fringe: mat(0xef9fb2), bun: mat(0xf5efd9, 0.85) };
 
@@ -64,22 +64,38 @@ function part(geometry, material, { pos = [0, 0, 0], scale = [1, 1, 1], rot = [0
 // ---------- 세 인형이 함께 쓰는 지오메트리 (한 번만 만든다) ----------
 
 let sharedBody = null;
-/** 머리 + 둥근 몸 + 옆으로 뻗은 짧은 팔 + 짧은 다리 */
+/** 머리 + 둥근 몸 + 짧은 다리 */
 function bodyGeometry() {
   if (sharedBody) return sharedBody;
   const parts = [HEAD.geometry(), placed(BASE.sphere, { pos: [0, -0.03, 0], scale: [0.043, 0.03, 0.043 * HEAD.depth] })];
   for (const sx of [-1, 1]) {
-    parts.push(
-      placed(BASE.sphere, { pos: [sx * 0.051, -0.0155, 0.01], scale: [0.0135, 0.0078, 0.0105], rot: [0, -sx * 0.45, -sx * 0.35] }),
-      placed(BASE.sphere, { pos: [sx * 0.0075, -0.0595, 0.003], scale: [0.0072, 0.009, 0.0086] }),
-    );
+    parts.push(placed(BASE.sphere, { pos: [sx * 0.0075, -0.0595, 0.003], scale: [0.0072, 0.009, 0.0086] }));
   }
   sharedBody = mergeAll(parts);
   return sharedBody;
 }
 
+let sideArms = null;
+/** 옆으로 뻗은 짧은 팔 (고양이·햄스터) */
+function sideArmsGeometry() {
+  sideArms ??= mergeAll([-1, 1].map((sx) =>
+    placed(BASE.sphere, { pos: [sx * 0.051, -0.0155, 0.01], scale: [0.0135, 0.0078, 0.0105], rot: [0, -sx * 0.45, -sx * 0.35] }),
+  ));
+  return sideArms;
+}
+
+let shortBrows = null;
+/** 눈 위의 짧은 눈썹 (고양이·햄스터) */
+function shortBrowsGeometry() {
+  if (!shortBrows) {
+    const { px, pt } = photoMapper(HEAD, PHOTO);
+    shortBrows = mergeAll([-1, 1].map((sx) => HEAD.faceLine([pt(sx * 52.5, 199.5), pt(sx * 47, 197.3), pt(sx * 42, 195.5)], px(2.3))));
+  }
+  return shortBrows;
+}
+
 let sharedFace = null;
-/** 얼굴: 큰 눈(갈색 + 흰 타원 + 아래 초승달), 짧은 눈썹, 빗금 볼터치, ω + 벌린 입과 혀 + 미소 선 */
+/** 눈썹을 뺀 얼굴: 큰 눈(갈색 + 흰 타원 + 아래 초승달), 빗금 볼터치, ω + 벌린 입과 혀 + 미소 선 */
 function faceGeometry() {
   if (sharedFace) return sharedFace;
   const { px, py, pt } = photoMapper(HEAD, PHOTO);
@@ -94,7 +110,6 @@ function faceGeometry() {
     white.push(HEAD.faceDisc(x, py(236.5), px(12.75), px(9), 0.001));
     white.push(HEAD.faceDisc(x, py(252.5), px(11), px(4), 0.001));
     ink.push(HEAD.faceDisc(x, py(248), px(11.5), px(3), 0.0013));
-    ink.push(HEAD.faceLine([pt(m(52.5), 199.5), pt(m(47), 197.3), pt(m(42), 195.5)], px(2.3)));
     const cx = m(101.5);
     const [bx, by] = pt(cx, 270.5);
     blush.push(HEAD.faceDisc(bx, by, px(29.4), px(23), 0.0004));
@@ -119,11 +134,13 @@ function faceGeometry() {
   return sharedFace;
 }
 
-/** 공통 몸과 얼굴 */
-function addBase(group, fur) {
+/** 공통 몸과 얼굴. 팔과 눈썹은 기본값이 옆으로 뻗은 팔·짧은 눈썹이고, 토끼만 자기 것을 쓴다 */
+function addBase(group, fur, { arms = sideArmsGeometry(), brows = shortBrowsGeometry() } = {}) {
   const face = faceGeometry();
   group.add(
     hulaMesh(bodyGeometry(), fur),
+    hulaMesh(arms, fur),
+    hulaMesh(brows, FACE_MAT.ink, false),
     hulaMesh(face.ink, FACE_MAT.ink, false),
     hulaMesh(face.white, FACE_MAT.white, false),
     hulaMesh(face.blush, FACE_MAT.blush, false),
@@ -214,11 +231,55 @@ function capGeometry() {
   return sharedCap;
 }
 
+// ---------- 목도리 토끼 눈썹·팔 ----------
+
+const EYE_Y = 0.0277; // 눈 높이 (사진 y 241.5px)
+
+let archedBrows = null;
+/** 토끼의 포인트: 눈 위로 높이 올라간 굵은 호 눈썹. 안쪽 위에서 바깥 아래로 휘고 양 끝이 둥글다 */
+function archedBrowsGeometry() {
+  if (archedBrows) return archedBrows;
+  const RADIUS = 0.0017;
+  const LIFT = 0.0016;
+  const parts = [];
+  for (const sx of [-1, 1]) {
+    const points = Array.from({ length: 13 }, (_, i) => {
+      const a = ((80 + (92 * i) / 12) * Math.PI) / 180;
+      return [sx * (0.018 - 0.024 * Math.cos(a)), EYE_Y + 0.008 + 0.024 * Math.sin(a)];
+    });
+    parts.push(HEAD.faceLine(points, RADIUS, LIFT));
+    for (const [x, y] of [points[0], points[12]]) {
+      parts.push(placed(BASE.small, { pos: HEAD.point(x, y, LIFT).point.toArray(), scale: [RADIUS, RADIUS, RADIUS] }));
+    }
+  }
+  archedBrows = mergeAll(parts);
+  return archedBrows;
+}
+
+// 호빵 위치·크기: 몸 앞에 두 손으로 쥔다
+const HOPPANG = { pos: [0, -0.031, 0.036], rx: 0.027, ry: 0.023, rz: 0.021 };
+
+let holdingArms = null;
+/** 몸에서 앞으로 뻗어 호빵 양옆을 쥐는 짧고 통통한 팔 */
+function holdingArmsGeometry() {
+  holdingArms ??= mergeAll([-1, 1].map((sx) => {
+    const shoulder = new THREE.Vector3(sx * 0.04, -0.019, 0.006);
+    const hand = new THREE.Vector3(sx * (HOPPANG.rx - 0.001), HOPPANG.pos[1] + 0.002, HOPPANG.pos[2] + 0.004);
+    const dir = hand.clone().sub(shoulder);
+    return placed(BASE.sphere, {
+      pos: shoulder.clone().add(hand).multiplyScalar(0.5).toArray(),
+      quat: new THREE.Quaternion().setFromUnitVectors(Z, dir.clone().normalize()),
+      scale: [0.0118, 0.0108, dir.length() / 2 + 0.006],
+    });
+  }));
+  return holdingArms;
+}
+
 // ---------- 인형별 빌더 ----------
 
-/** 목도리 토끼: 위로 곧게 선 긴 귀(안쪽 분홍), 노란 목도리, 품에 안은 주먹밥 */
+/** 목도리 토끼: 긴 귀(안쪽 분홍), 높이 올라간 호 눈썹, 노란 목도리, 두 손으로 쥔 호빵 */
 export function buildScarfBunny(group, doll, { fur, sub }) {
-  addBase(group, fur);
+  addBase(group, fur, { arms: holdingArmsGeometry(), brows: archedBrowsGeometry() });
   const earY = HEAD_TOP + 0.024; // 아래쪽이 머리에 묻히도록
   for (const sx of [-1, 1]) {
     const tilt = [0, 0, -sx * 0.04];
@@ -228,16 +289,15 @@ export function buildScarfBunny(group, doll, { fur, sub }) {
     );
   }
   addScarf(group, BUNNY_MAT);
-  const rice = new THREE.Group();
-  rice.position.set(0, -0.037, 0.04);
-  rice.rotation.x = -0.2;
-  rice.scale.setScalar(0.72);
-  rice.add(
-    part(GEO.sphere, BUNNY_MAT.rice, { scale: [0.032, 0.026, 0.018] }),
-    part(GEO.sphere, BUNNY_MAT.rice, { pos: [0, 0.017, -0.001], scale: [0.02, 0.02, 0.015] }),
-    part(GEO.sphere, BUNNY_MAT.rice, { pos: [0, 0.006, 0.0172], scale: [0.0032, 0.0042, 0.0028], shadow: false }),
+  // 호빵: 둥글고 위가 살짝 볼록한 찐빵, 윗면이 보는 쪽으로 조금 기운다
+  const hoppang = new THREE.Group();
+  hoppang.position.set(...HOPPANG.pos);
+  hoppang.rotation.x = 0.3;
+  hoppang.add(
+    part(GEO.sphere, BUNNY_MAT.hoppang, { scale: [HOPPANG.rx, HOPPANG.ry, HOPPANG.rz] }),
+    part(GEO.sphere, BUNNY_MAT.hoppang, { pos: [0, HOPPANG.ry - 0.0005, 0], scale: [0.0035, 0.002, 0.0035], shadow: false }),
   );
-  group.add(rice);
+  group.add(hoppang);
 }
 
 /** 목도리 고양이: 파란 머리 무늬와 뾰족한 귀, 파란 목도리, 꼬리 방울, 한 손에 든 마카롱 */
