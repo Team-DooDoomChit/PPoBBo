@@ -121,14 +121,14 @@ function buildBody() {
   head.scale(1, 1, HEAD_DEPTH);
   const parts = [
     head,
-    // 몸통: 머리보다 훨씬 좁은 둥근 흰 몸 (사진 반폭 145px). 머리가 몸 위로 넓게 튀어나온다.
-    placed(BASE.sphere, { pos: [0, -0.027, 0], scale: [0.0375, 0.026, 0.0375 * HEAD_DEPTH] }),
+    // 몸통: 머리 아래에서 치마 허리(반폭 0.042)까지 통통하게 이어지는 둥근 흰 몸. 머리가 몸 위로 넓게 튀어나온다.
+    placed(BASE.sphere, { pos: [0, -0.03, 0], scale: [0.042, 0.03, 0.042 * HEAD_DEPTH] }),
     // 발: 치마 속, 아래로 살짝 보이는 작은 발
     placed(BASE.sphere, { pos: [-0.011, -0.0642, 0.008], scale: [0.009, 0.006, 0.01] }),
     placed(BASE.sphere, { pos: [0.011, -0.0642, 0.008], scale: [0.009, 0.006, 0.01] }), // 발바닥 -0.0702
-    // 팔 (사진처럼 비대칭): 왼쪽(-x)은 아래로 내리고, 오른쪽(+x)은 옆으로 들어 끝이 조금 위로
-    placed(BASE.sphere, { pos: [px(-158), py(418), 0.006], scale: [0.012, 0.0065, 0.0075], rot: [0, 0.35, 1.0] }),
-    placed(BASE.sphere, { pos: [px(190), py(398), 0.004], scale: [0.0115, 0.0065, 0.0075], rot: [0, -0.3, 0.35] }),
+    // 팔 (사진처럼 비대칭인 큼직한 주걱 모양): 왼쪽(-x)은 아래로 내리고(끝 60px, 465px), 오른쪽(+x)은 옆으로 들어 끝이 조금 위로(끝 515px, 390px)
+    placed(BASE.sphere, { pos: [px(-172), py(425), 0.006], scale: [0.014, 0.0085, 0.009], rot: [0, 0.35, 1.0] }),
+    placed(BASE.sphere, { pos: [px(208), py(396), 0.004], scale: [0.016, 0.0082, 0.009], rot: [0, -0.3, 0.2] }),
   ];
   // 귀: 머리 꼭대기 양쪽(가운데에서 ±129px), 화관 위로 또렷이 솟은 둥근 귀 (꼭대기 사진 25px)
   for (const sx of [-1, 1]) {
@@ -140,10 +140,11 @@ function buildBody() {
 function buildSkirt() {
   const front = [];
   const back = [];
-  // 허리 (사진 y 470px, 반폭 150px): 털실을 모아 묶은 도톰한 띠 하나
+  // 허리 (사진 y 470px, 반폭 163px): 털실을 꼬아 묶은 가는 띠 하나
   const waistY = py(470);
-  front.push(placed(new THREE.TorusGeometry(1, 0.1, 8, 64), { pos: [0, waistY, 0], rot: [Math.PI / 2, 0, 0], scale: [0.0395, 0.0395 * HEAD_DEPTH, 0.026] }));
-  // 가닥: 굵은 털실이 허리(반폭 150px)에서 아래 끝(사진 y 612px, 반폭 185px)까지 늘어지며 퍼진다. 가닥마다 두 줄을 꼬아 털실 결을 낸다.
+  front.push(placed(new THREE.TorusGeometry(1, 0.1, 8, 64), { pos: [0, waistY, 0], rot: [Math.PI / 2, 0, 0], scale: [0.042, 0.042 * HEAD_DEPTH, 0.018] }));
+  // 가닥: 털실이 허리(반폭 163px)에서 아래 끝(사진 y 612px, 반폭 207px)까지 넓게 퍼지며 늘어진다.
+  // 가닥 사이가 조금 성기게, 가닥마다 두 줄을 꼬아 털실 결을 낸다.
   const strandY = (waistY + py(612)) / 2;
   const layer = (list, count, r, tilt, height, offset, width) => {
     for (let i = 0; i < count; i++) {
@@ -157,8 +158,8 @@ function buildSkirt() {
       }
     }
   };
-  layer(front, 34, 0.0435, 0.25, 0.036, 0, 0.0036);
-  layer(back, 34, 0.04, 0.2, 0.034, 0.5, 0.0034);
+  layer(front, 30, 0.048, 0.32, 0.037, 0, 0.0034);
+  layer(back, 30, 0.044, 0.26, 0.035, 0.5, 0.0034);
   return { front: mergeAll(front), back: mergeAll(back) };
 }
 
