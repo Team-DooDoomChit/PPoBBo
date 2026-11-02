@@ -15,9 +15,9 @@ export const DOLLS = [
   { id: 'bear-gold', name: '황금 곰', machineId: 'bear', type: 'bear', rarity: 'epic', color: 0xffc928, sub: 0xfff3b0, glow: true },
 
   // modelUrl에 public/models 의 .glb 경로를 넣으면 그 모델로 교체된다 (예: '/models/keychain-bunny.glb')
-  { id: 'bunny-scarf', name: '목도리 토끼', machineId: 'bunny', type: 'keychainBunny', rarity: 'common', color: 0xf7e4d8, sub: 0xf3a9b8, modelUrl: null },
-  { id: 'cat-scarf', name: '목도리 고양이', machineId: 'bunny', type: 'keychainCat', rarity: 'common', color: 0xf7f8fc, sub: 0x8badea, modelUrl: null },
-  { id: 'hamster-scarf', name: '목도리 햄스터', machineId: 'bunny', type: 'keychainHamster', rarity: 'common', color: 0xf8f8fb, sub: 0xe88ba0, modelUrl: null },
+  { id: 'bunny-scarf', name: '호빵 우사기', machineId: 'bunny', type: 'keychainBunny', rarity: 'common', color: 0xf7e4d8, sub: 0xf3a9b8, modelUrl: null },
+  { id: 'cat-scarf', name: '호빵 하치와레', machineId: 'bunny', type: 'keychainCat', rarity: 'common', color: 0xf7f8fc, sub: 0x8badea, modelUrl: null },
+  { id: 'hamster-scarf', name: '호빵 치이카와', machineId: 'bunny', type: 'keychainHamster', rarity: 'common', color: 0xf8f8fb, sub: 0xe88ba0, modelUrl: null },
 
   { id: 'chick-yellow', name: '노랑 병아리', machineId: 'chick', type: 'chick', rarity: 'common', color: 0xffe14d, sub: 0xff9a2e },
   { id: 'chick-cotton', name: '솜 병아리', machineId: 'chick', type: 'chick', rarity: 'common', color: 0xfff8e8, sub: 0xffb02e },

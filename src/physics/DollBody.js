@@ -29,7 +29,7 @@ const EXTRA_SHAPES = {
   keychainCat: [{ half: [0.044, 0.008, 0.009], y: 0.083 }], // 귀 끝 0.075 ~ 0.091
 };
 
-// 집게가 붙잡는 높이: 기본은 머리, 목도리 토끼는 귀 아래쪽, 목도리 고양이·햄스터는 머리 위쪽
+// 집게가 붙잡는 높이: 기본은 머리, 호빵 우사기는 귀 아래쪽, 호빵 하치와레·치이카와는 머리 위쪽
 const GRAB_Y = { keychainBunny: 0.1, keychainCat: 0.058, keychainHamster: 0.058 };
 
 /**

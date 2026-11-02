@@ -213,7 +213,7 @@ function addScarf(group, { scarf, fringe }) {
   group.add(tail);
 }
 
-// ---------- 목도리 고양이 머리 무늬·귀 ----------
+// ---------- 호빵 하치와레 머리 무늬·귀 ----------
 
 /** 파란 무늬 아래 끝 (머리 높이 비율). a: 머리 둘레 각도 (0 = 정면). 정면 가운데는 흰 가르마 */
 function capEdge(a) {
@@ -275,7 +275,7 @@ function capGeometry() {
   return sharedCap;
 }
 
-// ---------- 목도리 토끼 눈썹, 호빵을 쥔 팔 ----------
+// ---------- 호빵 우사기 눈썹, 호빵을 쥔 팔 ----------
 
 const EYE_Y = 0.0277; // 눈 높이 (사진 y 241.5px)
 
@@ -319,7 +319,7 @@ function holdingArmsGeometry() {
   return holdingArms;
 }
 
-// ---------- 목도리 햄스터 표정 ----------
+// ---------- 호빵 치이카와 표정 ----------
 
 let hamsterBrows = null;
 /** 왼쪽은 물결(~), 오른쪽은 위로 볼록한 호 눈썹. 각 눈 위에 오도록 눈 위치 기준으로 둔다 */
@@ -370,7 +370,7 @@ function addHoppang(group) {
 
 // ---------- 인형별 빌더 ----------
 
-/** 목도리 토끼: 긴 귀(안쪽 분홍), 높이 올라간 호 눈썹, 노란 목도리, 두 손으로 쥔 호빵 */
+/** 호빵 우사기: 긴 귀(안쪽 분홍), 높이 올라간 호 눈썹, 노란 목도리, 두 손으로 쥔 호빵 */
 export function buildScarfBunny(group, doll, { fur, sub }) {
   addBase(group, fur, { arms: holdingArmsGeometry(), brows: archedBrowsGeometry() });
   const earY = HEAD_TOP + 0.024; // 아래쪽이 머리에 묻히도록
@@ -385,7 +385,7 @@ export function buildScarfBunny(group, doll, { fur, sub }) {
   addHoppang(group);
 }
 
-/** 목도리 고양이: 파란 머리 무늬와 뾰족한 귀, 다문 입, 파란 목도리, 꼬리 방울, 한 손에 든 마카롱 */
+/** 호빵 하치와레: 파란 머리 무늬와 뾰족한 귀, 다문 입, 파란 목도리, 꼬리 방울, 한 손에 든 마카롱 */
 export function buildScarfCat(group, doll, { fur, sub }) {
   addBase(group, fur, { mouth: closedMouthGeometry() });
   group.add(hulaMesh(capGeometry(), sub));
@@ -404,7 +404,7 @@ export function buildScarfCat(group, doll, { fur, sub }) {
   group.add(macaron);
 }
 
-/** 목도리 햄스터: 둥근 귀, 물결·호 눈썹, 입꼬리가 올라간 입, 분홍 목도리, 두 손으로 쥔 호빵 */
+/** 호빵 치이카와: 둥근 귀, 물결·호 눈썹, 입꼬리가 올라간 입, 분홍 목도리, 두 손으로 쥔 호빵 */
 export function buildScarfHamster(group, doll, { fur }) {
   addBase(group, fur, { arms: holdingArmsGeometry(), brows: hamsterBrowsGeometry(), mouth: hamsterMouthGeometry() });
   for (const sx of [-1, 1]) {

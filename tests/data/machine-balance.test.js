@@ -16,7 +16,7 @@ test('곰돌이 하우스·병아리 농장은 일반 2개, 레어·에픽 1개�
   for (const id of ['bear', 'chick']) assert.deepEqual(rarityCount(id), { common: 2, rare: 1, epic: 1 }, id);
 });
 
-test('치이카와 겨울 시리즈는 목도리 토끼(기본)·고양이·햄스터 3종, 모두 일반', () => {
+test('치이카와 겨울 시리즈는 호빵 우사기(기본)·하치와레·치이카와 3종, 모두 일반', () => {
   assert.equal(MACHINES.find((m) => m.id === 'bunny').name, '치이카와 겨울 시리즈');
   assert.deepEqual(getDollsByMachine('bunny').map((d) => d.id), ['bunny-scarf', 'cat-scarf', 'hamster-scarf']);
   assert.deepEqual(rarityCount('bunny'), { common: 3 });
