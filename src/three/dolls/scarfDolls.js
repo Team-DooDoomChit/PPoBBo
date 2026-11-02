@@ -126,10 +126,11 @@ function faceGeometry() {
  * @param {Array<[number, number]>} upper 윗선 (dx, y)
  * @param {[number, number, number]} u U자 입 [top, bottom, peak] (폭 ±14.5px)
  * @param {[number, number, number]} t 혀 [top, bottom, peak] (폭 ±8px)
+ * @param {number} [up] 입 전체를 위로 옮길 px
  */
-function mouthGeometry(upper, u, t) {
+function mouthGeometry(upper, u, t, up = 0) {
   const { px, pt } = photoMapper(HEAD, PHOTO);
-  const mouth = (list) => list.map(([dx, y]) => pt(dx, y));
+  const mouth = (list) => list.map(([dx, y]) => pt(dx, y - up));
   const LINE = px(2.4);
   // U자 입 윤곽: 오른쪽 위에서 아래로 내려가 왼쪽 위로, 윗변은 윗선 아래쪽을 따라간다
   const uShape = (half, top, bottom, peak) => {
@@ -333,6 +334,7 @@ function hamsterMouthGeometry() {
     [[-28, 277.8], [-21.6, 283.2], [-14.8, 285.5], [-7.4, 280.2], [0, 272.8], [7.4, 280.2], [14.8, 285.5], [21.6, 283.2], [28, 277.8]],
     [283.5, 305, 274],
     [286, 299.5, 285],
+    4,
   );
   return hamsterMouth;
 }
