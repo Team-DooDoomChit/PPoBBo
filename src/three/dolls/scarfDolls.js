@@ -150,7 +150,7 @@ function mouthGeometry(upper, u, t, up = 0) {
 }
 
 let omegaMouth = null;
-/** 기본 입: ω 윗선 (토끼·고양이) */
+/** 기본 입: ω 윗선 (토끼) */
 function omegaMouthGeometry() {
   omegaMouth ??= mouthGeometry(
     [[-20.25, 272], [-17.25, 276.25], [-11, 277.5], [-4.75, 274.5], [0, 268.75], [4.75, 274.5], [11, 277.5], [17.25, 276.25], [20.25, 272]],
@@ -158,6 +158,22 @@ function omegaMouthGeometry() {
     [280, 299.5, 279],
   );
   return omegaMouth;
+}
+
+let closedMouth = null;
+/** 다문 입: ω 선 + 아래 짧은 턱 선 (고양이) */
+function closedMouthGeometry() {
+  if (!closedMouth) {
+    const { px, pt } = photoMapper(HEAD, PHOTO);
+    const line = (list) => HEAD.faceLine(list.map(([dx, y]) => pt(dx, y)), px(2.4));
+    closedMouth = {
+      ink: mergeAll([
+        line([[-20.25, 272], [-17.25, 276.25], [-11, 277.5], [-4.75, 274.5], [0, 268.75], [4.75, 274.5], [11, 277.5], [17.25, 276.25], [20.25, 272]]),
+        line([[-7, 292], [0, 295], [7, 292]]),
+      ]),
+    };
+  }
+  return closedMouth;
 }
 
 /** 공통 몸과 얼굴. 팔·눈썹·입은 기본값이 옆으로 뻗은 팔·짧은 눈썹·ω 입이다 */
@@ -171,8 +187,8 @@ function addBase(group, fur, { arms = sideArmsGeometry(), brows = shortBrowsGeom
     hulaMesh(face.white, FACE_MAT.white, false),
     hulaMesh(face.blush, FACE_MAT.blush, false),
     hulaMesh(mouth.ink, FACE_MAT.ink, false),
-    hulaMesh(mouth.tongue, FACE_MAT.tongue, false),
   );
+  if (mouth.tongue) group.add(hulaMesh(mouth.tongue, FACE_MAT.tongue, false));
 }
 
 const NECK_Y = -0.014;
@@ -368,9 +384,9 @@ export function buildScarfBunny(group, doll, { fur, sub }) {
   addHoppang(group);
 }
 
-/** 목도리 고양이: 파란 머리 무늬와 뾰족한 귀, 파란 목도리, 꼬리 방울, 한 손에 든 마카롱 */
+/** 목도리 고양이: 파란 머리 무늬와 뾰족한 귀, 다문 입, 파란 목도리, 꼬리 방울, 한 손에 든 마카롱 */
 export function buildScarfCat(group, doll, { fur, sub }) {
-  addBase(group, fur);
+  addBase(group, fur, { mouth: closedMouthGeometry() });
   group.add(hulaMesh(capGeometry(), sub));
   addScarf(group, CAT_MAT);
   group.add(part(GEO.sphere, CAT_MAT.scarf, { pos: [0.008, -0.044, -0.034], scale: [0.014, 0.014, 0.014] }));
