@@ -7,7 +7,7 @@ export const HELD_DOLL_MASK = GROUP.STATIC | GROUP.DOLL;
 
 /**
  * 몸통·머리 구 { r: 반지름, y: 중심 높이 }. 기본은 DOLL_SHAPE.
- * 훌라 햄스터(#49)는 머리가 넓고 몸이 가늘어서(머리 반폭 0.06, 치마 반폭 0.055) 따로 둔다.
+ * 훌라 햄스터(#49)는 머리가 넓고 낮아서 머리 구만 따로 맞춘다.
  */
 const DEFAULT_SPHERES = [
   { r: DOLL_SHAPE.bodyRadius, y: 0 },
@@ -15,7 +15,8 @@ const DEFAULT_SPHERES = [
 ];
 const BASE_SPHERES = {
   hulaHamster: [
-    { r: 0.055, y: -0.013 }, // 몸통 + 치마 (치마 끝 반폭 0.05, 아래 끝 -0.068)
+    // 몸통: 다른 인형과 같은 크기의 구를 원점(무게 중심)에 둔다. 구 중심이 무게 중심보다 아래면 인형이 넘어진다.
+    { r: DOLL_SHAPE.bodyRadius, y: 0 },
     { r: 0.046, y: 0.0365 }, // 머리 (위쪽 끝 0.0825 = 귀 꼭대기, 앞뒤 두께 0.05)
   ],
 };
