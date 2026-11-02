@@ -1,0 +1,189 @@
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+/**
+ * 훌라 고양이(#53)를 만드는 부품과 도구 (머리 모양·얼굴 그리기·치마·화관).
+ *
+ * 원점 = 몸통 중심, +Y = 위, +Z = 얼굴 정면 (DollFactory와 같다). 단위 m.
+ * 머리는 앞모습 실루엣을 돌린 회전체를 앞뒤로 눌러(depth) 만들고, 얼굴·화관은 그 표면에 붙인다.
+ */
+
+export const Z = new THREE.Vector3(0, 0, 1);
+
+export const BASE = {
+  sphere: new THREE.SphereGeometry(1, 24, 16),
+  small: new THREE.SphereGeometry(1, 10, 6), // 꽃잎·진주·얼굴 원판처럼 작은 부품용 (정점 수를 줄인다)
+  capsule: new THREE.CapsuleGeometry(1, 3, 2, 6), // 높이 5, 반지름 1
+};
+
+/** 원본 지오메트리를 복제해 크기·회전·위치를 적용 */
+export function placed(geometry, { pos = [0, 0, 0], scale = [1, 1, 1], rot = [0, 0, 0], quat } = {}) {
+  const q = quat ?? new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot));
+  return geometry.clone().applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...pos), q, new THREE.Vector3(...scale)));
+}
+
+/** 속성 구성을 맞춰 하나로 합친다 (Lathe·Tube 등 모두 index + position/normal/uv) */
+export function mergeAll(list) {
+  const merged = mergeGeometries(list, false);
+  list.forEach((g) => g.dispose());
+  return merged;
+}
+
+/**
+ * 머리 모양과 표면 도구.
+ * @param {object} spec
+ * @param {number} spec.bottom 머리 아래(목) y
+ * @param {number} spec.height 머리 키
+ * @param {number} spec.halfWidth 최대 반폭
+ * @param {number} spec.depth 앞뒤 두께 / 좌우 폭
+ * @param {Array<[number, number]>} spec.silhouette [t: 아래에서 위로 0~1, w: 최대 반폭 대비] 앞모습 실루엣
+ */
+export function createHead({ bottom, height, halfWidth, depth, silhouette }) {
+  const profile = [
+    [0, bottom - 0.003], // 아래 가운데를 닫는다 (몸통에 가려 보이지 않음)
+    ...silhouette.map(([t, w]) => [w * halfWidth, bottom + t * height]),
+  ];
+  const at = (t) => bottom + t * height; // 머리 높이 비율 → y
+  const wx = (w) => w * halfWidth; // 반폭 비율 → x
+
+  /** 머리 높이 y에서의 좌우 반지름 (실루엣 보간) */
+  function radius(y) {
+    const p = profile;
+    // 아래 닫는 점(반지름 0)을 뺀 옆면 구간에서 보간한다
+    if (y <= p[1][1]) return p[1][0];
+    for (let i = 1; i < p.length - 1; i++) {
+      const [r0, y0] = p[i];
+      const [r1, y1] = p[i + 1];
+      if (y <= y1) return Math.max(1e-4, THREE.MathUtils.lerp(r0, r1, (y - y0) / (y1 - y0)));
+    }
+    return 1e-4;
+  }
+
+  /** 머리 앞면 (x, y) → 표면 위 점(lift만큼 띄움)과 바깥 법선 */
+  function point(x, y, lift = 0.0008) {
+    const R = radius(y);
+    const zAt = (qx, qy) => {
+      const r = radius(qy);
+      return depth * r * Math.sqrt(Math.max(0, 1 - (qx / r) ** 2));
+    };
+    const z = depth * R * Math.sqrt(Math.max(0, 1 - (x / R) ** 2));
+    const h = 0.0005;
+    const dzdx = (zAt(x + h, y) - zAt(x - h, y)) / (2 * h);
+    const dzdy = (zAt(x, y + h) - zAt(x, y - h)) / (2 * h);
+    const normal = new THREE.Vector3(-dzdx, -dzdy, 1).normalize();
+    return { point: new THREE.Vector3(x, y, z).addScaledVector(normal, lift), normal };
+  }
+
+  /** 머리 둘레(높이 y, 각도 a: 0 = 정면)의 점과 바깥 법선 */
+  function ringPoint(y, a, lift) {
+    const R = radius(y);
+    const dR = (radius(y + 0.0005) - radius(y - 0.0005)) / 0.001;
+    const x = R * Math.sin(a);
+    const z = depth * R * Math.cos(a);
+    const normal = new THREE.Vector3(x / R ** 2, -dR / R, z / (depth * R) ** 2).normalize();
+    return { point: new THREE.Vector3(x, y, z).addScaledVector(normal, lift), normal };
+  }
+
+  /** 머리 표면에 붙인 납작한 원판 (눈·볼) */
+  function faceDisc(x, y, rx, ry, lift, base = BASE.sphere) {
+    const { point: p, normal } = point(x, y, lift);
+    return placed(base, { pos: p.toArray(), scale: [rx, ry, 0.0012], quat: new THREE.Quaternion().setFromUnitVectors(Z, normal) });
+  }
+
+  /** 머리 표면을 따라가는 가는 선 (눈썹·입) */
+  function faceLine(points, lineRadius = 0.0008, lift = 0.0016) {
+    const curve = new THREE.CatmullRomCurve3(points.map(([x, y]) => point(x, y, lift).point));
+    return new THREE.TubeGeometry(curve, Math.max(6, points.length * 4), lineRadius, 5, false);
+  }
+
+  /** 머리 표면에 붙인 납작한 다각형 (입처럼 원판으로 안 되는 모양). points: 앞면 (x, y) 윤곽 */
+  function faceShape(points, lift = 0.0008) {
+    const g = new THREE.ShapeGeometry(new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(x, y))));
+    const pos = g.attributes.position;
+    const nor = g.attributes.normal;
+    for (let i = 0; i < pos.count; i++) {
+      const { point: p, normal } = point(pos.getX(i), pos.getY(i), lift);
+      pos.setXYZ(i, p.x, p.y, p.z);
+      nor.setXYZ(i, normal.x, normal.y, normal.z);
+    }
+    return g;
+  }
+
+  /** 머리 회전체 지오메트리 */
+  function geometry(segments = 56) {
+    const g = new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), segments);
+    g.scale(1, 1, depth);
+    return g;
+  }
+
+  return { bottom, height, halfWidth, depth, profile, at, wx, radius, point, ringPoint, faceDisc, faceLine, faceShape, geometry };
+}
+
+/**
+ * 참고 사진 앞모습의 픽셀 좌표 → 머리 앞면 좌표.
+ * 가로·세로 모두 같은 비율(사진 머리 반폭 = head.halfWidth)로 옮겨 얼굴 요소 사이 간격을 그대로 지킨다.
+ * @param {{ cx: number, halfWidth: number, bottom: number, stretchY?: number }} photo 얼굴 가운데 x, 머리 반폭, 머리 아래 y (px, y는 아래가 +)
+ */
+export function photoMapper(head, { cx, halfWidth, bottom, stretchY = 1 }) {
+  const k = head.halfWidth / halfWidth; // 1px → m
+  const px = (dx) => dx * k; // 가로 픽셀(가운데 기준) → m
+  const py = (y) => head.bottom + (bottom - y) * k * stretchY; // 세로 픽셀(이미지 y) → m
+  return { cx, px, py, pt: (dx, y) => [px(dx), py(y)] };
+}
+
+/**
+ * 풀 치마: 털실을 모아 묶은 허리띠 + 아래로 늘어지는 가닥 두 겹(앞 겹 · 안쪽 겹).
+ * 가닥마다 두 줄을 꼬아 털실 결을 낸다.
+ */
+export function buildSkirt(head, { waistY, waistR, waistThick, strandY, front, back }) {
+  const frontList = [];
+  const backList = [];
+  // 허리띠: 도넛을 눕혀 앞뒤로 머리처럼 누른다. waistThick는 띠 굵기 배율 (도넛 단면 반지름 0.1 기준)
+  frontList.push(placed(new THREE.TorusGeometry(1, 0.1, 8, 64), { pos: [0, waistY, 0], rot: [Math.PI / 2, 0, 0], scale: [waistR, waistR * head.depth, waistThick] }));
+  const layer = (list, { count, r, tilt, height, offset, width }) => {
+    for (let i = 0; i < count; i++) {
+      const a = ((i + offset) / count) * Math.PI * 2;
+      const qy = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), a);
+      for (const side of [-1, 1]) {
+        const q = qy.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-tilt, 0, side * 0.14)));
+        const local = new THREE.Vector3(side * 0.002, strandY, r).applyQuaternion(qy);
+        local.z *= head.depth;
+        list.push(placed(BASE.capsule, { pos: local.toArray(), quat: q, scale: [width, height / 5, 0.0034] }));
+      }
+    }
+  };
+  layer(frontList, front);
+  layer(backList, back);
+  return { front: mergeAll(frontList), back: mergeAll(backList) };
+}
+
+/** 꽃 화관: 머리 둘레(높이 비율 t)에 꽃잎 5장 + 가운데 진주인 꽃을 고르게 두른다 */
+export function buildCrown(head, { t, count, petalOffset, petalSize, petalThickness, pearlSize, lift, pearlLift, outward = 0.45, twistStep = 0.7 }) {
+  const petals = [];
+  const pearls = [];
+  const ringY = head.at(t);
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    const { point, normal: surface } = head.ringPoint(ringY, a, lift);
+    // 머리 표면 법선은 거의 위를 향해 꽃이 누워 보이므로, 바깥쪽으로 기울여 앞에서 꽃 모양이 보이게 한다
+    const out = new THREE.Vector3(Math.sin(a), 0, Math.cos(a));
+    const normal = surface.clone().add(out.multiplyScalar(outward)).normalize();
+    const q = new THREE.Quaternion().setFromUnitVectors(Z, normal);
+    const twist = new THREE.Quaternion().setFromAxisAngle(Z, i * twistStep); // 꽃마다 꽃잎 방향을 조금씩 다르게
+    for (let k = 0; k < 5; k++) {
+      const s = (k / 5) * Math.PI * 2;
+      const offset = new THREE.Vector3(Math.cos(s) * petalOffset, Math.sin(s) * petalOffset, 0).applyQuaternion(twist).applyQuaternion(q);
+      petals.push(placed(BASE.small, { pos: point.clone().add(offset).toArray(), quat: q, scale: [petalSize, petalSize, petalThickness] }));
+    }
+    pearls.push(placed(BASE.small, { pos: point.clone().addScaledVector(normal, pearlLift).toArray(), scale: [pearlSize, pearlSize, pearlSize] }));
+  }
+  return { petals: mergeAll(petals), pearls: mergeAll(pearls) };
+}
+
+/** 메시 하나 (그림자 설정 포함) */
+export function hulaMesh(geometry, material, shadow = true) {
+  const m = new THREE.Mesh(geometry, material);
+  m.castShadow = shadow;
+  m.receiveShadow = true;
+  return m;
+}
