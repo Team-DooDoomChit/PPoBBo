@@ -1,0 +1,250 @@
+import * as THREE from 'three';
+import { BASE, Z, buildSkirt, createHead, hulaMesh, mergeAll, photoMapper, placed } from './hulaBase.js';
+
+/**
+ * 인어섬 우사기 (#59): 긴 귀, 노란 꽃 화관, 풀 치마를 입고 횃불을 든 아이보리색 토끼.
+ *
+ * 원점 = 몸통 중심, +Y = 위, +Z = 얼굴 정면 (DollFactory와 같다). 단위 m.
+ * 모습은 참고 이미지(앞·뒤·양옆)에서 픽셀로 잰 값을 그대로 옮겼다. 머리 반폭은 다른 훌라 인형과 같은 0.061m.
+ * 사진 기준(앞모습): 얼굴 가운데 x = 462px, 머리 반폭 285px, 머리 아래 끝 y = 700px(몸통 속),
+ * 가장 넓은 볼 y = 500px, 정수리 y = 250px, 귀 끝 y = 22px, 발바닥 y = 965px. (y는 아래가 +)
+ * 얼굴은 앞쪽에만 있고, 뒷면은 아이보리색이다.
+ *
+ * 같은 재질의 부품은 처음 한 번만 합쳐 모든 인형이 공유한다. 몸 색(fur)만 인형마다 다르다.
+ */
+
+const PHOTO = { cx: 462, halfWidth: 285, bottom: 700, top: 250 };
+const K = 0.061 / PHOTO.halfWidth; // 1px → m
+const Y0 = -0.065 + 965 * K; // 사진 y 0px의 높이 (발바닥 965px이 몸통 구 아래 끝 -0.065에 오도록)
+const X = (x) => (x - PHOTO.cx) * K; // 사진 x(px) → m
+const Y = (y) => Y0 - y * K; // 사진 y(px) → m
+const tAt = (y) => (PHOTO.bottom - y) / (PHOTO.bottom - PHOTO.top); // 사진 y(px) → 머리 높이 비율
+
+// 머리 앞모습 실루엣: 가장 넓은 볼(500px)을 가운데로 위는 반타원, 아래는 둥근 턱 초타원(지수 2.5)으로 몸통 속에서 닫힌다
+const WIDEST = tAt(500);
+const SILHOUETTE = Array.from({ length: 41 }, (_, i) => {
+  const t = i / 40;
+  const [r, p] = t >= WIDEST ? [1 - WIDEST, 2] : [WIDEST, 2.5];
+  return [t, Math.max(0, 1 - Math.abs((t - WIDEST) / r) ** p) ** (1 / p)];
+});
+// 옆모습에서 잰 머리 앞뒤 두께는 좌우 폭의 0.92 (공처럼 둥근 머리)
+const HEAD = createHead({ bottom: Y(PHOTO.bottom), height: (PHOTO.bottom - PHOTO.top) * K, halfWidth: 0.061, depth: 0.92, silhouette: SILHOUETTE });
+const BODY_DEPTH = 0.87; // 몸통·치마 앞뒤 두께 / 좌우 폭 (옆모습)
+
+const mat = (color, roughness = 0.9, metalness = 0) => new THREE.MeshStandardMaterial({ color, roughness, metalness });
+const MAT = {
+  ink: mat(0x1c1a1a, 0.6), // 수놓은 검은 선
+  white: mat(0xffffff, 0.3),
+  blush: mat(0xe7b0bd),
+  tongue: mat(0xf1c0cd),
+  earPink: mat(0xeec3d2, 1), // 귀 안쪽 보송한 분홍
+  skirt: mat(0xbde3a1, 1), // 털실
+  skirtDeep: mat(0xa6d28b, 1),
+  petal: mat(0xf3eeb4, 0.8), // 연노랑 꽃
+  pearl: mat(0xeee3cc, 0.25, 0.1),
+  stick: mat(0xf0f0f4, 0.5), // 횃불 막대
+  flame: mat(0xe0a271, 0.95), // 주황 불꽃 (보송한 천)
+  flameCore: mat(0xf3ead2, 0.9), // 불꽃 안쪽 흰 불씨
+};
+
+const { px, py, pt } = photoMapper(HEAD, PHOTO);
+
+// ---------- 부품별 지오메트리 (한 번만 만든다) ----------
+
+// 귀: 머리 위로 곧게 선 긴 귀 두 개 (가운데에서 ±54px, 반폭 53px, 끝 22px). 옆모습 두께는 폭의 1.2배.
+const EAR = { dx: 54, r: 53 * K, top: Y(22), base: Y(300), depth: 1.2 };
+
+function buildBody() {
+  const parts = [
+    HEAD.geometry(),
+    // 몸통: 머리 아래(650px)에서 치마 허리(715px)까지 보이는 흰 원통 (반폭 212px)
+    placed(new THREE.CylinderGeometry(0.045, 0.046, 0.03, 40), { pos: [0, Y(680), 0], scale: [1, 1, BODY_DEPTH] }),
+    // 발: 치마 아래로 보이는 두 발 (가운데에서 ±54px, 반폭 40px, 905~965px)
+    placed(BASE.sphere, { pos: [-px(54), Y(935), 0.004], scale: [px(40), px(30), 0.009] }),
+    placed(BASE.sphere, { pos: [px(54), Y(935), 0.004], scale: [px(40), px(30), 0.009] }),
+    // 오른팔(+x): 옆·아래로 뻗은 짧은 팔 (끝 752px, 725px)
+    placed(BASE.sphere, { pos: [X(708), Y(697), 0.004], scale: [0.012, 0.0062, 0.0072], rot: [0, -0.25, -0.55] }),
+    // 왼팔(-x): 옆으로 들어 횃불을 쥔 팔 (손 160px, 640px)
+    placed(BASE.sphere, { pos: [X(195), Y(648), 0.007], scale: [0.012, 0.0065, 0.0075], rot: [0, 0.3, -0.2] }),
+  ];
+  // 귀 (캡슐을 머리 속까지 내려 밑동을 묻는다)
+  const len = EAR.top - EAR.base - 2 * EAR.r;
+  const ear = new THREE.CapsuleGeometry(EAR.r, len, 8, 20);
+  for (const sx of [-1, 1]) {
+    parts.push(placed(ear, { pos: [sx * px(EAR.dx), (EAR.top + EAR.base) / 2, -0.002], scale: [1, 1, EAR.depth] }));
+  }
+  ear.dispose();
+  return mergeAll(parts);
+}
+
+/** 귀 안쪽 분홍: 귀 바깥 앞쪽(정면에서 바깥으로 50°)을 덮는 납작한 타원 (60~195px) */
+function buildEarPink() {
+  const parts = [];
+  for (const sx of [-1, 1]) {
+    const theta = sx * 0.5;
+    const ex = sx * px(EAR.dx);
+    const rz = EAR.r * EAR.depth;
+    parts.push(placed(BASE.sphere, {
+      pos: [ex + Math.sin(theta) * EAR.r * 0.93, Y(127), Math.cos(theta) * rz * 0.93 - 0.002],
+      scale: [px(30), px(72), 0.003],
+      rot: [0, theta, 0],
+    }));
+  }
+  return mergeAll(parts);
+}
+
+// 풀 치마: 허리(715px, 반폭 213px)에서 아래 끝(915px, 반폭 285px)까지 굵게 꼰 털실이 퍼진다
+const SKIRT = {
+  waistY: Y(715),
+  waistR: 0.046,
+  waistThick: 0.03,
+  strandY: (Y(715) + Y(915)) / 2,
+  front: { count: 24, r: 0.0535, tilt: 0.34, height: 0.043, offset: 0, width: 0.0047 },
+  back: { count: 24, r: 0.049, tilt: 0.28, height: 0.041, offset: 0.5, width: 0.0045 },
+};
+
+/**
+ * 노란 꽃 화관: 앞쪽 정수리에만 얹은 꽃 5송이 (뒤에서는 양옆 끝만 살짝 보인다).
+ * 꽃 지름 약 90px, 꽃잎 5장 + 가운데 진주.
+ */
+function buildCrown() {
+  const petals = [];
+  const pearls = [];
+  const ringY = HEAD.at(0.88);
+  // 앞쪽 정수리에만 5송이 (가운데에서 0, ±63, ±128px. 화관 폭은 머리 폭의 60%)
+  const ANGLES = [-0.85, -0.37, 0, 0.37, 0.85];
+  ANGLES.forEach((a, i) => {
+    const { point, normal: surface } = HEAD.ringPoint(ringY, a, 0.004);
+    // 정수리 쪽이라 법선이 거의 위를 향한다. 앞·바깥으로 기울여 앞에서 꽃 모양이 보이게 한다
+    const out = new THREE.Vector3(Math.sin(a), 0, Math.cos(a));
+    const normal = surface.clone().add(out.multiplyScalar(0.7)).normalize();
+    const q = new THREE.Quaternion().setFromUnitVectors(Z, normal);
+    const twist = new THREE.Quaternion().setFromAxisAngle(Z, i * 0.9);
+    for (let k = 0; k < 5; k++) {
+      const s = (k / 5) * Math.PI * 2;
+      const offset = new THREE.Vector3(Math.cos(s) * 0.0056, Math.sin(s) * 0.0056, 0).applyQuaternion(twist).applyQuaternion(q);
+      petals.push(placed(BASE.small, { pos: point.clone().add(offset).toArray(), quat: q, scale: [0.0062, 0.0062, 0.0018] }));
+    }
+    pearls.push(placed(BASE.small, { pos: point.clone().addScaledVector(normal, 0.0022).toArray(), scale: [0.0024, 0.0024, 0.0024] }));
+  });
+  return { petals: mergeAll(petals), pearls: mergeAll(pearls) };
+}
+
+// 횃불: 왼손에 쥔 흰 막대(아래 끝 225px·730px → 위 끝 120px·520px) 위에 주황 불꽃과 흰 불씨
+const TORCH = {
+  bottom: new THREE.Vector3(X(225), Y(730), 0.014),
+  top: new THREE.Vector3(X(120), Y(520), 0.014),
+  stickRadius: 0.003,
+};
+// 불꽃 꽃잎 단면 (r: 최대 폭 대비, y: 길이 대비). 아래는 둥글고 끝이 뾰족한 물방울 모양
+const TEARDROP = [[0, 0], [0.55, 0.06], [0.9, 0.2], [1, 0.35], [0.85, 0.55], [0.55, 0.75], [0.25, 0.92], [0.0001, 1]];
+
+function buildTorch() {
+  const axis = TORCH.top.clone().sub(TORCH.bottom);
+  const length = axis.length();
+  axis.normalize();
+  const toAxis = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis);
+  // 막대: 양 끝이 둥근 흰 막대
+  const stick = new THREE.CapsuleGeometry(TORCH.stickRadius, length, 4, 12);
+  stick.applyQuaternion(toAxis);
+  stick.translate(...TORCH.bottom.clone().add(TORCH.top).multiplyScalar(0.5).toArray());
+
+  // 불꽃 (사진 폭 145px, 높이 230px. 화면에서 작아 보여 조금 키웠다): 아래가 둥글고 통통한 불꽃 몸통 위로
+  // 끝이 뾰족한 불길 5갈래가 바깥으로 살짝 벌어지며 솟고, 앞쪽 가운데에 흰 불씨가 있다
+  const drop = new THREE.LatheGeometry(TEARDROP.map(([r, y]) => new THREE.Vector2(r, y)), 16);
+  const flame = [];
+  const local = []; // 축이 +Y인 불꽃 좌표계에서 만든 뒤 한꺼번에 옮긴다
+  local.push(placed(drop, { pos: [0, -0.004, 0], scale: [0.018, 0.044, 0.011] }));
+  const TIPS = [[-0.012, 0.024], [-0.006, 0.029], [0, 0.033], [0.006, 0.028], [0.012, 0.023]]; // [x, 길이]
+  for (const [x, L] of TIPS) {
+    local.push(placed(drop, { pos: [x, 0.014, 0], rot: [0, 0, -x * 20], scale: [0.0068, L, 0.0072] }));
+  }
+  const core = placed(drop, { pos: [0, 0.001, 0.0092], rot: [0.1, 0, 0], scale: [0.0078, 0.03, 0.003] });
+  const place = new THREE.Matrix4().compose(TORCH.top.clone().addScaledVector(axis, 0.002), toAxis, new THREE.Vector3(1, 1, 1));
+  for (const g of local) flame.push(g.applyMatrix4(place));
+  core.applyMatrix4(place);
+  drop.dispose();
+  return { stick, flame: mergeAll(flame), core };
+}
+
+// 얼굴 좌표: 사진 앞모습에서 픽셀로 잰 값을 그대로 옮긴다 (가로·세로 같은 비율)
+function buildFace() {
+  const ink = [];
+  const white = [];
+  const blush = [];
+  const tongue = [];
+  for (const sx of [-1, 1]) {
+    const m = (dx) => sx * dx; // 오른쪽 요소는 좌우 대칭
+    // 눈 (가운데 ±90.6px, y 456): 검은 타원(36×31px)
+    //   → 위쪽 흰 타원(18×12.25px, y 448.75)
+    //   → 아래 흰 초승달(폭 28px, 가운데 두께 약 7px): 흰 타원(14×5px, y 469.5) 위에 검은 타원(14.5×3px, y 464)을 겹쳐 아랫부분만 남긴다
+    const x = px(m(90.6));
+    ink.push(HEAD.faceDisc(x, py(456), px(36), px(31), 0.0004));
+    white.push(HEAD.faceDisc(x, py(448.75), px(18), px(12.25), 0.001));
+    white.push(HEAD.faceDisc(x, py(469.5), px(14), px(5), 0.001));
+    ink.push(HEAD.faceDisc(x, py(464), px(14.5), px(3), 0.0013));
+    // 눈썹: 눈 바깥 아래(±185px, 427px)에서 위로 크게 휘어 안쪽(±70px, 313px)에서 끝나는 긴 호
+    ink.push(HEAD.faceLine([[185, 427.5], [181, 390], [161, 355], [131.5, 330], [101, 317.5], [70, 313.5]].map(([dx, y]) => pt(m(dx), y)), px(4)));
+    // 볼터치 (가운데 ±166.7px, y 512.5): 분홍 타원(52.5×40px) + "/" 빗금 4줄 (두 볼 모두 같은 방향)
+    const cx = m(166.7);
+    const [bx, by] = pt(cx, 512.5);
+    blush.push(HEAD.faceDisc(bx, by, px(52.5), px(40), 0.0004));
+    for (const dx of [-30, -10, 10, 30]) {
+      ink.push(HEAD.faceLine([pt(cx + dx - 6, 525), pt(cx + dx + 6, 497.5)], px(4), 0.0019)); // 볼 원판 위로 올라오게
+    }
+  }
+  // 입 (가운데): 양 끝이 말려 올라간 ω 윗선 → 그 아래 U자로 벌린 입(검정, 폭 50px, 512~582px) 안에 분홍 혀 → 아래 작은 미소 선
+  const mouth = (list) => list.map(([dx, y]) => pt(dx, y));
+  const LINE = px(4);
+  ink.push(HEAD.faceLine(mouth([[-39, 507.5], [-34, 515], [-27, 520], [-17, 518], [-8, 510], [0, 495], [8, 510], [17, 518], [27, 520], [34, 515], [39, 507.5]]), LINE));
+  // U 윤곽: 오른쪽 위에서 아래로 내려가 왼쪽 위로, 윗변은 ω 아래쪽을 따라간다
+  const uShape = (half, top, bottom, peak) => {
+    const side = [[1, 0], [1.03, 0.3], [0.95, 0.55], [0.78, 0.76], [0.45, 0.93], [0, 1]].map(([w, f]) => [half * w, top + (bottom - top) * f]);
+    const right = side.slice(0, -1);
+    const left = right.map(([dx, y]) => [-dx, y]).reverse();
+    return mouth([...right, side.at(-1), ...left, [-half * 0.5, top - 1], [0, peak], [half * 0.5, top - 1]]);
+  };
+  ink.push(HEAD.faceShape(uShape(25, 514, 582.5, 500), 0.0004));
+  tongue.push(HEAD.faceShape(uShape(11, 525, 570, 522), 0.001));
+  ink.push(HEAD.faceLine(mouth([[-14.25, 597.5], [0, 608.5], [14.25, 597.5]]), px(3.5)));
+  return { ink: mergeAll(ink), white: mergeAll(white), blush: mergeAll(blush), tongue: mergeAll(tongue) };
+}
+
+let shared = null;
+function sharedGeometry() {
+  if (!shared) {
+    shared = {
+      body: buildBody(),
+      earPink: buildEarPink(),
+      skirt: buildSkirt({ depth: BODY_DEPTH }, SKIRT),
+      crown: buildCrown(),
+      torch: buildTorch(),
+      face: buildFace(),
+    };
+  }
+  return shared;
+}
+
+/**
+ * @param {THREE.Group} group 인형 그룹
+ * @param {object} doll 인형 데이터
+ * @param {{ fur: THREE.Material }} materials fur = 몸 색 (인형마다 만든 머티리얼)
+ */
+export function buildHulaBunny(group, doll, { fur }) {
+  const g = sharedGeometry();
+  group.add(
+    hulaMesh(g.body, fur),
+    hulaMesh(g.earPink, MAT.earPink, false),
+    hulaMesh(g.skirt.front, MAT.skirt),
+    hulaMesh(g.skirt.back, MAT.skirtDeep, false),
+    hulaMesh(g.crown.petals, MAT.petal),
+    hulaMesh(g.crown.pearls, MAT.pearl, false),
+    hulaMesh(g.torch.stick, MAT.stick),
+    hulaMesh(g.torch.flame, MAT.flame),
+    hulaMesh(g.torch.core, MAT.flameCore, false),
+    hulaMesh(g.face.ink, MAT.ink, false),
+    hulaMesh(g.face.white, MAT.white, false),
+    hulaMesh(g.face.blush, MAT.blush, false),
+    hulaMesh(g.face.tongue, MAT.tongue, false),
+  );
+}
