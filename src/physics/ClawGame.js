@@ -7,9 +7,11 @@ import { pickRandomDoll } from '../data/dolls.js';
 import { MACHINE_SPEC, PLAY_FLOOR_Y } from '../three/machineSpec.js';
 import { eventBus } from '../core/EventBus.js';
 
-const INITIAL_DOLLS = 16;
-const MIN_DOLLS = 10;
+const INITIAL_DOLLS = 30;
+const MIN_DOLLS = 20;
 const SPAWN_RANGE = MACHINE_SPEC.innerHalf - 0.08;
+const REFILL_CHUTE_MARGIN = 0.15;
+const REFILL_DROP = 0.45;
 
 /**
  * 기계 1대의 물리 세션: 충돌체 + 인형들 + 집게.
@@ -48,8 +50,9 @@ export class ClawGame {
     const data = pickRandomDoll(this.machineId);
     const mesh = createDollMesh(data);
     const body = createDollBody(this.physics.materials.doll, position, data.type);
-    // 대체로 정면(+Z)을 보도록 약간만 비튼다
-    body.quaternion.setFromEuler(Math.random() * 0.6 - 0.3, (Math.random() - 0.5) * 2, Math.random() * 0.6 - 0.3);
+    // 쓰러진 자세로 떨어뜨린다: 뒤로 눕거나 옆으로 기울되, 얼굴은 대체로 위나 앞(플레이어 쪽)을 본다
+    const lean = (Math.random() < 0.5 ? -1 : 1) * Math.random() * 1.4;
+    body.quaternion.setFromEuler(-0.2 - Math.random() * 1.2, (Math.random() - 0.5) * 2, lean);
     this.machine.group.add(mesh);
     this.physics.addBody(body, mesh);
     const doll = { data, body, mesh };
@@ -86,15 +89,15 @@ export class ClawGame {
     }
   }
 
-  /** 인형이 줄어들면 위에서 떨어뜨려 채운다 */
+  /** 인형이 줄어들면 위에서 떨어뜨려 채운다. 튕겨서 배출구에 공짜로 들어가지 않도록 배출구에서 멀리 떨어뜨린다 */
   #refill() {
     while (this.dolls.length < MIN_DOLLS) {
       let x, z;
       do {
         x = (Math.random() * 2 - 1) * SPAWN_RANGE;
         z = (Math.random() * 2 - 1) * SPAWN_RANGE;
-      } while (isOverChute(x, z, 0.1));
-      this.#spawnDoll([x, PLAY_FLOOR_Y + 0.6, z]);
+      } while (isOverChute(x, z, REFILL_CHUTE_MARGIN));
+      this.#spawnDoll([x, PLAY_FLOOR_Y + REFILL_DROP, z]);
     }
   }
 
