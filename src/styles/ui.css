@@ -12,6 +12,12 @@
   pointer-events: auto;
 }
 
+/* 도감 화면은 화면 요소 자체가 전체를 덮는 어두운 배경이라 마우스를 받아야 한다.
+   (그렇지 않으면 패널 바깥을 드래그·휠할 때 뒤의 3D 시점이 돌아간다) */
+#ui > .screen-collection {
+  pointer-events: auto;
+}
+
 .btn {
   font-family: var(--font);
   font-size: 16px;
