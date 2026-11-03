@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { limb } from './hulaBase.js';
+import { limb, skirtHips, skirtLining } from './hulaBase.js';
 
 /**
  * 훌라 햄스터 (#49): 꽃 화관 + 풀 치마를 입은 흰 햄스터.
@@ -122,6 +122,8 @@ function buildBody() {
   head.scale(1, 1, HEAD_DEPTH);
   const parts = [
     head,
+    // 치마 속 몸 아랫부분 (치마 속이 비어 보이지 않게)
+    skirtHips(HEAD_DEPTH, { waistY: py(470), strandY: (py(470) + py(612)) / 2, back: { r: 0.044, tilt: 0.26, height: 0.035 } }),
     // 몸통: 머리 아래에서 치마 허리(반폭 0.042)까지 통통하게 이어지는 둥근 흰 몸. 머리가 몸 위로 넓게 튀어나온다.
     placed(BASE.sphere, { pos: [0, -0.03, 0], scale: [0.042, 0.03, 0.042 * HEAD_DEPTH] }),
     // 발: 치마 속, 아래로 살짝 보이는 작은 발
@@ -162,6 +164,8 @@ function buildSkirt() {
   };
   layer(front, 30, 0.048, 0.32, 0.037, 0, 0.0034);
   layer(back, 30, 0.044, 0.26, 0.035, 0.5, 0.0034);
+  // 안감: 가닥 사이 틈과 치마 속이 비어 보이지 않게 안쪽 가닥 바로 안에 두른다
+  back.push(skirtLining(HEAD_DEPTH, { strandY, back: { r: 0.044, tilt: 0.26, height: 0.035 } }));
   return { front: mergeAll(front), back: mergeAll(back) };
 }
 
