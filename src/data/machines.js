@@ -6,7 +6,7 @@
 export const MACHINES = [
   {
     id: 'bear',
-    name: '곰돌이 하우스',
+    name: '인어섬 시리즈',
     price: 100,
     color: 0xff4fa3,
     accent: 0xffd23f,

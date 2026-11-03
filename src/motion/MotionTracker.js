@@ -1,7 +1,7 @@
 import { FilesetResolver, HandLandmarker, FaceLandmarker } from '@mediapipe/tasks-vision';
 
 /**
- * 웹캠 + MediaPipe 실행기 (브라우저 전용). (#8 손, #9 얼굴)
+ * 웹캠 + MediaPipe 실행기 (브라우저 전용). (#8 손, #9 얼굴, #34 양손)
  *
  * preload() → 모델만 미리 받기 (권한 불필요)
  * start()   → 카메라 권한 요청, 모델 로드, 프레임 루프 시작 / stop() → 카메라 끄기
@@ -52,8 +52,9 @@ export class MotionTracker {
   #startId = 0;
   #lastFace = null;
 
-  constructor({ onFrame, onError, urls = MEDIAPIPE_URLS, face = true, faceEvery = 2 } = {}) {
+  constructor({ onFrame, onError, urls = MEDIAPIPE_URLS, numHands = 2, face = true, faceEvery = 2 } = {}) {
     this.onFrame = onFrame;
+    this.numHands = numHands;
     this.onError = onError;
     this.urls = urls;
     this.useFace = face;
@@ -176,7 +177,7 @@ export class MotionTracker {
         createWithFallback(HandLandmarker, vision, {
           baseOptions: { modelAssetPath: this.urls.hand },
           runningMode: 'VIDEO',
-          numHands: 1,
+          numHands: this.numHands,
           minHandDetectionConfidence: 0.6,
           minHandPresenceConfidence: 0.6,
           minTrackingConfidence: 0.5,

@@ -3,6 +3,7 @@ import { ArcadeRoom } from './ArcadeRoom.js';
 import { ClawMachine } from './ClawMachine.js';
 import { setupLighting } from './Lighting.js';
 import { MACHINES } from '../data/machines.js';
+import { MACHINE_SPEC } from './machineSpec.js';
 
 const OVERVIEW = {
   position: new THREE.Vector3(0, 2.4, 4.2),
@@ -37,6 +38,25 @@ export class Arcade {
 
     sceneManager.camera.position.copy(OVERVIEW.position);
     sceneManager.controls.target.copy(OVERVIEW.target);
+    sceneManager.onUpdate(() => this.#hideMachinesAroundCamera());
+  }
+
+  /**
+   * 게임 중 기계 주위를 360도 돌면 카메라가 옆 기계 안으로 들어갈 수 있다.
+   * 그때는 그 기계를 숨겨 시야를 가리지 않게 한다.
+   */
+  #hideMachinesAroundCamera() {
+    const cam = this.sm.camera.position;
+    const reach = Math.max(MACHINE_SPEC.width, MACHINE_SPEC.depth) / 2 + 0.25; // 기계 반폭 + 이만큼 가까우면 숨긴다
+    this.machines.forEach((m) => {
+      const p = m.group.position;
+      const inside =
+        this.focusedMachine &&
+        m !== this.focusedMachine &&
+        Math.abs(cam.x - p.x) < reach &&
+        Math.abs(cam.z - p.z) < reach;
+      m.group.visible = !inside;
+    });
   }
 
   getMachine(id) {
@@ -72,17 +92,11 @@ export class Arcade {
       maxDistance: 2.6,
       minPolarAngle: 0.5,
       maxPolarAngle: Math.PI / 2 - 0.1,
-      minAzimuthAngle: -0.7,
-      maxAzimuthAngle: 0.7,
+      // 좌우는 제한 없이 360도 (고개·마우스로 기계 뒤쪽 인형까지 볼 수 있게)
+      minAzimuthAngle: -Infinity,
+      maxAzimuthAngle: Infinity,
     });
     await this.sm.moveCamera(base.clone().add(FOCUS.position), target, duration);
-  }
-
-  /** 기계 코인 투입구의 화면 정규화 좌표 { x, y } (0~1, 좌상단 원점) */
-  getCoinSlotScreenPosition(machine = this.focusedMachine) {
-    if (!machine) return null;
-    const p = machine.coinSlot.getWorldPosition(new THREE.Vector3()).project(this.sm.camera);
-    return { x: (p.x + 1) / 2, y: (1 - p.y) / 2 };
   }
 
   /** 화면 좌표(clientX/Y)에 있는 기계를 찾는다. 없으면 null */

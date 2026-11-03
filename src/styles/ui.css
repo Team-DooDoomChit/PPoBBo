@@ -1,5 +1,7 @@
 /* ---------- 공통 ---------- */
-.screen {
+/* 화면은 #ui 바로 아래의 전체 화면 요소라, #ui > * { pointer-events: auto } 보다 우선하도록 #ui를 붙인다.
+   (그렇지 않으면 투명한 화면이 마우스를 가로채 3D 캔버스의 시점 드래그·기계 클릭이 안 된다) */
+#ui > .screen {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -7,6 +9,12 @@
 
 .screen > *,
 .screen button {
+  pointer-events: auto;
+}
+
+/* 도감 화면은 화면 요소 자체가 전체를 덮는 어두운 배경이라 마우스를 받아야 한다.
+   (그렇지 않으면 패널 바깥을 드래그·휠할 때 뒤의 3D 시점이 돌아간다) */
+#ui > .screen-collection {
   pointer-events: auto;
 }
 
@@ -561,40 +569,22 @@
 
 /* ---------- 모바일 ---------- */
 @media (max-width: 600px) {
-  .hud-logo { font-size: 18px; }
+  /* HUD를 한 줄로 유지해 아래의 나가기 버튼을 가리지 않게 한다 (버튼 이름은 title로 남는다) */
+  .hud { gap: 8px; padding: 10px 12px; }
+  .hud-logo { font-size: 18px; padding: 0; white-space: nowrap; }
+  .hud-right { flex-wrap: nowrap; gap: 6px; }
+  .hud-actions { gap: 6px; }
+  .hud-btn { padding: 5px 8px; }
+  .hud-btn-text { display: none; }
+  .gold-pill { font-size: 16px; padding: 4px 10px; white-space: nowrap; }
   .btn-lg { font-size: 17px; padding: 12px 20px; }
   .select-panel { bottom: 88px; }
   .machine-card { flex-basis: 170px; }
   .select-panel .btn-round { display: none; }
 }
 
-/* ---------- 모션 커서 ---------- */
-.motion-cursor {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 60;
-  width: 28px;
-  height: 28px;
-  margin: -14px 0 0 -14px;
-  display: grid;
-  place-items: center;
-  font-size: 28px;
-  border: 3px solid var(--accent-2);
-  border-radius: 50%;
-  box-shadow: 0 0 12px var(--accent-2);
-  pointer-events: none;
-  transition: border-color 0.1s, width 0.1s, height 0.1s;
-}
-
-.motion-cursor.holding {
-  border-color: var(--gold);
-  box-shadow: 0 0 12px var(--gold);
-}
-
-.motion-cursor.over-slot {
-  border-color: #33ff88;
-  box-shadow: 0 0 20px #33ff88;
+@media (max-width: 380px) {
+  .hud-logo-text { display: none; }
 }
 
 .controls-hint {

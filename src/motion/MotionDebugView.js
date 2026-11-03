@@ -5,7 +5,7 @@ const FACE_POINTS = Object.values(FACE);
 
 /**
  * 게임 중 "내 모습" 카메라 창. (#8, #10)
- * 좌우 반전된 웹캠 영상 위에 손 관절과 인식된 동작을 그린다.
+ * 좌우 반전된 웹캠 영상 위에 손 관절과 인식된 동작을 그린다. 조작 손(#47)은 동작에 따라 색이 바뀌고, 다른 손은 흐리게 그린다.
  * 위치/크기는 styles/motion.css (.motion-cam)
  */
 export class MotionDebugView {
@@ -59,10 +59,11 @@ export class MotionDebugView {
 
   /**
    * @param {object} frame { hands, face } MediaPipe 결과
-   * @param {object} hand HandTracker 상태
+   * @param {{ left: object, right: object, index: { left: number, right: number }, control: 'left' | 'right' | null }} hands
+   *   손별 HandTracker 상태, frame.hands 안에서의 순서, 조작 손 (#47)
    * @param {object} [extra] 아래쪽에 표시할 추가 정보 { label: value } (label이 ''이면 값만)
    */
-  draw({ hands, face }, hand, extra = {}) {
+  draw({ hands: result, face }, hands, extra = {}) {
     if (!this.visible) return;
     const { ctx, canvas } = this;
     const w = canvas.width;
@@ -73,10 +74,13 @@ export class MotionDebugView {
     ctx.scale(-1, 1); // 거울처럼 좌우 반전
     if (this.video.readyState >= 2) ctx.drawImage(this.video, 0, 0, w, h);
 
-    const lm = hands?.landmarks?.[0];
-    if (lm) {
-      ctx.strokeStyle = hand.isFist ? '#ff4fa3' : hand.isPinching ? '#ffd23f' : '#3de0ff';
-      ctx.lineWidth = 2;
+    for (const role of ['left', 'right']) {
+      const lm = result?.landmarks?.[hands.index[role]];
+      if (!lm) continue;
+      const isControl = role === hands.control;
+      ctx.globalAlpha = isControl ? 1 : 0.35; // 조작하지 않는 손은 흐리게
+      ctx.strokeStyle = isControl ? handColor(hands[role]) : '#ffffff';
+      ctx.lineWidth = isControl ? 3 : 1.5;
       for (const { start, end } of HandLandmarker.HAND_CONNECTIONS) {
         ctx.beginPath();
         ctx.moveTo(lm[start].x * w, lm[start].y * h);
@@ -86,6 +90,7 @@ export class MotionDebugView {
       ctx.fillStyle = '#fff';
       lm.forEach((p) => ctx.fillRect(p.x * w - 2, p.y * h - 2, 4, 4));
     }
+    ctx.globalAlpha = 1;
 
     // 머리 방향 계산에 쓰는 얼굴 기준점 (#9)
     const fl = face?.faceLandmarks?.[0];
@@ -95,18 +100,51 @@ export class MotionDebugView {
     }
     ctx.restore();
 
-    const flags = hand.detected
-      ? [hand.isFist && '✊ 주먹', hand.isPointing && '☝️ 가리키기', hand.isPinching && '🤏 집기'].filter(Boolean).join(' ') || '🖐 손'
-      : '손을 보여 주세요';
-    const lines = [flags, ...Object.entries(extra).map(([k, v]) => (k ? `${k}: ${v}` : String(v)))];
+    // 조작 손 이름표 (반전된 화면 기준 위치)
+    const lm = result?.landmarks?.[hands.index[hands.control]];
+    if (lm) {
+      ctx.font = '13px Jua, sans-serif';
+      const x = (1 - lm[0].x) * w;
+      const y = lm[0].y * h + 16;
+      const text = '조작 손';
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(x - 24, y - 12, ctx.measureText(text).width + 8, 16);
+      ctx.fillStyle = handColor(hands[hands.control]);
+      ctx.fillText(text, x - 20, y);
+    }
+
+    const lines = [
+      describe(hands.control ? hands[hands.control] : null),
+      '✊ 쥐고 기울이기: 이동 · ✋ 펴기: 멈춤',
+      '🖐 손바닥 아래로 누르기: 내리기 · 👌: 코인',
+      ...Object.entries(extra).map(([k, v]) => (k ? `${k}: ${v}` : String(v))),
+    ];
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(0, h - 18 * lines.length - 6, w, 18 * lines.length + 6);
     ctx.fillStyle = '#fff';
-    ctx.font = '14px Jua, sans-serif';
+    ctx.font = '13px Jua, sans-serif';
     lines.forEach((line, i) => ctx.fillText(line, 8, h - 18 * (lines.length - i) + 12));
   }
 
   dispose() {
     this.hide();
   }
+}
+
+/** 조작 손의 지금 동작별 선 색: 누르기 분홍, OK 노랑, 쥐는 중 하늘색, 편 손 주황 */
+function handColor(hand) {
+  if (hand?.isPush) return '#ff4fa3';
+  if (hand?.isOk) return '#ffd23f';
+  if (hand?.isFist) return '#3de0ff';
+  return '#ffa53d';
+}
+
+/** 아래쪽 첫 줄: 조작 손의 지금 상태 */
+function describe(hand) {
+  if (!hand?.detected) return '손 하나를 보여 주세요';
+  if (hand.isPush) return '🖐 집게 내리기!';
+  if (hand.isOk) return '👌 코인';
+  if (hand.isFist) return '✊ 조이스틱 잡는 중';
+  if (hand.isPointing) return '☝️ 가리키기';
+  return '✋ 손 펴짐 (집게 멈춤)';
 }

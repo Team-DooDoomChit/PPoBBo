@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { loadModel, peekModel } from './ModelLoader.js';
 import { buildScarfBunny, buildScarfCat, buildScarfHamster } from './dolls/scarfDolls.js';
+import { buildHulaHamster } from './dolls/hulaHamster.js';
+import { buildHulaCat } from './dolls/hulaCat.js';
 
 /**
  * 인형 3D 모델(절차적) 생성.
@@ -50,36 +52,15 @@ function createMaterials(doll) {
   return { fur, sub };
 }
 
-function addFace(group, { headY, headR, muzzle }) {
+function addFace(group, { headY, headR }) {
   const eyeZ = headR * 0.88;
   group.add(
     part(geo.sphere, black, { pos: [-0.02, headY + 0.012, eyeZ], scale: s(0.008) }),
     part(geo.sphere, black, { pos: [0.02, headY + 0.012, eyeZ], scale: s(0.008) }),
   );
-  if (muzzle) {
-    group.add(part(geo.sphere, muzzle, { pos: [0, headY - 0.012, headR * 0.82], scale: [0.024, 0.018, 0.016] }));
-    group.add(part(geo.sphere, black, { pos: [0, headY - 0.005, headR * 0.82 + 0.015], scale: s(0.007) }));
-  }
 }
 
 const builders = {
-  bear(group, doll, { fur, sub }) {
-    const { bodyRadius: br, headRadius: hr, headOffsetY: hy } = DOLL_SHAPE;
-    group.add(
-      part(geo.sphere, fur, { scale: [br, br * 0.95, br * 0.9] }),
-      part(geo.sphere, sub, { pos: [0, -0.005, br * 0.62], scale: [0.04, 0.045, 0.025] }),
-      part(geo.sphere, fur, { pos: [0, hy, 0], scale: s(hr) }),
-      part(geo.sphere, fur, { pos: [-0.04, hy + 0.04, 0], scale: s(0.02) }),
-      part(geo.sphere, fur, { pos: [0.04, hy + 0.04, 0], scale: s(0.02) }),
-      // 팔다리
-      part(geo.sphere, fur, { pos: [-0.06, 0.01, 0.02], scale: [0.02, 0.032, 0.02] }),
-      part(geo.sphere, fur, { pos: [0.06, 0.01, 0.02], scale: [0.02, 0.032, 0.02] }),
-      part(geo.sphere, fur, { pos: [-0.032, -0.055, 0.03], scale: s(0.024) }),
-      part(geo.sphere, fur, { pos: [0.032, -0.055, 0.03], scale: s(0.024) }),
-    );
-    addFace(group, { headY: hy, headR: hr, muzzle: sub });
-  },
-
   bunny(group, doll, { fur, sub }) {
     const { bodyRadius: br, headRadius: hr, headOffsetY: hy } = DOLL_SHAPE;
     group.add(
@@ -133,10 +114,12 @@ const builders = {
   },
 };
 
-// 별도 파일로 만든 인형 (#55)
+// 별도 파일로 만든 인형 (#49, #53, #55)
 builders.keychainBunny = buildScarfBunny;
 builders.keychainCat = buildScarfCat;
 builders.keychainHamster = buildScarfHamster;
+builders.hulaHamster = buildHulaHamster;
+builders.hulaCat = buildHulaCat;
 
 // 인형 종류별로 합쳐 둔 부품 지오메트리 (같은 종류 인형끼리 공유, 해제하지 않음)
 const mergedParts = new Map();
