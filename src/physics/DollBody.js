@@ -33,8 +33,9 @@ const BASE_SPHERES = {
 };
 
 /**
- * 몸통·머리 구 위로 크게 튀어나오는 부분(귀, 키링 체인)에 붙이는 상자 충돌체.
- * half: 상자 반크기 [x, y, z], y: 중심 높이 (인형 원점 기준). 모델(DollFactory)의 치수와 맞춘다.
+ * 몸통·머리 구 위로 크게 튀어나오는 부분(귀, 키링 체인, 손에 든 소품)에 붙이는 상자 충돌체.
+ * half: 상자 반크기 [x, y, z], y: 중심 높이, x·z: 좌우·앞뒤 중심 (없으면 0, 인형 원점 기준).
+ * 모델(DollFactory)의 치수와 맞춘다.
  */
 const EXTRA_SHAPES = {
   bunny: [{ half: [0.038, 0.045, 0.012], y: 0.165 }], // 귀 0.12 ~ 0.21
@@ -47,6 +48,8 @@ const EXTRA_SHAPES = {
   hulaBunny: [
     { half: [0.059, 0.022, 0.05], y: 0.0345 }, // 머리 구보다 넓은 볼 쪽 (반폭 0.061, 가장 넓은 높이 0.0345)
     { half: [0.025, 0.0245, 0.0135], y: 0.1125 }, // 긴 귀 두 개 0.088 ~ 0.137 (좌우 끝 ±0.025)
+    // 왼손 횃불 위쪽(불꽃 x -0.107 ~ -0.06, y 0.02 ~ 0.074): 몸통 구 밖으로 나온 부분이 옆 인형을 파고들지 않게
+    { half: [0.024, 0.027, 0.012], x: -0.083, y: 0.047, z: 0.015 },
   ],
 };
 
@@ -80,8 +83,8 @@ export function createDollBody(material, position, type) {
   for (const { r, y } of BASE_SPHERES[type] ?? DEFAULT_SPHERES) {
     body.addShape(new CANNON.Sphere(r), new CANNON.Vec3(0, y, 0));
   }
-  for (const { half, y } of EXTRA_SHAPES[type] ?? []) {
-    body.addShape(new CANNON.Box(new CANNON.Vec3(...half)), new CANNON.Vec3(0, y, 0));
+  for (const { half, x = 0, y, z = 0 } of EXTRA_SHAPES[type] ?? []) {
+    body.addShape(new CANNON.Box(new CANNON.Vec3(...half)), new CANNON.Vec3(x, y, z));
   }
   body.sleepSpeedLimit = 0.05;
   body.sleepTimeLimit = 0.4;
