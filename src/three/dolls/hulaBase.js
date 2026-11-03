@@ -22,6 +22,22 @@ export function placed(geometry, { pos = [0, 0, 0], scale = [1, 1, 1], rot = [0,
   return geometry.clone().applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...pos), q, new THREE.Vector3(...scale)));
 }
 
+/**
+ * 어깨에서 손끝까지 이어지는 둥근 팔 (양 끝이 정확히 두 점에 닿는 타원체).
+ * 어깨를 몸통 속에 두면 팔이 몸통에 붙어 떨어져 보이지 않는다.
+ * @param {[number, number, number]} shoulder 어깨 (몸통 안쪽)
+ * @param {[number, number, number]} hand 손끝
+ * @param {number} thick 팔 굵기 (위아래 반지름)
+ * @param {number} [flat] 팔 두께 (앞뒤 반지름)
+ */
+export function limb(shoulder, hand, thick, flat = thick) {
+  const s = new THREE.Vector3(...shoulder);
+  const h = new THREE.Vector3(...hand);
+  const dir = h.clone().sub(s);
+  const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), dir.clone().normalize());
+  return placed(BASE.sphere, { pos: s.add(h).multiplyScalar(0.5).toArray(), quat, scale: [dir.length() / 2, thick, flat] });
+}
+
 /** 속성 구성을 맞춰 하나로 합친다 (Lathe·Tube 등 모두 index + position/normal/uv) */
 export function mergeAll(list) {
   const merged = mergeGeometries(list, false);
