@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>인형 모아보기 (개발자 전용)</title>
+    <!-- 개발 서버(npm run dev)에서만 /dolls.html 로 연다. 배포 빌드에는 index.html만 들어가서 포함되지 않는다. -->
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: #16161a; color: #e9e9ef; font-family: system-ui, 'Pretendard', 'Malgun Gothic', sans-serif; }
+      body { display: grid; grid-template-columns: 260px 1fr; }
+      aside { overflow-y: auto; border-right: 1px solid #2a2a33; padding: 12px; }
+      aside h1 { font-size: 15px; margin: 4px 0 12px; }
+      aside h2 { font-size: 12px; color: #9a9aab; margin: 16px 0 6px; font-weight: 600; }
+      aside button.doll { display: flex; width: 100%; align-items: center; gap: 8px; text-align: left; padding: 7px 8px; margin: 2px 0; border: 1px solid transparent; border-radius: 8px; background: none; color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+      aside button.doll:hover { background: #22222a; }
+      aside button.doll[aria-current='true'] { background: #2b2b38; border-color: #4a4a60; }
+      .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+      .meta { color: #8a8a9a; font-size: 11px; }
+      main { position: relative; overflow: hidden; }
+      canvas { display: block; width: 100%; height: 100%; }
+      .bar { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; pointer-events: none; }
+      .bar > * { pointer-events: auto; }
+      .bar button { padding: 6px 10px; border-radius: 8px; border: 1px solid #3a3a48; background: #20202a; color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+      .bar button[aria-pressed='true'] { background: #3b3b52; border-color: #6a6a90; }
+      .info { position: absolute; left: 12px; bottom: 12px; font-size: 12px; color: #b8b8c8; background: #0009; padding: 8px 10px; border-radius: 8px; line-height: 1.6; white-space: pre; }
+      .label { font-size: 12px; color: #fff; background: #000a; padding: 2px 6px; border-radius: 6px; white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <aside id="list"><h1>🧸 인형 모아보기 <span class="meta">(개발자 전용)</span></h1></aside>
+    <main id="stage">
+      <div class="bar">
+        <button data-view="front">앞</button>
+        <button data-view="right">오른쪽</button>
+        <button data-view="back">뒤</button>
+        <button data-view="left">왼쪽</button>
+        <button id="spin" aria-pressed="false">자동 회전</button>
+        <button id="all" aria-pressed="false">모두 보기</button>
+      </div>
+      <div class="info" id="info"></div>
+    </main>
+    <script type="module" src="/src/dev/dollViewer.js"></script>
+  </body>
+</html>
