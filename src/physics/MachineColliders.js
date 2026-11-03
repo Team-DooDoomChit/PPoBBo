@@ -1,4 +1,5 @@
 import { MACHINE_SPEC, PLAY_FLOOR_Y, GLASS_TOP_Y } from '../three/machineSpec.js';
+import { GROUP } from './PhysicsWorld.js';
 
 const { innerHalf, chute } = MACHINE_SPEC;
 const WALL = 0.02; // 충돌체 반두께
@@ -32,11 +33,19 @@ export function buildMachineColliders(physics) {
 
   // 배출구 칸막이 (인형이 굴러 들어가지 않도록). 쌓인 인형이 넘어 들어가지 않게 보이는 칸막이보다 높게 둔다.
   // 집게에 매달린 인형은 이보다 훨씬 높은 곳에서 옮기므로 걸리지 않는다
-  const wh = CHUTE_GUARD_HEIGHT / 2;
+  // 보이는 높이 위쪽은 CHUTE_GUARD 그룹이라, 칸막이 바로 위로 내려온 집게는 보이는 칸막이 끝에서 멈춘다
   const chuteDepth = chute.maxZ - chute.minZ;
   const chuteWidth = chute.maxX - chute.minX;
-  physics.addStaticBox([0.005, wh, chuteDepth / 2], [chute.minX, PLAY_FLOOR_Y + wh, (chute.minZ + chute.maxZ) / 2]);
-  physics.addStaticBox([chuteWidth / 2, wh, 0.005], [(chute.minX + chute.maxX) / 2, PLAY_FLOOR_Y + wh, chute.minZ]);
+  const parts = [
+    { bottom: 0, top: chute.wallHeight, group: GROUP.STATIC },
+    { bottom: chute.wallHeight, top: CHUTE_GUARD_HEIGHT, group: GROUP.CHUTE_GUARD },
+  ];
+  for (const { bottom, top, group } of parts) {
+    const wh = (top - bottom) / 2;
+    const y = PLAY_FLOOR_Y + bottom + wh;
+    physics.addStaticBox([0.005, wh, chuteDepth / 2], [chute.minX, y, (chute.minZ + chute.maxZ) / 2], group);
+    physics.addStaticBox([chuteWidth / 2, wh, 0.005], [(chute.minX + chute.maxX) / 2, y, chute.minZ], group);
+  }
 }
 
 /** 인형이 배출구로 떨어졌는지 (로컬 좌표) */
