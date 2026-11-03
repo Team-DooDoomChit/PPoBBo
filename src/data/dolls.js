@@ -13,6 +13,7 @@ export const DOLLS = [
   { id: 'hamster-hula', name: '인어섬 치이카와', machineId: 'bear', type: 'hulaHamster', rarity: 'common', color: 0xfbfbfd, sub: 0xf3e0ee },
   { id: 'cat-hula', name: '인어섬 하치와레', machineId: 'bear', type: 'hulaCat', rarity: 'common', color: 0xfbfbfd, sub: 0x8fa3ea },
   { id: 'bunny-hula', name: '인어섬 우사기', machineId: 'bear', type: 'hulaBunny', rarity: 'common', color: 0xf5ebdf, sub: 0xeec3d2 }, // #59
+  { id: 'momonga-hula', name: '인어섬 모몬가', machineId: 'bear', type: 'hulaMomonga', rarity: 'common', color: 0xfafafc, sub: 0xdde8f6 }, // #65
 
   { id: 'bunny-white', name: '흰 토끼', machineId: 'bunny', type: 'bunny', rarity: 'common', color: 0xfafafa, sub: 0xffb3c8 },
   { id: 'bunny-gray', name: '회색 토끼', machineId: 'bunny', type: 'bunny', rarity: 'common', color: 0xa8a8b8, sub: 0xf0f0f0 },
