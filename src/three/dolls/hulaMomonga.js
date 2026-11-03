@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BASE, buildCrown, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed } from './hulaBase.js';
+import { BASE, buildCrown, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed, skirtHips } from './hulaBase.js';
 
 /**
  * 인어섬 모몬가 (#65): 크고 둥근 귀, 볼 옆 털 뭉치, 연보라 꽃 화관, 풀 치마를 입은 흰 모몬가.
@@ -64,6 +64,7 @@ function buildBody() {
   const torsoH = TORSO.top - TORSO.bottom;
   const parts = [
     HEAD.geometry(),
+    skirtHips(BODY_DEPTH, SKIRT), // 치마 속 몸 아랫부분 (치마 속이 비어 보이지 않게)
     placed(new THREE.CylinderGeometry(TORSO.r, TORSO.r + 0.001, torsoH, 40), { pos: [0, (TORSO.top + TORSO.bottom) / 2, 0], scale: [1, 1, BODY_DEPTH] }),
     // 팔: 몸통 옆에서 아래·바깥으로 내린 짧은 팔 (끝 165px·755px / 770px·735px). 어깨는 몸통 속에 묻는다.
     ...[-1, 1].map((sx) => limb([sx * 0.036, -0.006, 0.004], [sx * 0.0615, -0.0225, 0.008], 0.0068, 0.0075)),
