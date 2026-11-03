@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BASE, buildCrown, buildSkirt, createHead, hulaMesh, mergeAll, photoMapper, placed } from './hulaBase.js';
+import { BASE, buildCrown, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed } from './hulaBase.js';
 
 /**
  * 훌라 고양이 (#53): 파란 모자 무늬 + 뾰족한 귀, 하늘색 꽃 화관, 풀 치마를 입은 흰 고양이.
@@ -57,8 +57,9 @@ function buildBody() {
   ];
   for (const sx of [-1, 1]) {
     parts.push(
-      // 팔: 목 아래 옆으로, 조금 앞·아래로 뻗은 작고 둥근 팔 (사진 끝 185px = 0.066m, 높이 338~385px)
-      placed(BASE.sphere, { pos: [sx * 0.051, -0.0155, 0.01], scale: [0.0135, 0.0078, 0.0105], rot: [0, -sx * 0.45, -sx * 0.35] }),
+      // 팔: 목 아래 옆으로, 조금 앞·아래로 뻗은 작고 둥근 팔 (사진 끝 185px = 0.066m, 높이 338~385px).
+      // 어깨를 몸통 속에 두어 팔이 몸통에서 떨어져 보이지 않게 한다.
+      limb([sx * 0.028, -0.012, 0.006], [sx * 0.0624, -0.0201, 0.0155], 0.0078, 0.0105),
       // 다리: 치마 아래로 보이는 짧은 두 다리 (사진 222~306px, 발바닥 510px)
       placed(BASE.sphere, { pos: [sx * 0.0075, -0.0595, 0.003], scale: [0.0072, 0.009, 0.0086] }),
     );
