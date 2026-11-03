@@ -4,7 +4,8 @@ import * as THREE from 'three';
 
 import { buildHulaBunny } from '../../src/three/dolls/hulaBunny.js';
 import { createDollMesh, disposeDollMesh } from '../../src/three/DollFactory.js';
-import { dollProfile } from '../../src/physics/DollBody.js';
+import * as CANNON from 'cannon-es';
+import { createDollBody, dollProfile } from '../../src/physics/DollBody.js';
 import { getDoll } from '../../src/data/dolls.js';
 import { MACHINES } from '../../src/data/machines.js';
 
@@ -49,6 +50,19 @@ test('긴 귀가 머리 위로 솟고, 횃불은 왼쪽(-x)에 있다', () => {
   assert.ok(head.max.y > 0.13, `귀 끝 ${head.max.y.toFixed(3)}`);
   assert.ok(boxOf(stick).max.x < -0.03, '횃불 막대는 왼쪽');
   assert.ok(boxOf(flame).min.y > boxOf(stick).min.y, '불꽃은 막대 위쪽');
+});
+
+test('몸통 구 밖으로 나온 횃불 불꽃은 상자 충돌체 안에 들어간다', () => {
+  const flame = boxOf(meshes(build())[7]);
+  const body = createDollBody(new CANNON.Material(), [0, 0, 0], 'hulaBunny');
+  const covers = body.shapes.some((shape, i) => {
+    if (!(shape instanceof CANNON.Box)) return false;
+    const c = body.shapeOffsets[i];
+    const h = shape.halfExtents;
+    const EPS = 0.004; // 불꽃 끝의 뾰족한 부분은 4mm까지 밖으로 나와도 된다
+    return flame.min.x > c.x - h.x - EPS && flame.max.x < c.x + h.x + EPS && flame.max.y < c.y + h.y + EPS && flame.min.z > c.z - h.z - EPS && flame.max.z < c.z + h.z + EPS;
+  });
+  assert.ok(covers, `불꽃 x ${flame.min.x.toFixed(3)}~${flame.max.x.toFixed(3)}, y ~${flame.max.y.toFixed(3)}, z ${flame.min.z.toFixed(3)}~${flame.max.z.toFixed(3)}`);
 });
 
 test('모델 크기와 물리 충돌체가 맞는다 (위쪽 끝 차이 5mm 이내, 발바닥은 몸통 구 아래 끝 근처)', () => {
