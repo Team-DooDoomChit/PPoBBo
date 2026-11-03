@@ -12,8 +12,14 @@ test('모든 기계의 가격이 100으로 같다', () => {
   for (const m of MACHINES) assert.equal(m.price, 100, m.id);
 });
 
-test('곰돌이 하우스·병아리 농장은 일반 2개, 레어·에픽 1개씩', () => {
-  for (const id of ['bear', 'chick']) assert.deepEqual(rarityCount(id), { common: 2, rare: 1, epic: 1 }, id);
+test('병아리 농장은 일반 2개, 레어·에픽 1개씩', () => {
+  assert.deepEqual(rarityCount('chick'), { common: 2, rare: 1, epic: 1 });
+});
+
+test('인어섬 시리즈는 인어섬 치이카와·하치와레 2종, 모두 일반', () => {
+  assert.equal(MACHINES.find((m) => m.id === 'bear').name, '인어섬 시리즈');
+  assert.deepEqual(getDollsByMachine('bear').map((d) => d.id), ['hamster-hula', 'cat-hula']);
+  assert.deepEqual(rarityCount('bear'), { common: 2 });
 });
 
 test('치이카와 겨울 시리즈는 호빵 우사기(기본)·하치와레·치이카와 3종, 모두 일반', () => {
