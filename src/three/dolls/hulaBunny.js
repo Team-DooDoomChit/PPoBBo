@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BASE, Z, buildSkirt, createHead, hulaMesh, mergeAll, photoMapper, placed } from './hulaBase.js';
+import { BASE, Z, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed } from './hulaBase.js';
 
 /**
  * 인어섬 우사기 (#59): 긴 귀, 노란 꽃 화관, 풀 치마를 입고 횃불을 든 아이보리색 토끼.
@@ -62,10 +62,11 @@ function buildBody() {
     // 발: 치마 아래로 보이는 두 발 (가운데에서 ±54px, 반폭 40px, 905~965px)
     placed(BASE.sphere, { pos: [-px(54), Y(935), 0.004], scale: [px(40), px(30), 0.009] }),
     placed(BASE.sphere, { pos: [px(54), Y(935), 0.004], scale: [px(40), px(30), 0.009] }),
+    // 팔: 어깨를 몸통 속에 두어 팔이 몸통에서 떨어져 보이지 않게 한다
     // 오른팔(+x): 옆·아래로 뻗은 짧은 팔 (끝 752px, 725px)
-    placed(BASE.sphere, { pos: [X(708), Y(697), 0.004], scale: [0.012, 0.0062, 0.0072], rot: [0, -0.25, -0.55] }),
+    limb([0.034, -0.004, 0.003], [0.0626, -0.0139, 0.0065], 0.0062, 0.0072),
     // 왼팔(-x): 옆으로 들어 횃불을 쥔 팔 (손 160px, 640px)
-    placed(BASE.sphere, { pos: [X(195), Y(648), 0.007], scale: [0.012, 0.0065, 0.0075], rot: [0, 0.3, -0.2] }),
+    limb([-0.034, 0, 0.004], [-0.0684, 0.0052, 0.0105], 0.0065, 0.0075),
   ];
   // 귀 (캡슐을 머리 속까지 내려 밑동을 묻는다)
   const len = EAR.top - EAR.base - 2 * EAR.r;
