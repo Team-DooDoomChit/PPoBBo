@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BASE, buildCrown, buildSkirt, createHead, hulaMesh, mergeAll, photoMapper, placed } from './hulaBase.js';
+import { BASE, buildCrown, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed } from './hulaBase.js';
 
 /**
  * 인어섬 모몬가 (#65): 크고 둥근 귀, 볼 옆 털 뭉치, 연보라 꽃 화관, 풀 치마를 입은 흰 모몬가.
@@ -65,9 +65,8 @@ function buildBody() {
   const parts = [
     HEAD.geometry(),
     placed(new THREE.CylinderGeometry(TORSO.r, TORSO.r + 0.001, torsoH, 40), { pos: [0, (TORSO.top + TORSO.bottom) / 2, 0], scale: [1, 1, BODY_DEPTH] }),
-    // 팔: 몸통 옆에서 아래·바깥으로 내린 짧은 팔 (끝 165px·755px / 770px·735px)
-    placed(BASE.sphere, { pos: [-0.055, Y(705), 0.006], scale: [0.0115, 0.0068, 0.0075], rot: [0, 0.25, 0.9] }),
-    placed(BASE.sphere, { pos: [0.055, Y(705), 0.006], scale: [0.0115, 0.0068, 0.0075], rot: [0, -0.25, -0.9] }),
+    // 팔: 몸통 옆에서 아래·바깥으로 내린 짧은 팔 (끝 165px·755px / 770px·735px). 어깨는 몸통 속에 묻는다.
+    ...[-1, 1].map((sx) => limb([sx * 0.036, -0.006, 0.004], [sx * 0.0615, -0.0225, 0.008], 0.0068, 0.0075)),
     // 발: 치마 속, 아래로 살짝 보이는 작은 발
     placed(BASE.sphere, { pos: [-0.012, -0.059, 0.008], scale: [0.009, 0.006, 0.01] }),
     placed(BASE.sphere, { pos: [0.012, -0.059, 0.008], scale: [0.009, 0.006, 0.01] }),
