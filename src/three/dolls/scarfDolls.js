@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { BASE, Z, createHead, hulaMesh, mergeAll, photoMapper, placed } from './hulaBase.js';
 
 /**
- * 목도리 시리즈 (토끼·고양이·햄스터, #55): 훌라 인형과 같은 체형·얼굴에 니트 목도리를 두르고 소품을 안았다.
+ * 목도리 시리즈 (토끼·고양이·햄스터 #55, 모몬가 #73): 훌라 인형과 같은 체형·얼굴에 니트 목도리를 두르고 소품을 안았다.
  *
  * 원점 = 몸통 중심, +Y = 위, +Z = 얼굴 정면 (DollFactory와 같다). 단위 m.
  * 머리·몸·얼굴은 세 인형이 모두 같고, 귀·머리 무늬·목도리 색·소품으로 캐릭터를 구분한다.
@@ -51,6 +51,7 @@ const HOPPANG_MAT = mat(0xfbf9f4, 0.75);
 const BUNNY_MAT = { scarf: mat(0xe6bd45, 0.95), fringe: mat(0xf2db74) };
 const CAT_MAT = { scarf: mat(0x7f9fe0, 0.95), fringe: mat(0x92afea) };
 const HAMSTER_MAT = { scarf: mat(0xe88ba0, 0.95), fringe: mat(0xef9fb2) };
+const MOMONGA_MAT = { scarf: mat(0xb7a9e2, 0.95), fringe: mat(0xc8bdee), nose: mat(0xd9e8f5, 1) };
 
 /** 부품 메시 하나. 부품은 DollFactory의 mergeParts가 재질별로 합친다. */
 function part(geometry, material, { pos = [0, 0, 0], scale = [1, 1, 1], rot = [0, 0, 0], shadow = true } = {}) {
@@ -346,6 +347,77 @@ function hamsterMouthGeometry() {
   return hamsterMouth;
 }
 
+// ---------- 호빵 모몬가: 인어섬 모몬가(#65)와 같은 캐릭터 ----------
+
+let momongaFace = null;
+/**
+ * 화난 눈썹, 두 눈 사이 하늘색 코, 입(ω 윗선 + 왼쪽 아래 υ 입과 혀 + 오른쪽 짧은 선), 입 양옆 작은 동그라미.
+ * 입은 인어섬 모몬가의 사진 좌표(머리 반폭 300px)를 이 얼굴(172px)로 줄여 ω 꼭짓점을 다른 인형의 ω 꼭짓점에 맞춘다.
+ */
+function momongaFaceGeometry() {
+  if (momongaFace) return momongaFace;
+  const { px, py, pt } = photoMapper(HEAD, PHOTO);
+  const line = (list) => HEAD.faceLine(list.map(([dx, y]) => pt(dx, y)), px(2.4));
+  const S = PHOTO.halfWidth / 300;
+  const from = (list) => list.map(([dx, y]) => [(dx - 5) * S, 268.75 + (y - 507.5) * S]);
+  const upsilon = from([[-44.5, 541], [-42, 566], [-32, 575], [-19.5, 568.5], [-17, 551]]); // ω 바로 아래에 붙인다 (사진보다 14px 위)
+  const ink = [
+    line(from([[-36, 517.5], [-30, 528], [-20, 535], [-9, 530], [3, 512], [5, 507.5], [7, 512], [19, 530], [30, 535], [40, 528], [45, 517.5]])),
+    line(upsilon),
+    line(from([[-8, 546], [6, 549], [20.5, 545]])),
+  ];
+  const white = [];
+  for (const sx of [-1, 1]) {
+    const [x, y] = pt(sx * 46, 287);
+    ink.push(HEAD.faceDisc(x, y, px(7.5), px(7.5), 0.0004));
+    white.push(HEAD.faceDisc(x, y, px(4.8), px(4.8), 0.001));
+  }
+  momongaFace = {
+    // 눈 안쪽 위의 짧은 사선 (바깥 위 → 안쪽 아래)
+    brows: mergeAll([-1, 1].map((sx) => line([[sx * 37, 203], [sx * 32, 207.5], [sx * 27, 212]]))),
+    mouth: { ink: mergeAll(ink), tongue: HEAD.faceShape(upsilon.map(([dx, y]) => pt(dx, y)), 0.001) },
+    white: mergeAll(white),
+    nose: HEAD.faceDisc(0, py(249), px(19), px(16), 0.0006),
+  };
+  return momongaFace;
+}
+
+let momongaEars = null;
+/** 머리 위 양옆의 크고 둥근 접시 귀. 앞면에 조금 작은 하늘색 안쪽을 얹고, 위쪽이 바깥으로 기운다 */
+function momongaEarsGeometry() {
+  const ear = (sx, pos, scale) => placed(BASE.sphere, { pos, scale, rot: [0, -sx * 0.25, -sx * 0.3] });
+  momongaEars ??= {
+    outer: mergeAll([-1, 1].map((sx) => ear(sx, [sx * 0.042, HEAD_TOP + 0.002, -0.004], [0.021, 0.0222, 0.0078]))),
+    inner: mergeAll([-1, 1].map((sx) => ear(sx, [sx * 0.0408, HEAD_TOP + 0.0012, 0.0005], [0.0173, 0.0189, 0.0047]))),
+  };
+  return momongaEars;
+}
+
+let momongaTufts = null;
+/** 볼 옆 털 뭉치: 머리 양옆에 위아래로 긴 구름 모양 (속 뭉치 + 둘레의 작은 혹, 머리 쪽 혹은 뺀다) */
+function momongaTuftsGeometry() {
+  if (momongaTufts) return momongaTufts;
+  const lump = new THREE.SphereGeometry(1, 12, 8);
+  const R = [0.012, 0.025, 0.02];
+  const N = 30;
+  const parts = [];
+  for (const sx of [-1, 1]) {
+    const c = [sx * 0.066, 0.013, 0];
+    parts.push(placed(BASE.sphere, { pos: c, scale: R }));
+    for (let i = 0; i < N; i++) {
+      const y = 1 - (2 * (i + 0.5)) / N;
+      const r = Math.sqrt(1 - y * y);
+      const dir = [Math.cos(i * 2.399963) * r, y, Math.sin(i * 2.399963) * r];
+      if (dir[0] * sx < -0.3) continue;
+      const size = 0.0095 + 0.0007 * ((i * 7) % 5);
+      parts.push(placed(lump, { pos: c.map((v, k) => v + dir[k] * R[k] * 0.72), scale: [size, size * 0.9, size] }));
+    }
+  }
+  lump.dispose();
+  momongaTufts = mergeAll(parts);
+  return momongaTufts;
+}
+
 /** 호빵: 둥글고 위가 살짝 볼록한 찐빵, 윗면이 보는 쪽으로 조금 기운다 */
 function addHoppang(group) {
   const hoppang = new THREE.Group();
@@ -391,5 +463,21 @@ export function buildScarfHamster(group, doll, { fur }) {
     group.add(part(GEO.sphere, fur, { pos: [sx * 0.036, HEAD_TOP - 0.008, -0.004], scale: [0.0125, 0.0115, 0.0095] }));
   }
   addScarf(group, HAMSTER_MAT);
+  addHoppang(group);
+}
+
+/** 호빵 모몬가: 크고 둥근 귀(안쪽 하늘색), 볼 옆 털 뭉치, 화난 눈썹, 하늘색 코, υ 입, 연보라 목도리, 두 손으로 쥔 호빵 */
+export function buildScarfMomonga(group, doll, { fur, sub }) {
+  const face = momongaFaceGeometry();
+  const ears = momongaEarsGeometry();
+  addBase(group, fur, { brows: face.brows, mouth: face.mouth });
+  group.add(
+    hulaMesh(ears.outer, fur),
+    hulaMesh(ears.inner, sub),
+    hulaMesh(momongaTuftsGeometry(), fur),
+    hulaMesh(face.nose, MOMONGA_MAT.nose, false),
+    hulaMesh(face.white, FACE_MAT.white, false),
+  );
+  addScarf(group, MOMONGA_MAT);
   addHoppang(group);
 }
