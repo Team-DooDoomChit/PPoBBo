@@ -2,8 +2,8 @@ import * as CANNON from 'cannon-es';
 import { DOLL_SHAPE } from '../three/DollFactory.js';
 import { GROUP } from './PhysicsWorld.js';
 
-export const DOLL_MASK = GROUP.STATIC | GROUP.DOLL | GROUP.CLAW;
-export const HELD_DOLL_MASK = GROUP.STATIC | GROUP.DOLL;
+export const DOLL_MASK = GROUP.STATIC | GROUP.CHUTE_GUARD | GROUP.DOLL | GROUP.CLAW;
+export const HELD_DOLL_MASK = GROUP.STATIC | GROUP.CHUTE_GUARD | GROUP.DOLL;
 
 /**
  * 몸통·머리 구 { r: 반지름, y: 중심 높이 }. 기본은 DOLL_SHAPE.
