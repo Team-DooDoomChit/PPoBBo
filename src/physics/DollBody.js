@@ -6,19 +6,18 @@ export const DOLL_MASK = GROUP.STATIC | GROUP.DOLL | GROUP.CLAW;
 export const HELD_DOLL_MASK = GROUP.STATIC | GROUP.DOLL;
 
 /**
- * 몸통·머리 구 { r: 반지름, y: 중심 높이 }. 기본은 DOLL_SHAPE,
- * 목도리 햄스터는 몸통은 같고, 머리가 위가 납작한 찹쌀떡형이라 낮게(중심 0.057, 위쪽 끝 0.106) 따로 둔다.
+ * 몸통·머리 구 { r: 반지름, y: 중심 높이 }. 기본은 DOLL_SHAPE.
+ * 목도리 시리즈(#55)는 머리가 낮고 넓어서 따로 둔다. 몸통 구 중심을 바디 원점(무게 중심)에 둬야 인형이 넘어지지 않는다.
  */
 const DEFAULT_SPHERES = [
   { r: DOLL_SHAPE.bodyRadius, y: 0 },
   { r: DOLL_SHAPE.headRadius, y: DOLL_SHAPE.headOffsetY },
 ];
-const BASE_SPHERES = {
-  keychainHamster: [
-    { r: DOLL_SHAPE.bodyRadius, y: 0 }, // 몸통 (다른 인형과 같음)
-    { r: 0.055, y: 0.052 }, // 머리 (위쪽 끝 0.107)
-  ],
-};
+const SCARF_SPHERES = [
+  { r: DOLL_SHAPE.bodyRadius, y: 0 }, // 몸통 + 머리 아래쪽 (머리 반폭 0.061)
+  { r: 0.042, y: 0.042 }, // 머리 위쪽 (위쪽 끝 0.084)
+];
+const BASE_SPHERES = { keychainBunny: SCARF_SPHERES, keychainCat: SCARF_SPHERES, keychainHamster: SCARF_SPHERES };
 
 /**
  * 몸통·머리 구 위로 크게 튀어나오는 부분(귀)에 붙이는 상자 충돌체.
@@ -26,13 +25,12 @@ const BASE_SPHERES = {
  */
 const EXTRA_SHAPES = {
   bunny: [{ half: [0.038, 0.045, 0.012], y: 0.165 }], // 귀 0.12 ~ 0.21
-  keychainBunny: [{ half: [0.033, 0.04, 0.016], y: 0.154 }], // 귀 0.114 ~ 0.194
-  keychainCat: [{ half: [0.056, 0.02, 0.014], y: 0.122 }], // 귀 0.102 ~ 0.142
-  keychainHamster: [{ half: [0.047, 0.0102, 0.009], y: 0.1076 }], // 귀 0.0974 ~ 0.1178
+  keychainBunny: [{ half: [0.033, 0.033, 0.016], y: 0.112 }], // 귀 0.079 ~ 0.145
+  keychainCat: [{ half: [0.044, 0.008, 0.009], y: 0.083 }], // 귀 끝 0.075 ~ 0.091
 };
 
-// 집게가 붙잡는 높이: 기본은 머리, 목도리 토끼는 귀, 목도리 고양이·햄스터는 정수리 (집게가 귀 사이를 감싼다)
-const GRAB_Y = { keychainBunny: 0.17, keychainCat: 0.125, keychainHamster: 0.101 };
+// 집게가 붙잡는 높이: 기본은 머리, 호빵 우사기는 귀 아래쪽, 호빵 하치와레·치이카와는 머리 위쪽
+const GRAB_Y = { keychainBunny: 0.1, keychainCat: 0.058, keychainHamster: 0.058 };
 
 /**
  * 인형 종류별 물리 치수.
