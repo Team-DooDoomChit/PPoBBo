@@ -205,7 +205,7 @@ export class ClawController {
       const p = doll.body.position;
       const offset = Math.hypot(p.x - head.x, p.z - head.z);
       const below = head.y - p.y;
-      // 키가 큰 인형(귀·체인)은 그만큼 위에서 멈추므로, 인형 맨 위 기준으로 닿는 거리를 본다
+      // 키가 큰 인형(긴 귀)은 그만큼 위에서 멈추므로, 인형 맨 위 기준으로 닿는 거리를 본다
       const { top } = dollProfile(doll.data.type);
       if (offset < radius && below > 0 && below < top + GRAB_REACH && (!best || offset < best.offset)) {
         best = { doll, offset };
@@ -224,7 +224,7 @@ export class ClawController {
     if (!success) return;
 
     const { body } = best.doll;
-    // 인형 머리(목도리 토끼는 귀) 근처를 잡는다. 집게 기준 피벗은 현재 위치 그대로 → 처음엔 튀지 않고, 들어 올리면 매달려 흔들린다.
+    // 인형 머리(호빵 우사기는 귀) 근처를 잡는다. 집게 기준 피벗은 현재 위치 그대로 → 처음엔 튀지 않고, 들어 올리면 매달려 흔들린다.
     const grabPoint = body.pointToWorldFrame(new CANNON.Vec3(0, dollProfile(best.doll.data.type).grabY, 0));
     const pivotA = this.body.pointToLocalFrame(grabPoint);
     const pivotB = body.pointToLocalFrame(grabPoint);

@@ -5,6 +5,7 @@ export const GROUP = {
   STATIC: 1,
   DOLL: 2,
   CLAW: 4,
+  CHUTE_GUARD: 8, // 보이는 칸막이 위쪽: 인형만 막고 집게 하강 판정에는 잡히지 않는다
 };
 
 const FIXED_STEP = 1 / 120;
@@ -35,13 +36,13 @@ export class PhysicsWorld {
     );
   }
 
-  addStaticBox(halfExtents, position) {
+  addStaticBox(halfExtents, position, group = GROUP.STATIC) {
     const body = new CANNON.Body({
       type: CANNON.Body.STATIC,
       material: this.materials.static,
       shape: new CANNON.Box(new CANNON.Vec3(...halfExtents)),
       position: new CANNON.Vec3(...position),
-      collisionFilterGroup: GROUP.STATIC,
+      collisionFilterGroup: group,
       collisionFilterMask: GROUP.DOLL,
     });
     this.world.addBody(body);
