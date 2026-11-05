@@ -37,16 +37,17 @@ const BASE_SPHERES = {
 };
 
 /**
- * 몸통·머리 구 위로 크게 튀어나오는 부분(귀)에 붙이는 상자 충돌체.
- * half: 상자 반크기 [x, y, z], y: 중심 높이 (인형 원점 기준). 모델(DollFactory)의 치수와 맞춘다.
+ * 몸통·머리 구 위로 크게 튀어나오는 부분(귀·꼬리)에 붙이는 상자 충돌체.
+ * half: 상자 반크기 [x, y, z], y: 중심 높이, x·z: 중심의 좌우·앞뒤 위치 (인형 원점 기준, 기본 0). 모델(DollFactory)의 치수와 맞춘다.
  */
 const EXTRA_SHAPES = {
   bunny: [{ half: [0.038, 0.045, 0.012], y: 0.165 }], // 귀 0.12 ~ 0.21
   keychainBunny: [{ half: [0.033, 0.033, 0.016], y: 0.112 }], // 귀 0.079 ~ 0.145
   keychainCat: [{ half: [0.044, 0.008, 0.009], y: 0.083 }], // 귀 끝 0.075 ~ 0.091
   keychainMomonga: [
-    { half: [0.087, 0.03, 0.026], y: 0.013 }, // 볼 옆 털 뭉치 (좌우 끝 ±0.087, -0.017 ~ 0.043)
-    { half: [0.064, 0.0104, 0.008], y: 0.0943 }, // 크고 둥근 귀 두 개 중 머리 위로 나온 부분 (0.084 ~ 0.1047)
+    { half: [0.076, 0.032, 0.03], y: 0.014 }, // 얼굴 옆 털 (좌우 끝 ±0.076, -0.018 ~ 0.046)
+    { half: [0.064, 0.0104, 0.008], y: 0.0943 }, // 귀 두 개 중 머리 위로 나온 부분 (0.084 ~ 0.1047)
+    { half: [0.053, 0.0843, 0.0194], x: 0.042, y: 0.0167, z: -0.0594 }, // 등 뒤 꼬리 (x -0.011 ~ 0.095, y -0.068 ~ 0.101, z -0.079 ~ -0.04)
   ],
   hulaHamster: [{ half: [0.059, 0.022, 0.045], y: 0.023 }], // 머리 구보다 넓은 볼 쪽 (반폭 0.061, 가장 넓은 높이 0.023)
   hulaCat: [{ half: [0.059, 0.022, 0.044], y: 0.028 }], // 머리 구보다 넓은 볼 쪽 (반폭 0.061)
@@ -82,8 +83,8 @@ export function createDollBody(material, position, type) {
   for (const { r, y } of BASE_SPHERES[type] ?? DEFAULT_SPHERES) {
     body.addShape(new CANNON.Sphere(r), new CANNON.Vec3(0, y, 0));
   }
-  for (const { half, y } of EXTRA_SHAPES[type] ?? []) {
-    body.addShape(new CANNON.Box(new CANNON.Vec3(...half)), new CANNON.Vec3(0, y, 0));
+  for (const { half, x = 0, y, z = 0 } of EXTRA_SHAPES[type] ?? []) {
+    body.addShape(new CANNON.Box(new CANNON.Vec3(...half)), new CANNON.Vec3(x, y, z));
   }
   body.sleepSpeedLimit = 0.05;
   body.sleepTimeLimit = 0.4;

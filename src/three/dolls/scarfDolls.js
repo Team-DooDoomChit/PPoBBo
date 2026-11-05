@@ -86,21 +86,26 @@ function shortBrowsGeometry() {
   return shortBrows;
 }
 
-let sharedFace = null;
-/** 눈썹·입을 뺀 얼굴: 큰 눈(갈색 + 흰 타원 + 아래 초승달), 빗금 볼터치 */
-function faceGeometry() {
-  if (sharedFace) return sharedFace;
+const sharedFaces = new Map();
+/**
+ * 눈썹·입을 뺀 얼굴: 큰 눈(갈색 + 흰 타원 + 아래 초승달), 빗금 볼터치
+ * @param {number} [eye] 눈 크기 배율 (눈 가운데 기준)
+ */
+function faceGeometry(eye = 1) {
+  if (sharedFaces.has(eye)) return sharedFaces.get(eye);
   const { px, py, pt } = photoMapper(HEAD, PHOTO);
+  const ex = (v) => px(v * eye);
+  const ey = (y) => py(241.5 + (y - 241.5) * eye);
   const ink = [];
   const white = [];
   const blush = [];
   for (const sx of [-1, 1]) {
     const m = (dx) => sx * dx; // 오른쪽 요소는 좌우 대칭
     const [x] = pt(m(51), 0);
-    ink.push(HEAD.faceDisc(x, py(241.5), px(21), px(19.5), 0.0004));
-    white.push(HEAD.faceDisc(x, py(236.5), px(12.75), px(9), 0.001));
-    white.push(HEAD.faceDisc(x, py(252.5), px(11), px(4), 0.001));
-    ink.push(HEAD.faceDisc(x, py(248), px(11.5), px(3), 0.0013));
+    ink.push(HEAD.faceDisc(x, ey(241.5), ex(21), ex(19.5), 0.0004));
+    white.push(HEAD.faceDisc(x, ey(236.5), ex(12.75), ex(9), 0.001));
+    white.push(HEAD.faceDisc(x, ey(252.5), ex(11), ex(4), 0.001));
+    ink.push(HEAD.faceDisc(x, ey(248), ex(11.5), ex(3), 0.0013));
     const cx = m(101.5);
     const [bx, by] = pt(cx, 270.5);
     blush.push(HEAD.faceDisc(bx, by, px(29.4), px(23), 0.0004));
@@ -108,8 +113,9 @@ function faceGeometry() {
       ink.push(HEAD.faceLine([pt(cx + dx - 3.75, 278.75), pt(cx + dx + 3.75, 262.5)], px(2.2), 0.0012));
     }
   }
-  sharedFace = { ink: mergeAll(ink), white: mergeAll(white), blush: mergeAll(blush) };
-  return sharedFace;
+  const face = { ink: mergeAll(ink), white: mergeAll(white), blush: mergeAll(blush) };
+  sharedFaces.set(eye, face);
+  return face;
 }
 
 /**
@@ -169,8 +175,8 @@ function closedMouthGeometry() {
 }
 
 /** 공통 몸과 얼굴. 눈썹·입은 기본값이 짧은 눈썹·ω 입이다 */
-function addBase(group, fur, { brows = shortBrowsGeometry(), mouth = omegaMouthGeometry() } = {}) {
-  const face = faceGeometry();
+function addBase(group, fur, { brows = shortBrowsGeometry(), mouth = omegaMouthGeometry(), eye = 1 } = {}) {
+  const face = faceGeometry(eye);
   group.add(
     hulaMesh(bodyGeometry(), fur),
     hulaMesh(holdingArmsGeometry(), fur),
@@ -373,8 +379,8 @@ function momongaFaceGeometry() {
     white.push(HEAD.faceDisc(x, y, px(4.8), px(4.8), 0.001));
   }
   momongaFace = {
-    // 눈 안쪽 위의 짧은 사선 (바깥 위 → 안쪽 아래)
-    brows: mergeAll([-1, 1].map((sx) => line([[sx * 37, 203], [sx * 32, 207.5], [sx * 27, 212]]))),
+    // 눈 안쪽 위의 짧은 사선 (바깥 위 → 안쪽 아래). 미간이 좁고 눈 바로 위에 붙는다
+    brows: mergeAll([-1, 1].map((sx) => line([[sx * 31, 209], [sx * 26, 213], [sx * 21, 217]]))),
     mouth: { ink: mergeAll(ink), tongue: HEAD.faceShape(upsilon.map(([dx, y]) => pt(dx, y)), 0.001) },
     white: mergeAll(white),
     nose: HEAD.faceDisc(0, py(249), px(19), px(16), 0.0006),
@@ -382,40 +388,188 @@ function momongaFaceGeometry() {
   return momongaFace;
 }
 
+const MOMONGA_EYE = 1.12; // 모몬가는 눈이 조금 더 크다
+
+/** 단위 구를 늘려 만든 도톰한 판. 법선은 늘린 비율로 다시 맞춘다 (구의 이음매가 보이지 않게) */
+function stretchedSphere(base, fx) {
+  const g = base.clone();
+  const p = g.attributes.position;
+  const n = g.attributes.normal;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    const [x, y, z, sx, sy, sz] = fx(p.getX(i), p.getY(i), p.getZ(i));
+    p.setXYZ(i, x, y, z);
+    v.set(n.getX(i) / sx, n.getY(i) / sy, n.getZ(i) / sz).normalize();
+    n.setXYZ(i, v.x, v.y, v.z);
+  }
+  return g;
+}
+
 let momongaEars = null;
-/** 머리 위 양옆의 크고 둥근 접시 귀. 앞면에 조금 작은 하늘색 안쪽을 얹고, 위쪽이 바깥으로 기운다 */
+/**
+ * 모몬가 귀: 위가 조금 넓고 아래가 좁은 둥근 귀. 앞면 바깥쪽에 하늘색 안쪽, 가운데에 접힌 주름(수놓은 선).
+ * 귀 좌표 (u: 바깥쪽 +, v: 위 +, -1 ~ 1)에서 만들어 머리 위 양옆으로 옮긴다.
+ */
 function momongaEarsGeometry() {
-  const ear = (sx, pos, scale) => placed(BASE.sphere, { pos, scale, rot: [0, -sx * 0.25, -sx * 0.3] });
-  momongaEars ??= {
-    outer: mergeAll([-1, 1].map((sx) => ear(sx, [sx * 0.042, HEAD_TOP + 0.002, -0.004], [0.021, 0.0222, 0.0078]))),
-    inner: mergeAll([-1, 1].map((sx) => ear(sx, [sx * 0.0408, HEAD_TOP + 0.0012, 0.0005], [0.0173, 0.0189, 0.0047]))),
+  if (momongaEars) return momongaEars;
+  const W = 0.0205;
+  const H = 0.0225;
+  const D = 0.0075;
+  const widen = (v) => 1 + 0.12 * v; // 위로 갈수록 넓다
+  const frontZ = (u, v) => D * Math.sqrt(Math.max(0, 1 - (u / widen(v)) ** 2 - v ** 2));
+  const front = (sx, u, v, lift) => {
+    const h = 0.01;
+    const n = new THREE.Vector3(
+      -(frontZ(u + h, v) - frontZ(u - h, v)) / (2 * h * W) * sx,
+      -(frontZ(u, v + h) - frontZ(u, v - h)) / (2 * h * H),
+      1,
+    ).normalize();
+    return { p: new THREE.Vector3(sx * u * W, v * H, frontZ(u, v)).addScaledVector(n, lift), n };
   };
+  const outer = [];
+  const inner = [];
+  const ink = [];
+  for (const sx of [-1, 1]) {
+    const m = new THREE.Matrix4().compose(
+      new THREE.Vector3(sx * 0.042, HEAD_TOP + 0.002, -0.004),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -sx * 0.25, -sx * 0.3)),
+      new THREE.Vector3(1, 1, 1),
+    );
+    outer.push(stretchedSphere(BASE.sphere, (x, y, z) => [x * W * widen(y), y * H, z * D, W * widen(y), H, D]).applyMatrix4(m));
+    // 하늘색 안쪽: 앞면 바깥 위쪽
+    const c = front(sx, 0.33, 0.12, -0.0002);
+    inner.push(placed(BASE.sphere, { pos: c.p.toArray(), scale: [0.42 * W, 0.5 * H, 0.0011], quat: new THREE.Quaternion().setFromUnitVectors(Z, c.n) }).applyMatrix4(m));
+    // 접힌 주름: 위에서 아래로 내려오는 선 + 아래쪽에서 바깥으로 갈라지는 짧은 선
+    const R = 0.00075;
+    const stroke = (list) => {
+      const pts = list.map(([u, v]) => front(sx, u, v, 0.0004).p);
+      ink.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, R, 6).applyMatrix4(m));
+      for (const q of [pts[0], pts.at(-1)]) ink.push(placed(BASE.small, { pos: q.toArray(), scale: [R, R, R] }).applyMatrix4(m));
+    };
+    stroke([[-0.12, 0.5], [-0.08, 0.2], [-0.02, -0.1], [0.04, -0.35]]);
+    stroke([[-0.02, -0.1], [0.2, -0.17], [0.42, -0.2]]);
+  }
+  momongaEars = { outer: mergeAll(outer), inner: mergeAll(inner), ink: mergeAll(ink) };
   return momongaEars;
 }
 
-let momongaTufts = null;
-/** 볼 옆 털 뭉치: 머리 양옆에 위아래로 긴 구름 모양 (속 뭉치 + 둘레의 작은 혹, 머리 쪽 혹은 뺀다) */
-function momongaTuftsGeometry() {
-  if (momongaTufts) return momongaTufts;
-  const lump = new THREE.SphereGeometry(1, 12, 8);
-  const R = [0.012, 0.025, 0.02];
-  const N = 30;
+const FUR_LOCK = new THREE.LatheGeometry(
+  [[0, -0.3], [0.7, -0.22], [1, 0], [0.95, 0.22], [0.74, 0.46], [0.46, 0.7], [0.22, 0.88], [0.07, 0.98], [0, 1]].map(([r, y]) => new THREE.Vector2(r, y)),
+  10,
+);
+const hash = (i) => {
+  const x = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}; // 0 ~ 1 고정 난수 (털 가닥마다 길이·각도를 조금씩 다르게)
+
+/**
+ * 털 가닥 하나: 밑동이 둥글고 끝이 가는 물방울을 base에서 dir 쪽으로 len만큼 세우고, 끝을 bend 쪽으로 휜다.
+ * 가닥은 휘는 방향으로 조금 납작하다.
+ */
+function furLock(base, dir, bend, len, r) {
+  const y = dir.clone().normalize();
+  const z = bend.clone().addScaledVector(y, -bend.dot(y)).normalize();
+  const x = new THREE.Vector3().crossVectors(y, z);
+  const g = FUR_LOCK.clone();
+  const p = g.attributes.position;
+  const n = g.attributes.normal;
+  const v = new THREE.Vector3();
+  const FLAT = 0.65;
+  for (let i = 0; i < p.count; i++) {
+    const ly = p.getY(i);
+    const curl = 0.35 * len * Math.max(0, ly) ** 2;
+    v.copy(x).multiplyScalar(p.getX(i) * r).addScaledVector(y, ly * len).addScaledVector(z, p.getZ(i) * r * FLAT + curl).add(base);
+    p.setXYZ(i, v.x, v.y, v.z);
+    v.copy(x).multiplyScalar(n.getX(i) / r).addScaledVector(y, n.getY(i) / len).addScaledVector(z, n.getZ(i) / (r * FLAT)).normalize();
+    n.setXYZ(i, v.x, v.y, v.z);
+  }
+  return g;
+}
+
+let momongaFur = null;
+/** 얼굴 옆 털: 볼 높이에서 턱까지 머리 옆면에서 바깥·아래로 휘어 뻗친 털 가닥 (앞뒤 여러 겹, 아래로 갈수록 아래로) */
+function momongaFurGeometry() {
+  if (momongaFur) return momongaFur;
   const parts = [];
+  const DOWN = new THREE.Vector3(0, -1, 0);
   for (const sx of [-1, 1]) {
-    const c = [sx * 0.066, 0.013, 0];
-    parts.push(placed(BASE.sphere, { pos: c, scale: R }));
-    for (let i = 0; i < N; i++) {
-      const y = 1 - (2 * (i + 0.5)) / N;
-      const r = Math.sqrt(1 - y * y);
-      const dir = [Math.cos(i * 2.399963) * r, y, Math.sin(i * 2.399963) * r];
-      if (dir[0] * sx < -0.3) continue;
-      const size = 0.0095 + 0.0007 * ((i * 7) % 5);
-      parts.push(placed(lump, { pos: c.map((v, k) => v + dir[k] * R[k] * 0.72), scale: [size, size * 0.9, size] }));
+    for (let i = 0; i < 18; i++) {
+      const f = (i + 0.5) / 18; // 0 (위) ~ 1 (아래)
+      const a = 1.15 + 0.85 * ((i * 5) % 9) / 8 + 0.08 * hash(i); // 앞(1.15) ~ 뒤(2.0)에 고르게 섞는다
+      const front = 1 - (a - 1.15) / 0.85; // 앞쪽일수록 1
+      const { point, normal } = HEAD.ringPoint(0.038 - f * 0.042, sx * a, -0.003);
+      const side = new THREE.Vector3(normal.x, 0, normal.z).normalize().lerp(new THREE.Vector3(sx, 0, 0), 0.55).normalize();
+      const down = 0.35 - f * 1.1 + 0.25 * (hash(i + 40) - 0.5);
+      const dir = side.multiplyScalar(Math.cos(down)).add(new THREE.Vector3(0, Math.sin(down), 0));
+      const len = 0.0135 + 0.006 * hash(i + 80) - 0.003 * front;
+      parts.push(furLock(point, dir, DOWN, len, 0.0052 + 0.0012 * hash(i + 120)));
     }
   }
-  lump.dispose();
-  momongaTufts = mergeAll(parts);
-  return momongaTufts;
+  momongaFur = mergeAll(parts);
+  return momongaFur;
+}
+
+/** 곡선 위 t에서 center 반대쪽(out)과 곡선 평면에 수직인 방향(side) */
+function curveFrame(curve, center, t) {
+  const tangent = curve.getTangentAt(t);
+  const p = curve.getPointAt(t);
+  const out = p.clone().sub(center);
+  out.addScaledVector(tangent, -out.dot(tangent)).normalize();
+  return { p, tangent, out, side: tangent.clone().cross(out) };
+}
+
+/**
+ * 곡선을 따라 단면이 납작한 타원인 관을 만든다 (양 끝은 열려 있다). 넓은 쪽은 center에서 멀어지는 방향이다.
+ * @param {(t: number) => [number, number]} size t(0~1)에서의 [곡선 평면 안쪽 반지름, 두께 반지름]
+ * @param {(t: number, v: number) => number} [bump] 단면 둘레 v(0 = 안쪽, π = 바깥)에서 반지름 배율
+ */
+function sweptTube(curve, center, segments, radial, size, bump = () => 1) {
+  const positions = [];
+  for (let j = 0; j <= segments; j++) {
+    const [rw, rt] = size(j / segments);
+    const { p, out, side } = curveFrame(curve, center, j / segments);
+    for (let i = 0; i < radial; i++) {
+      const v = (i / radial) * Math.PI * 2;
+      const k = bump(j / segments, v);
+      const o = out.clone().multiplyScalar(-Math.cos(v) * rw * k).addScaledVector(side, Math.sin(v) * rt * k);
+      positions.push(p.x + o.x, p.y + o.y, p.z + o.z);
+    }
+  }
+  const index = [];
+  const at = (j, i) => j * radial + (i % radial);
+  for (let j = 1; j <= segments; j++) {
+    for (let i = 1; i <= radial; i++) {
+      const [a, b, c, d] = [at(j - 1, i - 1), at(j, i - 1), at(j, i), at(j - 1, i)];
+      index.push(a, b, d, b, c, d);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array((positions.length / 3) * 2), 2));
+  g.setIndex(index);
+  g.computeVertexNormals();
+  return g;
+}
+
+let momongaTail = null;
+/**
+ * 하늘색 꼬리: 엉덩이 뒤에서 나와 등 뒤로 크게 C자로 말려 올라가고, 앞에서는 머리 옆(보는 쪽 오른쪽)으로 보인다.
+ * 넓고 납작하며 바깥 둘레가 물결처럼 복슬복슬하다.
+ */
+function momongaTailGeometry() {
+  if (momongaTail) return momongaTail;
+  const curve = new THREE.CatmullRomCurve3([
+    [0.002, -0.028, -0.012], [0.014, -0.04, -0.04], [0.036, -0.039, -0.056], [0.058, -0.016, -0.062], [0.07, 0.022, -0.062], [0.07, 0.06, -0.058], [0.056, 0.084, -0.052], [0.036, 0.092, -0.048],
+  ].map((p) => new THREE.Vector3(...p)));
+  const center = new THREE.Vector3(0.03, 0.02, -0.056); // C자의 안쪽
+  const width = (t) => 0.009 + 0.014 * Math.sin(Math.PI * Math.min(1, 0.2 + t * 0.9)) ** 0.6; // 가운데가 넓고 끝이 둥글게 가늘다
+  const thick = (t) => Math.max(0.009, width(t) * 0.7);
+  // 바깥 둘레를 물결처럼 부풀려 복슬복슬한 털 뭉치로 보이게 한다
+  const fluff = (t, v) => 1 + 0.2 * Math.max(0, -Math.cos(v)) ** 2 * Math.abs(Math.sin(t * Math.PI * 10)) * Math.min(1, t * 5);
+  const parts = [sweptTube(curve, center, 120, 20, (t) => [width(t), thick(t)], fluff)];
+  parts.push(placed(BASE.sphere, { pos: curve.getPointAt(1).toArray(), scale: [width(1), width(1), width(1)] }));
+  momongaTail = mergeAll(parts);
+  return momongaTail;
 }
 
 /** 호빵: 둥글고 위가 살짝 볼록한 찐빵, 윗면이 보는 쪽으로 조금 기운다 */
@@ -466,15 +620,17 @@ export function buildScarfHamster(group, doll, { fur }) {
   addHoppang(group);
 }
 
-/** 호빵 모몬가: 크고 둥근 귀(안쪽 하늘색), 볼 옆 털 뭉치, 화난 눈썹, 하늘색 코, υ 입, 연보라 목도리, 두 손으로 쥔 호빵 */
+/** 호빵 모몬가: 모몬가 귀(하늘색 안쪽·주름), 얼굴 옆 뻗친 털, 하늘색 꼬리, 조금 큰 눈, 화난 눈썹, 하늘색 코, υ 입, 연보라 목도리, 두 손으로 쥔 호빵 */
 export function buildScarfMomonga(group, doll, { fur, sub }) {
   const face = momongaFaceGeometry();
   const ears = momongaEarsGeometry();
-  addBase(group, fur, { brows: face.brows, mouth: face.mouth });
+  addBase(group, fur, { brows: face.brows, mouth: face.mouth, eye: MOMONGA_EYE });
   group.add(
     hulaMesh(ears.outer, fur),
-    hulaMesh(ears.inner, sub),
-    hulaMesh(momongaTuftsGeometry(), fur),
+    hulaMesh(ears.inner, sub, false),
+    hulaMesh(ears.ink, FACE_MAT.ink, false),
+    hulaMesh(momongaFurGeometry(), fur),
+    hulaMesh(momongaTailGeometry(), sub),
     hulaMesh(face.nose, MOMONGA_MAT.nose, false),
     hulaMesh(face.white, FACE_MAT.white, false),
   );
