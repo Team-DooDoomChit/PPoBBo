@@ -23,7 +23,7 @@ test('네 인형의 몸(머리 폭·발바닥)이 같다', () => {
     const box = new THREE.Box3().setFromBufferAttribute(body.geometry.attributes.position);
     assert.ok(Math.abs(box.min.y - -0.0685) < 0.001, `${id} 발바닥 ${box.min.y.toFixed(4)}`);
     // 호빵 모몬가는 볼 옆 털 뭉치가 몸과 같은 재질로 합쳐져서 더 넓다
-    const [low, high] = id === 'momonga-scarf' ? [0.08, 0.095] : [0.06, 0.07];
+    const [low, high] = id === 'momonga-scarf' ? [0.075, 0.09] : [0.06, 0.07];
     assert.ok(box.max.x > low && box.max.x < high, `${id} 폭 ${box.max.x.toFixed(4)}`);
   }
 });

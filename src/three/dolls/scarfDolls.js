@@ -454,7 +454,7 @@ function momongaEarsGeometry() {
 }
 
 let momongaTufts = null;
-/** 볼 옆 털 뭉치: 머리 양옆에 위아래로 긴 구름 모양 (속 뭉치 + 둘레의 작은 혹, 머리 쪽 혹은 뺀다) */
+/** 볼 옆 털 뭉치: 머리 양옆에 위아래로 긴 구름 모양 (속 뭉치 + 둘레의 작은 혹, 머리 쪽 혹은 뺀다). 혹은 높이마다 머리 옆면을 따라 붙는다 */
 function momongaTuftsGeometry() {
   if (momongaTufts) return momongaTufts;
   const lump = new THREE.SphereGeometry(1, 12, 8);
@@ -462,7 +462,7 @@ function momongaTuftsGeometry() {
   const N = 30;
   const parts = [];
   for (const sx of [-1, 1]) {
-    const c = [sx * 0.066, 0.013, 0];
+    const c = [sx * 0.06, 0.015, 0.002];
     parts.push(placed(BASE.sphere, { pos: c, scale: R }));
     for (let i = 0; i < N; i++) {
       const y = 1 - (2 * (i + 0.5)) / N;
@@ -470,7 +470,9 @@ function momongaTuftsGeometry() {
       const dir = [Math.cos(i * 2.399963) * r, y, Math.sin(i * 2.399963) * r];
       if (dir[0] * sx < -0.3) continue;
       const size = 0.0095 + 0.0007 * ((i * 7) % 5);
-      parts.push(placed(lump, { pos: c.map((v, k) => v + dir[k] * R[k] * 0.72), scale: [size, size * 0.9, size] }));
+      const pos = c.map((v, k) => v + dir[k] * R[k] * 0.72);
+      pos[0] += sx * (HEAD.radius(pos[1]) - HEAD.radius(c[1])); // 턱 쪽으로 좁아지는 머리에서 떨어지지 않게
+      parts.push(placed(lump, { pos, scale: [size, size * 0.9, size] }));
     }
   }
   lump.dispose();
@@ -479,9 +481,9 @@ function momongaTuftsGeometry() {
 }
 
 let momongaTail = null;
-/** 하늘색 꼬리: 등에 세로로 길게 붙은 납작한 타원. 엉덩이에서 머리 뒤 가운데까지 오고, 위쪽이 등을 따라 조금 뒤로 눕는다 */
+/** 하늘색 꼬리: 등에 세로로 길게 붙은 납작한 타원. 엉덩이에서 머리 뒤 가운데까지 오고, 아래는 엉덩이에 붙고 위쪽은 등에서 조금 떨어져 뒤로 선다 */
 function momongaTailGeometry() {
-  momongaTail ??= placed(BASE.sphere, { pos: [0, -0.006, -0.035], scale: [0.029, 0.056, 0.02], rot: [-0.15, 0, 0] });
+  momongaTail ??= placed(BASE.sphere, { pos: [0, -0.006, -0.039], scale: [0.029, 0.056, 0.02], rot: [-0.3, 0, 0] });
   return momongaTail;
 }
 
