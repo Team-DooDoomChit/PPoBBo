@@ -22,8 +22,8 @@ test('네 인형의 몸(머리 폭·발바닥)이 같다', () => {
     const body = meshes(createDollMesh(getDoll(id))).find((m) => m.material.userData.ownedByDoll);
     const box = new THREE.Box3().setFromBufferAttribute(body.geometry.attributes.position);
     assert.ok(Math.abs(box.min.y - -0.0685) < 0.001, `${id} 발바닥 ${box.min.y.toFixed(4)}`);
-    // 호빵 모몬가는 얼굴 옆 털이 몸과 같은 재질로 합쳐져서 더 넓다
-    const [low, high] = id === 'momonga-scarf' ? [0.07, 0.085] : [0.06, 0.07];
+    // 호빵 모몬가는 볼 옆 털 뭉치가 몸과 같은 재질로 합쳐져서 더 넓다
+    const [low, high] = id === 'momonga-scarf' ? [0.08, 0.095] : [0.06, 0.07];
     assert.ok(box.max.x > low && box.max.x < high, `${id} 폭 ${box.max.x.toFixed(4)}`);
   }
 });
@@ -36,7 +36,7 @@ test('호빵 모몬가의 꼬리는 발바닥 아래로 내려가지 않고 등 
   assert.ok(tail, '꼬리 메시');
   const box = new THREE.Box3().setFromBufferAttribute(tail.geometry.attributes.position);
   assert.ok(box.min.y > -0.0685, `꼬리 아래 ${box.min.y.toFixed(4)}`);
-  assert.ok(box.min.z < -0.07, `꼬리 뒤 ${box.min.z.toFixed(4)}`);
+  assert.ok(box.min.z < -0.05, `꼬리 뒤 ${box.min.z.toFixed(4)}`);
 });
 
 test('모델 크기와 물리 충돌체가 맞는다 (위쪽 끝 차이 5mm 이내)', () => {
