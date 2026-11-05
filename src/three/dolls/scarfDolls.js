@@ -363,12 +363,12 @@ function addHoppang(group) {
 /** 호빵 우사기: 긴 귀(안쪽 분홍), 높이 올라간 호 눈썹, 노란 목도리, 두 손으로 쥔 호빵 */
 export function buildScarfBunny(group, doll, { fur, sub }) {
   addBase(group, fur, { brows: archedBrowsGeometry() });
-  const earY = HEAD_TOP + 0.024; // 아래쪽이 머리에 묻히도록
+  const earY = HEAD_TOP + 0.0195; // 아래쪽이 머리에 묻히도록 (밑동 높이는 HEAD_TOP - 0.016)
   for (const sx of [-1, 1]) {
     const tilt = [0, 0, -sx * 0.04];
     group.add(
-      part(GEO.capsule, fur, { pos: [sx * 0.0165, earY, -0.004], scale: [0.0165, 0.016, 0.014], rot: tilt }),
-      part(GEO.capsule, sub, { pos: [sx * 0.0165, earY - 0.004, 0.0085], scale: [0.0095, 0.012, 0.006], rot: tilt }),
+      part(GEO.capsule, fur, { pos: [sx * 0.0145, earY, -0.004], scale: [0.013, 0.0142, 0.012], rot: tilt }),
+      part(GEO.capsule, sub, { pos: [sx * 0.0145, earY - 0.0035, 0.0075], scale: [0.0075, 0.0106, 0.005], rot: tilt }),
     );
   }
   addScarf(group, BUNNY_MAT);
