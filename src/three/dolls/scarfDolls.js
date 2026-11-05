@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { BASE, Z, createHead, hulaMesh, mergeAll, photoMapper, placed } from './hulaBase.js';
 
 /**
- * 목도리 시리즈 (토끼·고양이·햄스터 #55, 모몬가 #73): 훌라 인형과 같은 체형·얼굴에 니트 목도리를 두르고 소품을 안았다.
+ * 목도리 시리즈 (토끼·고양이·햄스터 #55, 모몽가 #73): 훌라 인형과 같은 체형·얼굴에 니트 목도리를 두르고 소품을 안았다.
  *
  * 원점 = 몸통 중심, +Y = 위, +Z = 얼굴 정면 (DollFactory와 같다). 단위 m.
  * 머리·몸·얼굴은 세 인형이 모두 같고, 귀·머리 무늬·목도리 색·소품으로 캐릭터를 구분한다.
@@ -89,23 +89,25 @@ function shortBrowsGeometry() {
 const sharedFaces = new Map();
 /**
  * 눈썹·입을 뺀 얼굴: 큰 눈(갈색 + 흰 타원 + 아래 초승달), 빗금 볼터치
- * @param {number} [eye] 눈 크기 배율 (눈 가운데 기준)
+ * @param {[number, number]} [eye] 눈 크기 배율 [가로, 세로] (눈 가운데 기준)
  */
-function faceGeometry(eye = 1) {
-  if (sharedFaces.has(eye)) return sharedFaces.get(eye);
+function faceGeometry(eye = [1, 1]) {
+  const key = eye.join();
+  if (sharedFaces.has(key)) return sharedFaces.get(key);
   const { px, py, pt } = photoMapper(HEAD, PHOTO);
-  const ex = (v) => px(v * eye);
-  const ey = (y) => py(241.5 + (y - 241.5) * eye);
+  const ex = (v) => px(v * eye[0]);
+  const ey = (y) => py(241.5 + (y - 241.5) * eye[1]);
   const ink = [];
   const white = [];
   const blush = [];
   for (const sx of [-1, 1]) {
     const m = (dx) => sx * dx; // 오른쪽 요소는 좌우 대칭
     const [x] = pt(m(51), 0);
-    ink.push(HEAD.faceDisc(x, ey(241.5), ex(21), ex(19.5), 0.0004));
-    white.push(HEAD.faceDisc(x, ey(236.5), ex(12.75), ex(9), 0.001));
-    white.push(HEAD.faceDisc(x, ey(252.5), ex(11), ex(4), 0.001));
-    ink.push(HEAD.faceDisc(x, ey(248), ex(11.5), ex(3), 0.0013));
+    const h = (v) => px(v * eye[1]);
+    ink.push(HEAD.faceDisc(x, ey(241.5), ex(21), h(19.5), 0.0004));
+    white.push(HEAD.faceDisc(x, ey(236.5), ex(12.75), h(9), 0.001));
+    white.push(HEAD.faceDisc(x, ey(252.5), ex(11), h(4), 0.001));
+    ink.push(HEAD.faceDisc(x, ey(248), ex(11.5), h(3), 0.0013));
     const cx = m(101.5);
     const [bx, by] = pt(cx, 270.5);
     blush.push(HEAD.faceDisc(bx, by, px(29.4), px(23), 0.0004));
@@ -114,7 +116,7 @@ function faceGeometry(eye = 1) {
     }
   }
   const face = { ink: mergeAll(ink), white: mergeAll(white), blush: mergeAll(blush) };
-  sharedFaces.set(eye, face);
+  sharedFaces.set(key, face);
   return face;
 }
 
@@ -175,7 +177,7 @@ function closedMouthGeometry() {
 }
 
 /** 공통 몸과 얼굴. 눈썹·입은 기본값이 짧은 눈썹·ω 입이다 */
-function addBase(group, fur, { brows = shortBrowsGeometry(), mouth = omegaMouthGeometry(), eye = 1 } = {}) {
+function addBase(group, fur, { brows = shortBrowsGeometry(), mouth = omegaMouthGeometry(), eye = [1, 1] } = {}) {
   const face = faceGeometry(eye);
   group.add(
     hulaMesh(bodyGeometry(), fur),
@@ -353,7 +355,7 @@ function hamsterMouthGeometry() {
   return hamsterMouth;
 }
 
-// ---------- 호빵 모몬가: 인어섬 모몬가(#65)와 같은 캐릭터 ----------
+// ---------- 호빵 모몽가: 인어섬 모몬가(#65)와 같은 캐릭터 ----------
 
 let momongaFace = null;
 /**
@@ -388,7 +390,7 @@ function momongaFaceGeometry() {
   return momongaFace;
 }
 
-const MOMONGA_EYE = 1.12; // 모몬가는 눈이 조금 더 크다
+const MOMONGA_EYE = [1.28, 1.12]; // 모몽가는 눈이 조금 더 크고 옆으로 살짝 길다
 
 /** 단위 구를 늘려 만든 도톰한 판. 법선은 늘린 비율로 다시 맞춘다 (구의 이음매가 보이지 않게) */
 function stretchedSphere(base, fx) {
@@ -407,7 +409,7 @@ function stretchedSphere(base, fx) {
 
 let momongaEars = null;
 /**
- * 모몬가 귀: 위가 조금 넓고 아래가 좁은 둥근 귀. 앞면 바깥쪽에 하늘색 안쪽, 가운데에 접힌 주름(수놓은 선).
+ * 모몽가 귀: 위가 조금 넓고 아래가 좁은 둥근 귀. 앞면 바깥쪽에 하늘색 안쪽, 가운데에 접힌 주름(수놓은 선).
  * 귀 좌표 (u: 바깥쪽 +, v: 위 +, -1 ~ 1)에서 만들어 머리 위 양옆으로 옮긴다.
  */
 function momongaEarsGeometry() {
@@ -535,7 +537,7 @@ export function buildScarfHamster(group, doll, { fur }) {
   addHoppang(group);
 }
 
-/** 호빵 모몬가: 모몬가 귀(하늘색 안쪽·주름), 볼 옆 털 뭉치, 등의 하늘색 꼬리, 조금 큰 눈, 화난 눈썹, 하늘색 코, υ 입, 연보라 목도리, 두 손으로 쥔 호빵 */
+/** 호빵 모몽가: 모몽가 귀(하늘색 안쪽·주름), 볼 옆 털 뭉치, 등의 하늘색 꼬리, 조금 크고 옆으로 긴 눈, 화난 눈썹, 하늘색 코, υ 입, 연보라 목도리, 두 손으로 쥔 호빵 */
 export function buildScarfMomonga(group, doll, { fur, sub }) {
   const face = momongaFaceGeometry();
   const ears = momongaEarsGeometry();

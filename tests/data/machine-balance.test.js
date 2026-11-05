@@ -22,7 +22,7 @@ test('인어섬 시리즈는 인어섬 치이카와·하치와레 2종, 모두 �
   assert.deepEqual(rarityCount('bear'), { common: 2 });
 });
 
-test('치이카와 겨울 시리즈는 호빵 우사기(기본)·하치와레·치이카와·모몬가 4종, 모두 일반', () => {
+test('치이카와 겨울 시리즈는 호빵 우사기(기본)·하치와레·치이카와·모몽가 4종, 모두 일반', () => {
   assert.equal(MACHINES.find((m) => m.id === 'bunny').name, '치이카와 겨울 시리즈');
   assert.deepEqual(getDollsByMachine('bunny').map((d) => d.id), ['bunny-scarf', 'cat-scarf', 'hamster-scarf', 'momonga-scarf']);
   assert.deepEqual(rarityCount('bunny'), { common: 4 });
