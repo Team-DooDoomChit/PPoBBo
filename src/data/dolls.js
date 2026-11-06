@@ -18,6 +18,7 @@ export const DOLLS = [
   { id: 'bunny-scarf', name: '호빵 우사기', machineId: 'bunny', type: 'keychainBunny', rarity: 'common', color: 0xf7e4d8, sub: 0xf3a9b8, modelUrl: null },
   { id: 'cat-scarf', name: '호빵 하치와레', machineId: 'bunny', type: 'keychainCat', rarity: 'common', color: 0xf7f8fc, sub: 0x8badea, modelUrl: null },
   { id: 'hamster-scarf', name: '호빵 치이카와', machineId: 'bunny', type: 'keychainHamster', rarity: 'common', color: 0xf8f8fb, sub: 0xe88ba0, modelUrl: null },
+  { id: 'momonga-scarf', name: '호빵 모몽가', machineId: 'bunny', type: 'keychainMomonga', rarity: 'common', color: 0xfafafc, sub: 0xd5e4f5, modelUrl: null }, // #73
 
   { id: 'chick-yellow', name: '노랑 병아리', machineId: 'chick', type: 'chick', rarity: 'common', color: 0xffe14d, sub: 0xff9a2e },
   { id: 'chick-cotton', name: '솜 병아리', machineId: 'chick', type: 'chick', rarity: 'common', color: 0xfff8e8, sub: 0xffb02e },

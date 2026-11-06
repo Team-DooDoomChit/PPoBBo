@@ -23,6 +23,7 @@ const BASE_SPHERES = {
   keychainBunny: SCARF_SPHERES,
   keychainCat: SCARF_SPHERES,
   keychainHamster: SCARF_SPHERES,
+  keychainMomonga: SCARF_SPHERES,
   hulaHamster: [
     // 몸통: 다른 인형과 같은 크기의 구를 원점(무게 중심)에 둔다. 구 중심이 무게 중심보다 아래면 인형이 넘어진다.
     { r: DOLL_SHAPE.bodyRadius, y: 0 },
@@ -41,14 +42,19 @@ const BASE_SPHERES = {
 };
 
 /**
- * 몸통·머리 구 위로 크게 튀어나오는 부분(귀, 키링 체인, 손에 든 소품)에 붙이는 상자 충돌체.
+ * 몸통·머리 구 위로 크게 튀어나오는 부분(귀, 꼬리, 키링 체인, 손에 든 소품)에 붙이는 상자 충돌체.
  * half: 상자 반크기 [x, y, z], y: 중심 높이, x·z: 좌우·앞뒤 중심 (없으면 0, 인형 원점 기준).
  * 모델(DollFactory)의 치수와 맞춘다.
  */
 const EXTRA_SHAPES = {
   bunny: [{ half: [0.038, 0.045, 0.012], y: 0.165 }], // 귀 0.12 ~ 0.21
-  keychainBunny: [{ half: [0.033, 0.033, 0.016], y: 0.112 }], // 귀 0.079 ~ 0.145
+  keychainBunny: [{ half: [0.028, 0.0283, 0.015], y: 0.1073 }], // 귀 0.079 ~ 0.1356 (좌우 끝 ±0.028)
   keychainCat: [{ half: [0.044, 0.008, 0.009], y: 0.083 }], // 귀 끝 0.075 ~ 0.091
+  keychainMomonga: [
+    { half: [0.08, 0.03, 0.026], y: 0.014 }, // 볼 옆 털 뭉치 (좌우 끝 ±0.08, -0.016 ~ 0.044)
+    { half: [0.064, 0.0104, 0.008], y: 0.0943 }, // 귀 두 개 중 머리 위로 나온 부분 (0.084 ~ 0.1047)
+    { half: [0.029, 0.0536, 0.0122], y: -0.006, z: -0.052 }, // 등의 타원 꼬리 (x ±0.029, y -0.06 ~ 0.048, z -0.064 ~ -0.04)
+  ],
   hulaHamster: [{ half: [0.059, 0.022, 0.045], y: 0.023 }], // 머리 구보다 넓은 볼 쪽 (반폭 0.061, 가장 넓은 높이 0.023)
   hulaCat: [{ half: [0.059, 0.022, 0.044], y: 0.028 }], // 머리 구보다 넓은 볼 쪽 (반폭 0.061)
   hulaBunny: [
@@ -60,7 +66,7 @@ const EXTRA_SHAPES = {
 };
 
 // 집게가 붙잡는 높이: 기본은 머리, 호빵 우사기는 귀 아래쪽, 호빵 하치와레·치이카와는 머리 위쪽
-const GRAB_Y = { keychainBunny: 0.1, keychainCat: 0.058, keychainHamster: 0.058, hulaHamster: 0.055, hulaCat: 0.058, hulaBunny: 0.065 };
+const GRAB_Y = { keychainBunny: 0.1, keychainCat: 0.058, keychainHamster: 0.058, keychainMomonga: 0.058, hulaHamster: 0.055, hulaCat: 0.058, hulaBunny: 0.065 };
 
 /**
  * 인형 종류별 물리 치수.
