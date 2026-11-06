@@ -465,8 +465,8 @@ function momongaWhiskersGeometry() {
   if (momongaWhiskers) return momongaWhiskers;
   const Y = 0.019; // 판 가운데 높이 (볼 높이)
   const BURY = 0.01; // 머리 속에 묻히는 길이
-  const L = 0.034; // 안쪽 끝 ~ 바깥 끝 (머리 밖으로 0.024, 둥근 테두리까지 0.0295)
-  const [HI, HO] = [0.008, 0.0115]; // 안쪽·바깥쪽 반높이
+  const L = 0.027; // 안쪽 끝 ~ 바깥 끝 (머리 밖으로 0.017, 둥근 테두리까지 0.0225)
+  const [HI, HO] = [0.012, 0.0165]; // 안쪽·바깥쪽 반높이 (옆으로보다 위아래로 길다)
   const ROUND = 0.007;
   const DEPTH = 0.004;
   const BEVEL = 0.0055; // 두툼하고 둥근 테두리
@@ -495,16 +495,17 @@ function momongaWhiskersGeometry() {
     g.computeVertexNormals();
     g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
     pad.push(g);
-    // 수염: 머리에 붙은 곳부터 바깥 끝까지, 바깥으로 갈수록 위아래로 퍼진다. 판 앞면에 앞쪽에서 쏘아 붙이고 둥근 테두리를 따라 끝까지 간다
+    // 수염: 얼굴에서 조금 떨어진 곳부터 바깥 끝까지, 바깥으로 갈수록 위아래로 퍼진다. 판 앞면에 앞쪽에서 쏘아 붙이고 둥근 테두리를 따라 끝까지 간다
     const surface = new THREE.Mesh(g);
     const ray = new THREE.Raycaster();
     const BACK = new THREE.Vector3(0, 0, -1);
+    const START = BURY + 0.005; // 얼굴과 수염 사이 틈
     for (const k of [-1, 0, 1]) {
       const pts = [];
       for (let i = 0; i <= 40; i++) {
         const t = i / 40;
-        const u = BURY - 0.002 + t * (L + BEVEL + 0.002 - BURY);
-        ray.set(new THREE.Vector3(x0 + sx * u, Y + k * (0.004 + 0.0055 * t), 0.05), BACK);
+        const u = START + t * (L + BEVEL + 0.002 - START);
+        ray.set(new THREE.Vector3(x0 + sx * u, Y + k * (0.006 + 0.006 * t), 0.05), BACK);
         const hit = ray.intersectObject(surface)[0];
         if (!hit || hit.face.normal.z < 0.35) break; // 옆면까지 돌아가면 앞에서 보이지 않는다
         pts.push(hit.point.addScaledVector(hit.face.normal, 0.0002));
