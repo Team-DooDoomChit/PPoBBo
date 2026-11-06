@@ -170,7 +170,44 @@ export function buildSkirt(head, { waistY, waistR, waistThick, strandY, front, b
   };
   layer(frontList, front);
   layer(backList, back);
+  backList.push(skirtLining(head.depth, { strandY, back }));
   return { front: mergeAll(frontList), back: mergeAll(backList) };
+}
+
+/**
+ * 치마 속 몸 아랫부분: 허리에서 치마 끝 바로 위까지 이어지는 둥근 몸 (몸 색으로 칠한다).
+ * 치마 속이 비어 보이지 않고, 아래에서 봐도 몸 아래쪽과 발이 보이게 한다.
+ * @param {number} depth 앞뒤 두께 / 좌우 폭 (가닥과 같은 값)
+ * @param {{ waistY: number, strandY: number, back: { r: number, tilt: number, height: number } }} skirt 치마 치수
+ */
+export function skirtHips(depth, { waistY, strandY, back: { r, tilt, height } }) {
+  const bottom = strandY - Math.cos(tilt) * height / 2 + 0.004;
+  const center = (waistY + bottom) / 2;
+  const radius = r + (strandY - center) * Math.tan(tilt) - 0.006; // 가운데 높이에서 안감보다 4mm 안쪽
+  return placed(BASE.sphere, { pos: [0, center, 0], scale: [radius, (waistY - bottom) / 2, radius * depth] });
+}
+
+/**
+ * 치마 안감: 안쪽 가닥 바로 안에 두른 원뿔대 (허리 → 치마 끝 조금 위).
+ * 가닥 사이 틈과 치마 속이 비어 보이지 않게 막는다. 안·밖 어느 쪽에서 봐도 보이도록 양면으로 만든다.
+ * @param {number} depth 앞뒤 두께 / 좌우 폭 (가닥과 같은 값)
+ * @param {{ strandY: number, back: { r: number, tilt: number, height: number } }} skirt 안쪽 가닥 치수
+ */
+export function skirtLining(depth, { strandY, back: { r, tilt, height } }) {
+  const half = height / 2;
+  const top = strandY + Math.cos(tilt) * half;
+  const bottom = strandY - Math.cos(tilt) * half + 0.003; // 치마 끝 아래로 비치지 않게 조금 위에서 끝낸다
+  const radiusAt = (y) => r + (strandY - y) * Math.tan(tilt) - 0.002; // 가닥보다 2mm 안쪽
+  const outer = new THREE.CylinderGeometry(radiusAt(top), radiusAt(bottom), top - bottom, 64, 1, true);
+  outer.translate(0, (top + bottom) / 2, 0);
+  outer.scale(1, 1, depth);
+  // 안쪽 면: 같은 면을 뒤집어(삼각형 순서·법선 반대) 붙인다
+  const inner = outer.clone();
+  const idx = inner.index.array;
+  for (let i = 0; i < idx.length; i += 3) [idx[i + 1], idx[i + 2]] = [idx[i + 2], idx[i + 1]];
+  const n = inner.attributes.normal;
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, -n.getX(i), -n.getY(i), -n.getZ(i));
+  return mergeAll([outer, inner]);
 }
 
 /** 꽃 화관: 머리 둘레(높이 비율 t)에 꽃잎 5장 + 가운데 진주인 꽃을 고르게 두른다 */

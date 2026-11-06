@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BASE, Z, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed } from './hulaBase.js';
+import { BASE, Z, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed, skirtHips } from './hulaBase.js';
 
 /**
  * 인어섬 우사기 (#59): 긴 귀, 노란 꽃 화관, 풀 치마를 입고 횃불을 든 아이보리색 토끼.
@@ -57,6 +57,7 @@ const EAR = { dx: 58, r: 58 * K, top: Y(22), base: Y(300), depth: 1.15 };
 function buildBody() {
   const parts = [
     HEAD.geometry(),
+    skirtHips(BODY_DEPTH, SKIRT), // 치마 속 몸 아랫부분 (치마 속이 비어 보이지 않게)
     // 몸통: 머리 아래(650px)에서 치마 허리(715px)까지 보이는 흰 원통 (반폭 212px)
     placed(new THREE.CylinderGeometry(0.045, 0.046, 0.03, 40), { pos: [0, Y(680), 0], scale: [1, 1, BODY_DEPTH] }),
     // 발: 치마 아래로 보이는 두 발 (가운데에서 ±54px, 반폭 40px, 905~965px)
