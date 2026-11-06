@@ -188,9 +188,14 @@ document.getElementById('all').addEventListener('click', () => (allMode ? showOn
 
 // ---------- 시작 ----------
 resize();
-const start = decodeURIComponent(location.hash.slice(1));
-if (start === 'all') showAll();
-else showOne(start || DOLLS[0].id);
+/** 주소 뒤 #id(또는 #all)를 화면에 반영한다. 주소만 바꿔도 새로고침 없이 바뀐다. */
+function showFromHash() {
+  const id = decodeURIComponent(location.hash.slice(1));
+  if (id === 'all') showAll();
+  else showOne(id || DOLLS[0].id);
+}
+addEventListener('hashchange', showFromHash);
+showFromHash();
 
 renderer.setAnimationLoop(() => {
   controls.update();
