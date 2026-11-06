@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { BASE, Z, createHead, hulaMesh, mergeAll, photoMapper, placed } from './hulaBase.js';
 
 /**
@@ -455,31 +456,73 @@ function momongaEarsGeometry() {
   return momongaEars;
 }
 
-let momongaTufts = null;
-/** 볼 옆 털 뭉치: 머리 양옆에 위아래로 긴 구름 모양 (속 뭉치 + 둘레의 작은 혹, 머리 쪽 혹은 뺀다). 혹은 높이마다 머리 옆면을 따라 붙는다 */
-function momongaTuftsGeometry() {
-  if (momongaTufts) return momongaTufts;
-  const lump = new THREE.SphereGeometry(1, 12, 8);
-  const R = [0.012, 0.025, 0.02];
-  const N = 30;
-  const parts = [];
+let momongaWhiskers = null;
+/**
+ * 볼 옆 수염 판: 머리 양옆에 붙은, 바깥으로 조금 넓어지는 둥근 사다리꼴 판. 판째로 바깥 아래로 살짝 기울고, 앞면에 판 결을 따라 수놓은 수염 선 3개.
+ * 판 좌표 (u: 머리 옆면에서 바깥 +, v: 위 +)에서 만들고, 안쪽 끝은 머리에 묻는다.
+ */
+function momongaWhiskersGeometry() {
+  if (momongaWhiskers) return momongaWhiskers;
+  const Y = 0.019; // 판 가운데 높이 (볼 높이)
+  const BURY = 0.01; // 머리 속에 묻히는 길이
+  const L = 0.027; // 안쪽 끝 ~ 바깥 끝 (머리 밖으로 0.017, 둥근 테두리까지 0.0225)
+  const [HI, HO] = [0.012, 0.0165]; // 안쪽·바깥쪽 반높이 (옆으로보다 위아래로 길다)
+  const ROUND = 0.007;
+  const DEPTH = 0.004;
+  const BEVEL = 0.0055; // 두툼하고 둥근 테두리
+  const R = 0.0007;
+  const TILT = 0.17; // 머리에 붙은 곳을 축으로 바깥이 아래로 기우는 각 (라디안)
+  const pad = [];
+  const ink = [];
   for (const sx of [-1, 1]) {
-    const c = [sx * 0.06, 0.015, 0.002];
-    parts.push(placed(BASE.sphere, { pos: c, scale: R }));
-    for (let i = 0; i < N; i++) {
-      const y = 1 - (2 * (i + 0.5)) / N;
-      const r = Math.sqrt(1 - y * y);
-      const dir = [Math.cos(i * 2.399963) * r, y, Math.sin(i * 2.399963) * r];
-      if (dir[0] * sx < -0.3) continue;
-      const size = 0.0095 + 0.0007 * ((i * 7) % 5);
-      const pos = c.map((v, k) => v + dir[k] * R[k] * 0.72);
-      pos[0] += sx * (HEAD.radius(pos[1]) - HEAD.radius(c[1])); // 턱 쪽으로 좁아지는 머리에서 떨어지지 않게
-      parts.push(placed(lump, { pos, scale: [size, size * 0.9, size] }));
+    const x0 = sx * (HEAD.radius(Y) - BURY);
+    // 모서리를 ROUND만큼 깎아 둥글게 만든 사다리꼴
+    const corners = [[0, -HI], [L, -HO], [L, HO], [0, HI]].map(([u, v]) => new THREE.Vector2(x0 + sx * u, Y + v));
+    const shape = new THREE.Shape();
+    corners.forEach((c, i) => {
+      const prev = corners[(i + 3) % 4];
+      const next = corners[(i + 1) % 4];
+      const into = (p) => c.clone().add(p.clone().sub(c).setLength(ROUND));
+      if (i === 0) shape.moveTo(...into(prev).toArray());
+      else shape.lineTo(...into(prev).toArray());
+      shape.quadraticCurveTo(c.x, c.y, ...into(next).toArray());
+    });
+    shape.closePath();
+    let g = new THREE.ExtrudeGeometry(shape, { depth: DEPTH, bevelThickness: BEVEL, bevelSize: BEVEL, bevelSegments: 6, curveSegments: 6 });
+    g.translate(0, 0, -DEPTH / 2);
+    g.deleteAttribute('uv');
+    g.deleteAttribute('normal');
+    g = mergeVertices(g); // 테두리가 각지지 않게 이웃 면의 법선을 섞는다
+    g.computeVertexNormals();
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    // 수염: 얼굴에서 조금 떨어진 곳부터 바깥 끝까지 판 결을 따라 나란히, 위로 살짝 볼록하고 바깥으로 갈수록 조금 벌어진다.
+    // 기울이기 전의 판 앞면에 앞쪽에서 쏘아 붙이고 둥근 테두리를 따라 끝까지 간 뒤, 판과 함께 기울인다
+    const surface = new THREE.Mesh(g);
+    const ray = new THREE.Raycaster();
+    const BACK = new THREE.Vector3(0, 0, -1);
+    const START = BURY + 0.005; // 얼굴과 수염 사이 틈
+    const lines = [];
+    for (const k of [1, 0, -1]) {
+      const pts = [];
+      for (let i = 0; i <= 40; i++) {
+        const t = i / 40;
+        const u = START + t * (L + BEVEL + 0.002 - START);
+        const v = k * (0.0075 + 0.002 * t) + 0.001 * Math.sin(Math.PI * t);
+        ray.set(new THREE.Vector3(x0 + sx * u, Y + v, 0.05), BACK);
+        const hit = ray.intersectObject(surface)[0];
+        if (!hit || hit.face.normal.z < 0.35) break; // 옆면까지 돌아가면 앞에서 보이지 않는다
+        pts.push(hit.point.addScaledVector(hit.face.normal, 0.0002));
+      }
+      lines.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, R, 6));
+      for (const q of [pts[0], pts.at(-1)]) lines.push(placed(BASE.small, { pos: q.toArray(), scale: [R, R, R] }));
     }
+    const pivot = new THREE.Vector3(x0 + sx * BURY, Y, 0);
+    const tilt = new THREE.Matrix4().makeTranslation(pivot).multiply(new THREE.Matrix4().makeRotationZ(-sx * TILT)).multiply(new THREE.Matrix4().makeTranslation(pivot.clone().negate()));
+    pad.push(g.applyMatrix4(tilt));
+    ink.push(mergeAll(lines).applyMatrix4(tilt));
   }
-  lump.dispose();
-  momongaTufts = mergeAll(parts);
-  return momongaTufts;
+  momongaWhiskers = { pad: mergeAll(pad), ink: mergeAll(ink) };
+  return momongaWhiskers;
 }
 
 let momongaTail = null;
@@ -537,16 +580,18 @@ export function buildScarfHamster(group, doll, { fur }) {
   addHoppang(group);
 }
 
-/** 호빵 모몽가: 모몽가 귀(하늘색 안쪽·주름), 볼 옆 털 뭉치, 등의 하늘색 꼬리, 조금 크고 옆으로 긴 눈, 화난 눈썹, 하늘색 코, υ 입, 연보라 목도리, 두 손으로 쥔 호빵 */
+/** 호빵 모몽가: 모몽가 귀(하늘색 안쪽·주름), 볼 옆 수염 판, 등의 하늘색 꼬리, 조금 크고 옆으로 긴 눈, 화난 눈썹, 하늘색 코, υ 입, 연보라 목도리, 두 손으로 쥔 호빵 */
 export function buildScarfMomonga(group, doll, { fur, sub }) {
   const face = momongaFaceGeometry();
   const ears = momongaEarsGeometry();
+  const whiskers = momongaWhiskersGeometry();
   addBase(group, fur, { brows: face.brows, mouth: face.mouth, eye: MOMONGA_EYE });
   group.add(
     hulaMesh(ears.outer, fur),
     hulaMesh(ears.inner, sub, false),
     hulaMesh(ears.ink, FACE_MAT.ink, false),
-    hulaMesh(momongaTuftsGeometry(), fur),
+    hulaMesh(whiskers.pad, fur),
+    hulaMesh(whiskers.ink, FACE_MAT.ink, false),
     hulaMesh(momongaTailGeometry(), sub),
     hulaMesh(face.nose, MOMONGA_MAT.nose, false),
     hulaMesh(face.white, FACE_MAT.white, false),
