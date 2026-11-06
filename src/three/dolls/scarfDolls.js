@@ -458,7 +458,7 @@ function momongaEarsGeometry() {
 
 let momongaWhiskers = null;
 /**
- * 볼 옆 수염 판: 머리 양옆에 붙은, 바깥으로 조금 넓어지는 둥근 사다리꼴 판. 앞면에 바깥으로 퍼지는 수놓은 수염 선 3개.
+ * 볼 옆 수염 판: 머리 양옆에 붙은, 바깥으로 조금 넓어지는 둥근 사다리꼴 판. 수염 결을 따라 바깥 끝이 아래로 휘고, 앞면에 수놓은 수염 선 3개.
  * 판 좌표 (u: 머리 옆면에서 바깥 +, v: 위 +)에서 만들고, 안쪽 끝은 머리에 묻는다.
  */
 function momongaWhiskersGeometry() {
@@ -471,6 +471,8 @@ function momongaWhiskersGeometry() {
   const DEPTH = 0.004;
   const BEVEL = 0.0055; // 두툼하고 둥근 테두리
   const R = 0.0007;
+  // 판 전체가 수염 결을 따라 바깥으로 갈수록 점점 더 아래로 휜다 (u → y 이동)
+  const droop = (u) => -0.008 * Math.min(1, Math.max(0, (u - BURY) / (L + BEVEL - BURY))) ** 2;
   const pad = [];
   const ink = [];
   for (const sx of [-1, 1]) {
@@ -491,6 +493,8 @@ function momongaWhiskersGeometry() {
     g.translate(0, 0, -DEPTH / 2);
     g.deleteAttribute('uv');
     g.deleteAttribute('normal');
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) p.setY(i, p.getY(i) + droop(sx * (p.getX(i) - x0)));
     g = mergeVertices(g); // 테두리가 각지지 않게 이웃 면의 법선을 섞는다
     g.computeVertexNormals();
     g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
@@ -503,11 +507,10 @@ function momongaWhiskersGeometry() {
     const START = BURY + 0.005; // 얼굴과 수염 사이 틈
     for (const k of [1, 0, -1]) {
       const pts = [];
-      const drop = 0.005 + (1 - k) * 0.003;
       for (let i = 0; i <= 40; i++) {
         const t = i / 40;
         const u = START + t * (L + BEVEL + 0.002 - START);
-        const v = k * 0.008 + 0.004 - drop * t + 0.0025 * Math.sin(Math.PI * t);
+        const v = k * 0.008 + 0.003 + droop(u) - (1 - k) * 0.0015 * t + 0.0012 * Math.sin(Math.PI * t);
         ray.set(new THREE.Vector3(x0 + sx * u, Y + v, 0.05), BACK);
         const hit = ray.intersectObject(surface)[0];
         if (!hit || hit.face.normal.z < 0.35) break; // 옆면까지 돌아가면 앞에서 보이지 않는다
