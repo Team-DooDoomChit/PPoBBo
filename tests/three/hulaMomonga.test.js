@@ -73,9 +73,9 @@ test('인형을 정리해도 공유 지오메트리는 해제하지 않는다 (�
   assert.equal(meshes(createDollMesh(getDoll('momonga-hula'))).length, count, '정리한 뒤에도 새 인형을 만들 수 있다');
 });
 
-test('인어섬 시리즈 기계(bear)에 인어섬 모몬가로 등록돼 있다', () => {
+test('인어섬 시리즈 기계(bear)에 인어섬 모몽가로 등록돼 있다', () => {
   const doll = getDoll('momonga-hula');
   assert.equal(doll.machineId, 'bear');
   assert.equal(doll.type, 'hulaMomonga');
-  assert.equal(doll.name, '인어섬 모몬가');
+  assert.equal(doll.name, '인어섬 모몽가');
 });
