@@ -39,6 +39,11 @@ const BASE_SPHERES = {
     { r: DOLL_SHAPE.bodyRadius, y: 0 },
     { r: 0.05, y: 0.039 }, // 머리 (위쪽 끝 0.089 = 정수리, 앞뒤 두께 0.056)
   ],
+  // 인어섬 모몽가(#65): 머리가 높고 넓적해서 머리 구를 크게 둔다
+  hulaMomonga: [
+    { r: DOLL_SHAPE.bodyRadius, y: 0 },
+    { r: 0.05, y: 0.043 }, // 머리 (위쪽 끝 0.093 = 정수리)
+  ],
 };
 
 /**
@@ -63,10 +68,14 @@ const EXTRA_SHAPES = {
     // 왼손 횃불 위쪽(불꽃 x -0.107 ~ -0.06, y 0.02 ~ 0.074): 몸통 구 밖으로 나온 부분이 옆 인형을 파고들지 않게
     { half: [0.024, 0.027, 0.012], x: -0.083, y: 0.047, z: 0.015 },
   ],
+  hulaMomonga: [
+    { half: [0.095, 0.034, 0.035], y: 0.031, z: 0.003 }, // 볼 옆 털 뭉치까지 (모델 좌우 끝 ±0.094, -0.008 ~ 0.07)
+    { half: [0.067, 0.0225, 0.01], y: 0.1015, z: -0.004 }, // 크고 둥근 귀 두 개 0.079 ~ 0.124
+  ],
 };
 
 // 집게가 붙잡는 높이: 기본은 머리, 호빵 우사기는 귀 아래쪽, 호빵 하치와레·치이카와는 머리 위쪽
-const GRAB_Y = { keychainBunny: 0.1, keychainCat: 0.058, keychainHamster: 0.058, keychainMomonga: 0.058, hulaHamster: 0.055, hulaCat: 0.058, hulaBunny: 0.065 };
+const GRAB_Y = { keychainBunny: 0.1, keychainCat: 0.058, keychainHamster: 0.058, keychainMomonga: 0.058, hulaHamster: 0.055, hulaCat: 0.058, hulaBunny: 0.065, hulaMomonga: 0.065 };
 
 /**
  * 인형 종류별 물리 치수.

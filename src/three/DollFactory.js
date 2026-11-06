@@ -5,6 +5,7 @@ import { buildScarfBunny, buildScarfCat, buildScarfHamster, buildScarfMomonga } 
 import { buildHulaHamster } from './dolls/hulaHamster.js';
 import { buildHulaCat } from './dolls/hulaCat.js';
 import { buildHulaBunny } from './dolls/hulaBunny.js';
+import { buildHulaMomonga } from './dolls/hulaMomonga.js';
 
 /**
  * 인형 3D 모델(절차적) 생성.
@@ -123,6 +124,7 @@ builders.keychainMomonga = buildScarfMomonga; // #73
 builders.hulaHamster = buildHulaHamster;
 builders.hulaCat = buildHulaCat; // #53
 builders.hulaBunny = buildHulaBunny; // #59
+builders.hulaMomonga = buildHulaMomonga; // #65
 
 // 인형 종류별로 합쳐 둔 부품 지오메트리 (같은 종류 인형끼리 공유, 해제하지 않음)
 const mergedParts = new Map();
