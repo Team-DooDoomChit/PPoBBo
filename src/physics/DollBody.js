@@ -2,11 +2,12 @@ import * as CANNON from 'cannon-es';
 import { DOLL_SHAPE } from '../three/DollFactory.js';
 import { GROUP } from './PhysicsWorld.js';
 
-export const DOLL_MASK = GROUP.STATIC | GROUP.DOLL | GROUP.CLAW;
-export const HELD_DOLL_MASK = GROUP.STATIC | GROUP.DOLL;
+export const DOLL_MASK = GROUP.STATIC | GROUP.CHUTE_GUARD | GROUP.DOLL | GROUP.CLAW;
+export const HELD_DOLL_MASK = GROUP.STATIC | GROUP.CHUTE_GUARD | GROUP.DOLL;
 
 /**
  * 몸통·머리 구 { r: 반지름, y: 중심 높이 }. 기본은 DOLL_SHAPE.
+ * 목도리 시리즈(#55)는 머리가 낮고 넓어서 따로 둔다. 몸통 구 중심을 바디 원점(무게 중심)에 둬야 인형이 넘어지지 않는다.
  * 훌라 햄스터(#49)는 머리가 넓고 낮아서 머리 구만 따로 맞춘다.
  * 훌라 고양이(#53)도 같은 이유로 머리 구만 따로 맞춘다.
  */
@@ -14,7 +15,14 @@ const DEFAULT_SPHERES = [
   { r: DOLL_SHAPE.bodyRadius, y: 0 },
   { r: DOLL_SHAPE.headRadius, y: DOLL_SHAPE.headOffsetY },
 ];
+const SCARF_SPHERES = [
+  { r: DOLL_SHAPE.bodyRadius, y: 0 }, // 몸통 + 머리 아래쪽 (머리 반폭 0.061)
+  { r: 0.042, y: 0.042 }, // 머리 위쪽 (위쪽 끝 0.084)
+];
 const BASE_SPHERES = {
+  keychainBunny: SCARF_SPHERES,
+  keychainCat: SCARF_SPHERES,
+  keychainHamster: SCARF_SPHERES,
   hulaHamster: [
     // 몸통: 다른 인형과 같은 크기의 구를 원점(무게 중심)에 둔다. 구 중심이 무게 중심보다 아래면 인형이 넘어진다.
     { r: DOLL_SHAPE.bodyRadius, y: 0 },
@@ -44,10 +52,8 @@ const BASE_SPHERES = {
  */
 const EXTRA_SHAPES = {
   bunny: [{ half: [0.038, 0.045, 0.012], y: 0.165 }], // 귀 0.12 ~ 0.21
-  keychainBunny: [
-    { half: [0.033, 0.04, 0.016], y: 0.154 }, // 귀 0.114 ~ 0.194
-    { half: [0.02, 0.028, 0.005], y: 0.222 }, // 볼체인 0.194 ~ 0.25
-  ],
+  keychainBunny: [{ half: [0.033, 0.033, 0.016], y: 0.112 }], // 귀 0.079 ~ 0.145
+  keychainCat: [{ half: [0.044, 0.008, 0.009], y: 0.083 }], // 귀 끝 0.075 ~ 0.091
   hulaHamster: [{ half: [0.059, 0.022, 0.045], y: 0.023 }], // 머리 구보다 넓은 볼 쪽 (반폭 0.061, 가장 넓은 높이 0.023)
   hulaCat: [{ half: [0.059, 0.022, 0.044], y: 0.028 }], // 머리 구보다 넓은 볼 쪽 (반폭 0.061)
   hulaBunny: [
@@ -57,13 +63,13 @@ const EXTRA_SHAPES = {
     { half: [0.024, 0.027, 0.012], x: -0.083, y: 0.047, z: 0.015 },
   ],
   hulaMomonga: [
-    { half: [0.095, 0.034, 0.035], y: 0.031, z: 0.003 }, // 볼 옆 털 뭉치까지 (좌우 끝 ±0.1, -0.008 ~ 0.07)
+    { half: [0.095, 0.034, 0.035], y: 0.031, z: 0.003 }, // 볼 옆 털 뭉치까지 (모델 좌우 끝 ±0.094, -0.008 ~ 0.07)
     { half: [0.067, 0.0225, 0.01], y: 0.1015, z: -0.004 }, // 크고 둥근 귀 두 개 0.079 ~ 0.124
   ],
 };
 
-// 집게가 붙잡는 높이: 기본은 머리, 목도리 토끼는 귀 (체인 쪽을 집게가 감싼다)
-const GRAB_Y = { keychainBunny: 0.17, hulaHamster: 0.055, hulaCat: 0.058, hulaBunny: 0.065, hulaMomonga: 0.065 };
+// 집게가 붙잡는 높이: 기본은 머리, 호빵 우사기는 귀 아래쪽, 호빵 하치와레·치이카와는 머리 위쪽
+const GRAB_Y = { keychainBunny: 0.1, keychainCat: 0.058, keychainHamster: 0.058, hulaHamster: 0.055, hulaCat: 0.058, hulaBunny: 0.065, hulaMomonga: 0.065 };
 
 /**
  * 인형 종류별 물리 치수.
@@ -78,7 +84,7 @@ export function dollProfile(type) {
   };
 }
 
-/** 몸통 + 머리 구 두 개(+ 종류별 귀·체인 상자)로 이루어진 인형 물리 바디 */
+/** 몸통 + 머리 구 두 개(+ 종류별 귀 상자)로 이루어진 인형 물리 바디 */
 export function createDollBody(material, position, type) {
   const body = new CANNON.Body({
     mass: 0.12,
