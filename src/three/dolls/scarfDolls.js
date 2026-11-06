@@ -495,17 +495,20 @@ function momongaWhiskersGeometry() {
     g.computeVertexNormals();
     g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
     pad.push(g);
-    // 수염: 얼굴에서 조금 떨어진 곳부터 바깥 끝까지, 바깥으로 갈수록 위아래로 퍼진다. 판 앞면에 앞쪽에서 쏘아 붙이고 둥근 테두리를 따라 끝까지 간다
+    // 수염: 얼굴에서 조금 떨어진 곳부터 바깥 끝까지, 위로 살짝 볼록하게 휘며 바깥 아래로 내려가는 나란한 선 (아래 선일수록 더 기운다).
+    // 판 앞면에 앞쪽에서 쏘아 붙이고 둥근 테두리를 따라 끝까지 간다
     const surface = new THREE.Mesh(g);
     const ray = new THREE.Raycaster();
     const BACK = new THREE.Vector3(0, 0, -1);
     const START = BURY + 0.005; // 얼굴과 수염 사이 틈
-    for (const k of [-1, 0, 1]) {
+    for (const k of [1, 0, -1]) {
       const pts = [];
+      const drop = 0.005 + (1 - k) * 0.003;
       for (let i = 0; i <= 40; i++) {
         const t = i / 40;
         const u = START + t * (L + BEVEL + 0.002 - START);
-        ray.set(new THREE.Vector3(x0 + sx * u, Y + k * (0.006 + 0.006 * t), 0.05), BACK);
+        const v = k * 0.008 + 0.004 - drop * t + 0.0025 * Math.sin(Math.PI * t);
+        ray.set(new THREE.Vector3(x0 + sx * u, Y + v, 0.05), BACK);
         const hit = ray.intersectObject(surface)[0];
         if (!hit || hit.face.normal.z < 0.35) break; // 옆면까지 돌아가면 앞에서 보이지 않는다
         pts.push(hit.point.addScaledVector(hit.face.normal, 0.0002));
