@@ -64,11 +64,13 @@ test('귀·털 뭉치까지 모델 크기와 물리 충돌체가 맞는다', () 
 
 test('인형을 정리해도 공유 지오메트리는 해제하지 않는다 (다른 인형이 계속 쓴다)', () => {
   const doll = createDollMesh(getDoll('momonga-hula'));
+  // DollFactory가 같은 재질 부품을 합칠 수 있어서(mergeParts), 숫자 대신 처음 만든 인형과 비교한다
+  const count = meshes(doll).length;
   let disposed = 0;
   meshes(doll).forEach((m) => m.geometry.addEventListener('dispose', () => disposed++));
   disposeDollMesh(doll);
   assert.equal(disposed, 0);
-  assert.equal(meshes(createDollMesh(getDoll('momonga-hula'))).length, 11, '정리한 뒤에도 새 인형을 만들 수 있다');
+  assert.equal(meshes(createDollMesh(getDoll('momonga-hula'))).length, count, '정리한 뒤에도 새 인형을 만들 수 있다');
 });
 
 test('인어섬 시리즈 기계(bear)에 인어섬 모몬가로 등록돼 있다', () => {
