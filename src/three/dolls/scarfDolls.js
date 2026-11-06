@@ -458,7 +458,7 @@ function momongaEarsGeometry() {
 
 let momongaWhiskers = null;
 /**
- * 볼 옆 수염 판: 머리 양옆에 붙은, 바깥으로 조금 넓어지는 둥근 사다리꼴 판. 수염 결을 따라 바깥 끝이 아래로 휘고, 앞면에 수놓은 수염 선 3개.
+ * 볼 옆 수염 판: 머리 양옆에 붙은, 바깥으로 조금 넓어지는 둥근 사다리꼴 판. 판째로 바깥 아래로 살짝 기울고, 앞면에 판 결을 따라 수놓은 수염 선 3개.
  * 판 좌표 (u: 머리 옆면에서 바깥 +, v: 위 +)에서 만들고, 안쪽 끝은 머리에 묻는다.
  */
 function momongaWhiskersGeometry() {
@@ -471,8 +471,7 @@ function momongaWhiskersGeometry() {
   const DEPTH = 0.004;
   const BEVEL = 0.0055; // 두툼하고 둥근 테두리
   const R = 0.0007;
-  // 판 전체가 수염 결을 따라 바깥으로 갈수록 점점 더 아래로 휜다 (u → y 이동)
-  const droop = (u) => -0.008 * Math.min(1, Math.max(0, (u - BURY) / (L + BEVEL - BURY))) ** 2;
+  const TILT = 0.17; // 머리에 붙은 곳을 축으로 바깥이 아래로 기우는 각 (라디안)
   const pad = [];
   const ink = [];
   for (const sx of [-1, 1]) {
@@ -493,32 +492,34 @@ function momongaWhiskersGeometry() {
     g.translate(0, 0, -DEPTH / 2);
     g.deleteAttribute('uv');
     g.deleteAttribute('normal');
-    const p = g.attributes.position;
-    for (let i = 0; i < p.count; i++) p.setY(i, p.getY(i) + droop(sx * (p.getX(i) - x0)));
     g = mergeVertices(g); // 테두리가 각지지 않게 이웃 면의 법선을 섞는다
     g.computeVertexNormals();
     g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
-    pad.push(g);
-    // 수염: 얼굴에서 조금 떨어진 곳부터 바깥 끝까지, 위로 살짝 볼록하게 휘며 바깥 아래로 내려가는 나란한 선 (아래 선일수록 더 기운다).
-    // 판 앞면에 앞쪽에서 쏘아 붙이고 둥근 테두리를 따라 끝까지 간다
+    // 수염: 얼굴에서 조금 떨어진 곳부터 바깥 끝까지 판 결을 따라 나란히, 위로 살짝 볼록하고 바깥으로 갈수록 조금 벌어진다.
+    // 기울이기 전의 판 앞면에 앞쪽에서 쏘아 붙이고 둥근 테두리를 따라 끝까지 간 뒤, 판과 함께 기울인다
     const surface = new THREE.Mesh(g);
     const ray = new THREE.Raycaster();
     const BACK = new THREE.Vector3(0, 0, -1);
     const START = BURY + 0.005; // 얼굴과 수염 사이 틈
+    const lines = [];
     for (const k of [1, 0, -1]) {
       const pts = [];
       for (let i = 0; i <= 40; i++) {
         const t = i / 40;
         const u = START + t * (L + BEVEL + 0.002 - START);
-        const v = k * 0.008 + 0.003 + droop(u) - (1 - k) * 0.0015 * t + 0.0012 * Math.sin(Math.PI * t);
+        const v = k * (0.0075 + 0.002 * t) + 0.001 * Math.sin(Math.PI * t);
         ray.set(new THREE.Vector3(x0 + sx * u, Y + v, 0.05), BACK);
         const hit = ray.intersectObject(surface)[0];
         if (!hit || hit.face.normal.z < 0.35) break; // 옆면까지 돌아가면 앞에서 보이지 않는다
         pts.push(hit.point.addScaledVector(hit.face.normal, 0.0002));
       }
-      ink.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, R, 6));
-      for (const q of [pts[0], pts.at(-1)]) ink.push(placed(BASE.small, { pos: q.toArray(), scale: [R, R, R] }));
+      lines.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, R, 6));
+      for (const q of [pts[0], pts.at(-1)]) lines.push(placed(BASE.small, { pos: q.toArray(), scale: [R, R, R] }));
     }
+    const pivot = new THREE.Vector3(x0 + sx * BURY, Y, 0);
+    const tilt = new THREE.Matrix4().makeTranslation(pivot).multiply(new THREE.Matrix4().makeRotationZ(-sx * TILT)).multiply(new THREE.Matrix4().makeTranslation(pivot.clone().negate()));
+    pad.push(g.applyMatrix4(tilt));
+    ink.push(mergeAll(lines).applyMatrix4(tilt));
   }
   momongaWhiskers = { pad: mergeAll(pad), ink: mergeAll(ink) };
   return momongaWhiskers;
