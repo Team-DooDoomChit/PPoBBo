@@ -6,24 +6,37 @@ import { createDollMesh, disposeDollMesh } from '../../src/three/DollFactory.js'
 import { createDollBody, dollProfile } from '../../src/physics/DollBody.js';
 import { getDoll, getDollsByMachine } from '../../src/data/dolls.js';
 
-const IDS = ['bunny-scarf', 'cat-scarf', 'hamster-scarf'];
+const IDS = ['bunny-scarf', 'cat-scarf', 'hamster-scarf', 'momonga-scarf'];
 const meshes = (group) => {
   const list = [];
   group.traverse((o) => o.isMesh && list.push(o));
   return list;
 };
 
-test('치이카와 겨울 시리즈는 목도리 인형 3종이다', () => {
+test('치이카와 겨울 시리즈는 목도리 인형 4종이다', () => {
   assert.deepEqual(getDollsByMachine('bunny').map((d) => d.id), IDS);
 });
 
-test('세 인형의 몸(머리 폭·발바닥)이 같다', () => {
-  const boxes = IDS.map((id) => {
+test('네 인형의 몸(머리 폭·발바닥)이 같다', () => {
+  for (const id of IDS) {
     const body = meshes(createDollMesh(getDoll(id))).find((m) => m.material.userData.ownedByDoll);
-    return new THREE.Box3().setFromBufferAttribute(body.geometry.attributes.position);
+    const box = new THREE.Box3().setFromBufferAttribute(body.geometry.attributes.position);
+    assert.ok(Math.abs(box.min.y - -0.0685) < 0.001, `${id} 발바닥 ${box.min.y.toFixed(4)}`);
+    // 호빵 모몽가는 볼 옆 털 뭉치가 몸과 같은 재질로 합쳐져서 더 넓다
+    const [low, high] = id === 'momonga-scarf' ? [0.075, 0.09] : [0.06, 0.07];
+    assert.ok(box.max.x > low && box.max.x < high, `${id} 폭 ${box.max.x.toFixed(4)}`);
+  }
+});
+
+test('호빵 모몽가의 꼬리는 발바닥 아래로 내려가지 않고 등 뒤에 있다', () => {
+  const tail = meshes(createDollMesh(getDoll('momonga-scarf'))).find((m) => {
+    const box = new THREE.Box3().setFromBufferAttribute(m.geometry.attributes.position);
+    return box.max.z < 0;
   });
-  for (const box of boxes) assert.ok(Math.abs(box.min.y - -0.0685) < 0.001, `발바닥 ${box.min.y.toFixed(4)}`);
-  for (const box of boxes) assert.ok(box.max.x > 0.06 && box.max.x < 0.07, `폭 ${box.max.x.toFixed(4)}`);
+  assert.ok(tail, '꼬리 메시');
+  const box = new THREE.Box3().setFromBufferAttribute(tail.geometry.attributes.position);
+  assert.ok(box.min.y > -0.0685, `꼬리 아래 ${box.min.y.toFixed(4)}`);
+  assert.ok(box.min.z < -0.05, `꼬리 뒤 ${box.min.z.toFixed(4)}`);
 });
 
 test('모델 크기와 물리 충돌체가 맞는다 (위쪽 끝 차이 5mm 이내)', () => {

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { loadModel, peekModel } from './ModelLoader.js';
-import { buildScarfBunny, buildScarfCat, buildScarfHamster } from './dolls/scarfDolls.js';
+import { buildScarfBunny, buildScarfCat, buildScarfHamster, buildScarfMomonga } from './dolls/scarfDolls.js';
 import { buildHulaHamster } from './dolls/hulaHamster.js';
 import { buildHulaCat } from './dolls/hulaCat.js';
 import { buildHulaBunny } from './dolls/hulaBunny.js';
@@ -120,6 +120,7 @@ const builders = {
 builders.keychainBunny = buildScarfBunny;
 builders.keychainCat = buildScarfCat;
 builders.keychainHamster = buildScarfHamster;
+builders.keychainMomonga = buildScarfMomonga; // #73
 builders.hulaHamster = buildHulaHamster;
 builders.hulaCat = buildHulaCat; // #53
 builders.hulaBunny = buildHulaBunny; // #59
