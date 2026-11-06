@@ -117,13 +117,18 @@ const pt = (dx, y) => [px(dx), py(y)];
 
 // ---------- 부품별 지오메트리 (한 번만 만든다) ----------
 
+// 풀 치마 치수: 허리(사진 y 470px)에서 아래 끝(612px)까지. 안쪽 가닥 치수는 안감·치마 속 몸도 같이 따라간다.
+const SKIRT_WAIST_Y = py(470);
+const SKIRT_STRAND_Y = (py(470) + py(612)) / 2;
+const INNER_SKIRT = { r: 0.044, tilt: 0.26, height: 0.035 };
+
 function buildBody() {
   const head = new THREE.LatheGeometry(HEAD_PROFILE.map(([r, y]) => new THREE.Vector2(r, y)), 56);
   head.scale(1, 1, HEAD_DEPTH);
   const parts = [
     head,
     // 치마 속 몸 아랫부분 (치마 속이 비어 보이지 않게)
-    skirtHips(HEAD_DEPTH, { waistY: py(470), strandY: (py(470) + py(612)) / 2, back: { r: 0.044, tilt: 0.26, height: 0.035 } }),
+    skirtHips(HEAD_DEPTH, { waistY: SKIRT_WAIST_Y, strandY: SKIRT_STRAND_Y, back: INNER_SKIRT }),
     // 몸통: 머리 아래에서 치마 허리(반폭 0.042)까지 통통하게 이어지는 둥근 흰 몸. 머리가 몸 위로 넓게 튀어나온다.
     placed(BASE.sphere, { pos: [0, -0.03, 0], scale: [0.042, 0.03, 0.042 * HEAD_DEPTH] }),
     // 발: 치마 속, 아래로 살짝 보이는 작은 발
@@ -145,11 +150,11 @@ function buildSkirt() {
   const front = [];
   const back = [];
   // 허리 (사진 y 470px, 반폭 163px): 털실을 꼬아 묶은 가는 띠 하나
-  const waistY = py(470);
+  const waistY = SKIRT_WAIST_Y;
   front.push(placed(new THREE.TorusGeometry(1, 0.1, 8, 64), { pos: [0, waistY, 0], rot: [Math.PI / 2, 0, 0], scale: [0.042, 0.042 * HEAD_DEPTH, 0.018] }));
   // 가닥: 털실이 허리(반폭 163px)에서 아래 끝(사진 y 612px, 반폭 207px)까지 넓게 퍼지며 늘어진다.
   // 가닥 사이가 조금 성기게, 가닥마다 두 줄을 꼬아 털실 결을 낸다.
-  const strandY = (waistY + py(612)) / 2;
+  const strandY = SKIRT_STRAND_Y;
   const layer = (list, count, r, tilt, height, offset, width) => {
     for (let i = 0; i < count; i++) {
       const a = ((i + offset) / count) * Math.PI * 2;
@@ -163,9 +168,9 @@ function buildSkirt() {
     }
   };
   layer(front, 30, 0.048, 0.32, 0.037, 0, 0.0034);
-  layer(back, 30, 0.044, 0.26, 0.035, 0.5, 0.0034);
+  layer(back, 30, INNER_SKIRT.r, INNER_SKIRT.tilt, INNER_SKIRT.height, 0.5, 0.0034);
   // 안감: 가닥 사이 틈과 치마 속이 비어 보이지 않게 안쪽 가닥 바로 안에 두른다
-  back.push(skirtLining(HEAD_DEPTH, { strandY, back: { r: 0.044, tilt: 0.26, height: 0.035 } }));
+  back.push(skirtLining(HEAD_DEPTH, { strandY, back: INNER_SKIRT }));
   return { front: mergeAll(front), back: mergeAll(back) };
 }
 
