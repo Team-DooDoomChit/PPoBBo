@@ -19,6 +19,10 @@ import { setupMotionBinding } from './integration/MotionBinding.js';
 import { setupMotion } from './motion/setupMotion.js';
 import { preloadDollModels } from './three/DollPreview.js';
 import { DOLLS } from './data/dolls.js';
+import { inject } from '@vercel/analytics';
+
+// Vercel Web Analytics: 배포된 사이트에서만 방문·페이지 조회를 모은다 (쿠키 없음, 로컬 개발에서는 보내지 않음)
+if (import.meta.env.PROD) inject();
 
 // .glb 인형 모델이 있으면 미리 받아 둔다 (기계 안 인형·썸네일이 처음부터 .glb로 보이도록)
 preloadDollModels(DOLLS);
