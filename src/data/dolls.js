@@ -12,6 +12,7 @@ export const DOLLS = [
   // 인어섬 시리즈 (기계 id 'bear'): 꽃 화관 + 풀 치마 인형 (#49, #53)
   { id: 'hamster-hula', name: '인어섬 치이카와', machineId: 'bear', type: 'hulaHamster', rarity: 'common', color: 0xfbfbfd, sub: 0xf3e0ee },
   { id: 'cat-hula', name: '인어섬 하치와레', machineId: 'bear', type: 'hulaCat', rarity: 'common', color: 0xfbfbfd, sub: 0x8fa3ea },
+  { id: 'bunny-hula', name: '인어섬 우사기', machineId: 'bear', type: 'hulaBunny', rarity: 'common', color: 0xf5ebdf, sub: 0xeec3d2 }, // #59
 
   // modelUrl에 public/models 의 .glb 경로를 넣으면 그 모델로 교체된다 (예: '/models/keychain-bunny.glb')
   { id: 'bunny-scarf', name: '호빵 우사기', machineId: 'bunny', type: 'keychainBunny', rarity: 'common', color: 0xf7e4d8, sub: 0xf3a9b8, modelUrl: null },

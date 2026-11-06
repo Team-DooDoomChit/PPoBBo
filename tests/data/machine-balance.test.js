@@ -16,10 +16,10 @@ test('병아리 농장은 일반 2개, 레어·에픽 1개씩', () => {
   assert.deepEqual(rarityCount('chick'), { common: 2, rare: 1, epic: 1 });
 });
 
-test('인어섬 시리즈는 인어섬 치이카와·하치와레 2종, 모두 일반', () => {
+test('인어섬 시리즈는 인어섬 치이카와·하치와레·우사기 3종, 모두 일반', () => {
   assert.equal(MACHINES.find((m) => m.id === 'bear').name, '인어섬 시리즈');
-  assert.deepEqual(getDollsByMachine('bear').map((d) => d.id), ['hamster-hula', 'cat-hula']);
-  assert.deepEqual(rarityCount('bear'), { common: 2 });
+  assert.deepEqual(getDollsByMachine('bear').map((d) => d.id), ['hamster-hula', 'cat-hula', 'bunny-hula']);
+  assert.deepEqual(rarityCount('bear'), { common: 3 });
 });
 
 test('치이카와 겨울 시리즈는 호빵 우사기(기본)·하치와레·치이카와·모몽가 4종, 모두 일반', () => {
