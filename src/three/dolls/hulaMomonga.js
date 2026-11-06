@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { BASE, buildCrown, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed } from './hulaBase.js';
 
 /**
- * 인어섬 모몬가 (#65): 크고 둥근 귀, 볼 옆 털 뭉치, 연보라 꽃 화관, 풀 치마를 입은 흰 모몬가.
+ * 인어섬 모몽가 (#65): 크고 둥근 귀, 볼 옆 털 뭉치, 연보라 꽃 화관, 풀 치마를 입은 흰 모몽가.
  *
  * 원점 = 몸통 중심, +Y = 위, +Z = 얼굴 정면 (DollFactory와 같다). 단위 m.
  * 모습은 참고 이미지(앞·뒤·양옆)에서 픽셀로 잰 값을 그대로 옮겼다. 머리 반폭은 다른 훌라 인형과 같은 0.061m.
