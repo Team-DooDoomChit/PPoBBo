@@ -6,7 +6,7 @@ import { loadModel, peekModel } from './ModelLoader.js';
 const FRAME_PADDING = 1.2;
 
 /**
- * 인형 전체(귀, 키링 체인 등 포함)가 화면에 들어오도록 카메라를 맞춘다.
+ * 인형 전체(귀 등 포함)가 화면에 들어오도록 카메라를 맞춘다.
  * @returns {{ center: THREE.Vector3, distance: number }}
  */
 function frameObject(camera, object) {
