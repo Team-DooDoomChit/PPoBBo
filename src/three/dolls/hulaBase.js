@@ -176,7 +176,8 @@ export function standardHead() {
 }
 
 /** 호빵 시리즈와 같은 몸: 둥근 몸통 + 치마 아래로 보이는 짧은 두 다리 (발바닥 -0.0685) */
-export const STD_BODY = { center: -0.034, rx: 0.036, ry: 0.027 }; // 머리보다 훨씬 작은 몸 (머리 반폭 0.061)
+// 머리보다 작은 둥근 몸(반폭 0.039). 위쪽은 머리 아랫부분 속까지 올라와(위 끝 +0.004) 머리와 끊기지 않고 이어지고, 팔은 몸통 맨 위(목 가까이)에서 나온다
+export const STD_BODY = { center: -0.029, rx: 0.039, ry: 0.033 };
 export function standardBody(depth = 0.75) {
   return [
     placed(BASE.sphere, { pos: [0, STD_BODY.center, 0], scale: [STD_BODY.rx, STD_BODY.ry, STD_BODY.rx * depth] }),
@@ -188,7 +189,7 @@ export function standardBody(depth = 0.75) {
  * 인어섬 풀 치마 표준 치수: 작은 몸의 허리(-0.026)에서 다리 위(-0.055)까지. 짧은 다리가 치마 아래로 조금 보인다.
  * 허리 위로 몸 윗부분이 보여서 원피스가 아니라 치마로 보인다.
  */
-export const STD_SKIRT = { waistY: -0.026, hemY: -0.055, topR: 0.038, hemR: 0.046 };
+export const STD_SKIRT = { waistY: -0.026, hemY: -0.055, topR: 0.041, hemR: 0.049 };
 
 /**
  * 각 인형 사진의 얼굴 좌표(px)를 표준 얼굴로 옮기는 좌표 변환.
