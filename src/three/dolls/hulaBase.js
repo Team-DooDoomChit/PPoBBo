@@ -147,6 +147,119 @@ export function photoMapper(head, { cx, halfWidth, bottom, stretchY = 1 }) {
   return { cx, px, py, pt: (dx, y) => [px(dx), py(y)] };
 }
 
+// ---------- 인어섬 시리즈 공통 체형 (호빵 시리즈와 같은 머리·몸 비율) ----------
+
+/** 표준 머리 사진 좌표 (호빵 시리즈·인어섬 하치와레와 같다): 가운데 263px, 반폭 172px, 턱 354.5px, 정수리 92px */
+export const STD_PHOTO = { cx: 263, halfWidth: 172, bottom: 354.5, top: 92 };
+/** 표준 얼굴: 눈 가운데 ±51px, 높이 241.5px */
+export const STD_EYE = { dx: 51, y: 241.5 };
+
+let stdHead = null;
+/**
+ * 호빵 시리즈와 같은 머리 (반폭 0.061, 앞뒤 두께 0.75, 볼 높이가 가장 넓고 둥근 턱).
+ * 인어섬 인형은 모두 이 머리를 써서 머리·얼굴 비율을 호빵 시리즈와 맞춘다.
+ */
+export function standardHead() {
+  if (stdHead) return stdHead;
+  const P = STD_PHOTO;
+  const K = 0.061 / P.halfWidth;
+  const tAt = (y) => (P.bottom - y) / (P.bottom - P.top);
+  const widest = tAt(250);
+  const silhouette = Array.from({ length: 33 }, (_, i) => {
+    const t = i / 32;
+    const [r, p] = t >= widest ? [1 - widest, 2.3] : [widest, 2.5];
+    return [t, Math.max(0, 1 - Math.abs((t - widest) / r) ** p) ** (1 / p)];
+  });
+  const head = createHead({ bottom: -0.008 - (P.bottom - 342) * K, height: (P.bottom - P.top) * K, halfWidth: 0.061, depth: 0.75, silhouette });
+  stdHead = { head, top: head.at(1), tAt, mapper: photoMapper(head, P) };
+  return stdHead;
+}
+
+/** 호빵 시리즈와 같은 몸: 둥근 몸통 + 치마 아래로 보이는 짧은 두 다리 (발바닥 -0.0685) */
+// 머리보다 작은 둥근 몸(반폭 0.037). 위쪽은 머리 아랫부분 속까지 올라와(위 끝 +0.004) 머리와 끊기지 않고 이어지고, 팔은 몸통 맨 위(목 가까이)에서 나온다
+export const STD_BODY = { center: -0.029, rx: 0.037, ry: 0.033 };
+export function standardBody(depth = 0.75) {
+  return [
+    placed(BASE.sphere, { pos: [0, STD_BODY.center, 0], scale: [STD_BODY.rx, STD_BODY.ry, STD_BODY.rx * depth] }),
+    ...[-1, 1].map((sx) => placed(BASE.sphere, { pos: [sx * 0.0075, -0.0595, 0.002], scale: [0.0072, 0.009, 0.0086] })),
+  ];
+}
+
+/**
+ * 인어섬 풀 치마 표준 치수: 작은 몸의 허리(-0.026)에서 다리 위(-0.055)까지. 짧은 다리가 치마 아래로 조금 보인다.
+ * 허리 위로 몸 윗부분이 보여서 원피스가 아니라 치마로 보인다.
+ */
+export const STD_SKIRT = { waistY: -0.026, hemY: -0.055, topR: 0.039, hemR: 0.043, waistThick: 0.02 }; // 부해 보이지 않게 조금만 퍼진다
+
+/**
+ * 호빵 시리즈와 똑같은 눈 두 개 (표준 얼굴 ±51px, 241.5px): 진한 타원 + 위쪽 흰 타원 + 아래 흰 초승달.
+ * @param {[number, number]} [scale] 눈 크기 배율 [가로, 세로] (호빵 모몽가는 [1.28, 1.12])
+ * @returns {{ ink: THREE.BufferGeometry[], white: THREE.BufferGeometry[] }} 합치기 전 부품 (인형의 ink·white 목록에 더한다)
+ */
+export function standardEyes(scale = [1, 1]) {
+  const { head, mapper } = standardHead();
+  const { px, py } = mapper;
+  const ex = (v) => px(v * scale[0]);
+  const ey = (y) => py(STD_EYE.y + (y - STD_EYE.y) * scale[1]);
+  const h = (v) => px(v * scale[1]);
+  const ink = [];
+  const white = [];
+  for (const sx of [-1, 1]) {
+    const x = px(sx * STD_EYE.dx);
+    ink.push(head.faceDisc(x, ey(241.5), ex(21), h(19.5), 0.0004));
+    white.push(head.faceDisc(x, ey(236.5), ex(12.75), h(9), 0.001));
+    white.push(head.faceDisc(x, ey(252.5), ex(11), h(4), 0.001));
+    ink.push(head.faceDisc(x, ey(248), ex(11.5), h(3), 0.0013));
+  }
+  return { ink, white };
+}
+
+/**
+ * 각 인형 사진의 얼굴 좌표(px)를 표준 얼굴로 옮기는 좌표 변환.
+ * 두 눈 간격을 표준(±51px)에 맞춰 같은 비율로 줄이고, 눈 높이를 표준 눈 높이(241.5px)에 맞춘다.
+ * 그래서 표정(눈·입·눈썹 모양)은 그 인형 그대로이고, 얼굴 비율은 호빵 시리즈와 같아진다.
+ * @param {{ dx: number, y: number }} eye 그 인형 사진의 눈 가운데 (얼굴 가운데에서 가로 px, 높이 px)
+ */
+export function faceFrom(eye) {
+  const { px, py } = standardHead().mapper;
+  const s = STD_EYE.dx / eye.dx;
+  const fpx = (v) => px(v * s);
+  const fpy = (y) => py(STD_EYE.y + (y - eye.y) * s);
+  return { px: fpx, py: fpy, pt: (dx, y) => [fpx(dx), fpy(y)], scale: s };
+}
+
+/**
+ * 얼굴 좌표를 얼굴 가운데(anchorY 높이, 가로 가운데) 기준으로 같은 비율로 줄인다.
+ * 눈·눈썹·코·입·볼의 위치와 크기, 선 굵기가 모두 함께 줄어 얼굴 생김새는 그대로이고 크기만 작아진다.
+ * @param {{ px: (dx: number) => number, py: (y: number) => number }} mapper photoMapper 결과
+ * @param {number} scale 크기 배율 (1 = 그대로)
+ * @param {number} anchorY 기준 높이 (사진 y px)
+ */
+export function scaledFace({ px, py }, scale, anchorY) {
+  const spx = (v) => px(v * scale);
+  const spy = (y) => py(anchorY + (y - anchorY) * scale);
+  return { px: spx, py: spy, pt: (dx, y) => [spx(dx), spy(y)] };
+}
+
+/**
+ * 허리·치마 끝 높이와 반폭으로 풀 치마 치수를 만든다 (buildSkirt에 그대로 넘긴다).
+ * 가닥은 허리(topR)에서 치마 끝(hemR)까지 곧게 퍼지고, 안쪽 겹은 조금 안쪽·짧게 둔다.
+ * @param {{ waistY: number, hemY: number, topR: number, hemR: number, count?: number, width?: number, waistThick?: number }} spec
+ */
+export function skirtFrom({ waistY, hemY, topR, hemR, count = 28, width = 0.0042, waistThick = 0.026 }) {
+  const length = waistY - hemY;
+  const tilt = Math.atan((hemR - topR) / length);
+  const height = length / Math.cos(tilt) + 0.002; // 위 끝이 허리띠 속에 조금 묻히게
+  return {
+    waistY,
+    waistR: topR,
+    waistThick,
+    strandY: (waistY + hemY) / 2,
+    front: { count, r: (topR + hemR) / 2 + 0.002, tilt, height, offset: 0, width },
+    back: { count, r: (topR + hemR) / 2 - 0.002, tilt: tilt * 0.85, height: height - 0.003, offset: 0.5, width: width * 0.95 },
+  };
+}
+
 /**
  * 풀 치마: 털실을 모아 묶은 허리띠 + 아래로 늘어지는 가닥 두 겹(앞 겹 · 안쪽 겹).
  * 가닥마다 두 줄을 꼬아 털실 결을 낸다.

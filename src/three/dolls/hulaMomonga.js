@@ -1,35 +1,20 @@
 import * as THREE from 'three';
-import { BASE, buildCrown, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed, skirtHips } from './hulaBase.js';
+import { BASE, buildCrown, buildSkirt, faceFrom, hulaMesh, limb, mergeAll, placed, skirtFrom, skirtHips, standardBody, standardEyes, standardHead, STD_SKIRT } from './hulaBase.js';
 
 /**
  * 인어섬 모몽가 (#65): 크고 둥근 귀, 볼 옆 털 뭉치, 연보라 꽃 화관, 풀 치마를 입은 흰 모몽가.
  *
  * 원점 = 몸통 중심, +Y = 위, +Z = 얼굴 정면 (DollFactory와 같다). 단위 m.
- * 모습은 참고 이미지(앞·뒤·양옆)에서 픽셀로 잰 값을 그대로 옮겼다. 머리 반폭은 다른 훌라 인형과 같은 0.061m.
- * 사진 기준(앞모습): 얼굴 가운데 x = 497px(얼굴 요소), 머리 가운데 x = 475px(귀·털 뭉치처럼 머리 기준 부품. 사진이 살짝 돌아가 있다), 머리 반폭 300px,
- * 가장 넓은 높이 y = 450px, 정수리 y = 180px, 머리 아래 끝 y = 664px, 귀 끝 y = 25px, 치마 아래 끝 y = 955px. (y는 아래가 +)
- * 참고 이미지 뒷모습은 머리가 치마에 바로 붙어 목이 없어 보이지만, 앞모습처럼 머리와 치마 사이에 몸통이 둘레 전체로 보이게 했다.
+ * 머리·몸 비율은 호빵 시리즈와 같은 표준 체형(hulaBase.standardHead/standardBody)을 쓴다 (#80).
+ * 얼굴은 참고 사진 앞모습(얼굴 가운데 497px, 눈 ±124px·447.5px)에서 잰 픽셀 좌표를 faceFrom으로 표준 얼굴에 옮겨,
+ * 표정은 사진 그대로이고 얼굴 비율은 호빵 시리즈와 같다. 몸 윗부분이 앞뒤 모두 치마 위로 보여 목이 없어 보이지 않는다.
  * 얼굴은 앞쪽에만 있다.
  *
  * 같은 재질의 부품은 처음 한 번만 합쳐 모든 인형이 공유한다. 몸 색(fur)만 인형마다 다르다.
  */
 
-const PHOTO = { cx: 497, headCx: 475, halfWidth: 300, bottom: 664, top: 180 };
-const K = 0.061 / PHOTO.halfWidth; // 1px → m
-const Y0 = -0.065 + 955 * K; // 사진 y 0px의 높이 (치마 아래 끝 955px이 몸통 구 아래 끝 -0.065에 오도록)
-const Y = (y) => Y0 - y * K; // 사진 y(px) → m
-const tAt = (y) => (PHOTO.bottom - y) / (PHOTO.bottom - PHOTO.top); // 사진 y(px) → 머리 높이 비율
-
-// 머리 앞모습 실루엣: 가장 넓은 높이(450px)를 가운데로 위는 둥근 돔(지수 2.2), 아래는 평평하고 넓적한 턱(지수 3.5)
-const WIDEST = tAt(450);
-const SILHOUETTE = Array.from({ length: 41 }, (_, i) => {
-  const t = i / 40;
-  const [r, p] = t >= WIDEST ? [1 - WIDEST, 2.2] : [WIDEST, 3.5];
-  return [t, Math.max(0, 1 - Math.abs((t - WIDEST) / r) ** p) ** (1 / p)];
-});
-// 옆모습에서 잰 머리 앞뒤 두께는 좌우 폭의 0.88
-const HEAD = createHead({ bottom: Y(PHOTO.bottom), height: (PHOTO.bottom - PHOTO.top) * K, halfWidth: 0.061, depth: 0.88, silhouette: SILHOUETTE });
-const BODY_DEPTH = 0.85; // 몸통·치마 앞뒤 두께 / 좌우 폭
+const { head: HEAD, top: HEAD_TOP } = standardHead();
+const BODY_DEPTH = 0.75; // 몸통·치마 앞뒤 두께 / 좌우 폭 (호빵 시리즈와 같다)
 
 const mat = (color, roughness = 0.9, metalness = 0) => new THREE.MeshStandardMaterial({ color, roughness, metalness });
 const MAT = {
@@ -44,8 +29,6 @@ const MAT = {
   pearl: mat(0xe8e4f4, 0.25, 0.1),
 };
 
-const { px, py, pt } = photoMapper(HEAD, PHOTO);
-
 // ---------- 결정적 난수 (모든 인형이 같은 모양을 공유하도록 매번 같은 값) ----------
 function seeded(seed) {
   let s = seed >>> 0;
@@ -57,25 +40,19 @@ function seeded(seed) {
 
 // ---------- 부품별 지오메트리 (한 번만 만든다) ----------
 
-// 몸통: 머리 아래(655px)에서 치마 허리(740px)까지 보이는 둥근 흰 원통 (반폭 235px). 뒤쪽에도 같은 높이로 보인다.
-const TORSO = { r: 235 * K, top: Y(640), bottom: Y(750) };
-
 function buildBody() {
-  const torsoH = TORSO.top - TORSO.bottom;
   const parts = [
     HEAD.geometry(),
     skirtHips(BODY_DEPTH, SKIRT), // 치마 속 몸 아랫부분 (치마 속이 비어 보이지 않게)
-    placed(new THREE.CylinderGeometry(TORSO.r, TORSO.r + 0.001, torsoH, 40), { pos: [0, (TORSO.top + TORSO.bottom) / 2, 0], scale: [1, 1, BODY_DEPTH] }),
-    // 팔: 몸통 옆에서 아래·바깥으로 내린 짧은 팔 (끝 165px·755px / 770px·735px). 어깨는 몸통 속에 묻는다.
-    ...[-1, 1].map((sx) => limb([sx * 0.036, -0.006, 0.004], [sx * 0.0615, -0.0225, 0.008], 0.0068, 0.0075)),
-    // 발: 치마 속, 아래로 살짝 보이는 작은 발
-    placed(BASE.sphere, { pos: [-0.012, -0.059, 0.008], scale: [0.009, 0.006, 0.01] }),
-    placed(BASE.sphere, { pos: [0.012, -0.059, 0.008], scale: [0.009, 0.006, 0.01] }),
+    // 몸통·다리: 호빵 시리즈와 같은 둥근 몸. 허리 위로 몸 윗부분이 보이고 그 아래가 치마다.
+    ...standardBody(BODY_DEPTH),
+    // 팔: 목보다 살짝 아래 몸통 윗부분 어깨에서 아래·바깥으로 내린 짧은 팔
+    ...[-1, 1].map((sx) => limb([sx * 0.024, -0.011, 0.006], [sx * 0.05, -0.025, 0.011], 0.0068, 0.0076)),
   ];
-  // 귀(바깥 흰 부분): 머리 위 양옆의 둥근 접시 모양 (가운데에서 ±205px, 지름 약 175px, 끝 70px 근처). 위쪽이 바깥으로 기운다.
-  // 밑동(사진 255px 근처)은 그대로 머리 속에 묻고 크기만 줄였다.
+  // 귀(바깥 흰 부분): 머리 위 양옆의 둥근 접시 모양 (지름 약 2.9cm). 위쪽이 바깥으로 기운다.
+  // 밑동은 정수리 아래로 머리 속에 묻는다.
   for (const sx of [-1, 1]) {
-    parts.push(placed(BASE.sphere, { pos: [sx * px(205), Y(163), -0.004], scale: [px(88), px(93), 0.0068], rot: [0, -sx * 0.25, -sx * 0.3] }));
+    parts.push(placed(BASE.sphere, { pos: [sx * 0.04, HEAD_TOP - 0.0004, -0.004], scale: [0.0143, 0.015, 0.006], rot: [0, -sx * 0.25, -sx * 0.3] }));
   }
   return mergeAll(parts);
 }
@@ -83,20 +60,20 @@ function buildBody() {
 /** 귀 안쪽 연한 하늘색: 흰 귀 앞면에 얹은 조금 작은 타원 (바깥쪽 가장자리는 흰 테두리로 남는다) */
 function buildEarInner() {
   return mergeAll([-1, 1].map((sx) =>
-    placed(BASE.sphere, { pos: [sx * px(199), Y(167), 0.0001], scale: [px(72), px(79), 0.0042], rot: [0, -sx * 0.25, -sx * 0.3] }),
+    placed(BASE.sphere, { pos: [sx * 0.0389, HEAD_TOP - 0.001, 0.0001], scale: [0.0117, 0.0129, 0.0037], rot: [0, -sx * 0.25, -sx * 0.3] }),
   ));
 }
 
 /**
- * 볼 옆 털 뭉치: 머리 양옆(가운데에서 ±340px, 485px. 안쪽은 볼에 붙는다)에 위아래로 긴 구름 모양.
- * 앞에서는 폭 200px·높이 320px, 옆에서는 지름 약 300px.
+ * 볼 옆 털 뭉치: 머리 양옆(볼 높이 바로 아래, 안쪽은 볼에 붙는다)에 위아래로 긴 구름 모양.
+ * 폭 약 2.6cm, 높이 약 5.8cm.
  * 속 뭉치 둘레에 동글동글한 혹을 고르게(머리 쪽 제외) 붙인다. 혹은 높이마다 턱 쪽으로 좁아지는 머리 옆면을 따라 붙어 떨어져 보이지 않는다.
  */
 function buildTufts() {
   const parts = [];
   const lump = new THREE.SphereGeometry(1, 10, 7); // 혹이 작아서 분할을 줄인다
   for (const sx of [-1, 1]) {
-    const center = new THREE.Vector3(sx * px(340), Y(485), 0.003);
+    const center = new THREE.Vector3(sx * 0.066, 0.0177, 0.003); // 볼 높이 바로 아래, 머리 옆
     const core = new THREE.Vector3(0.013, 0.029, 0.025); // 속 뭉치 반지름
     parts.push(placed(BASE.sphere, { pos: center.toArray(), scale: core.toArray() }));
     const rand = seeded(sx > 0 ? 7 : 11);
@@ -118,40 +95,27 @@ function buildTufts() {
   return mergeAll(parts);
 }
 
-// 풀 치마: 허리(740px, 반폭 240px)에서 아래 끝(955px, 반폭 277px)까지 굵게 꼰 털실
-const SKIRT = {
-  waistY: Y(740),
-  waistR: 0.049,
-  waistThick: 0.03,
-  strandY: (Y(740) + Y(955)) / 2,
-  front: { count: 26, r: 0.0528, tilt: 0.25, height: 0.044, offset: 0, width: 0.0046 },
-  back: { count: 26, r: 0.0488, tilt: 0.2, height: 0.042, offset: 0.5, width: 0.0044 },
-};
+// 풀 치마: 몸 가운데 허리에서 다리 위까지 (인어섬 시리즈 표준 치수). 굵게 꼰 털실.
+const SKIRT = skirtFrom({ ...STD_SKIRT, count: 26, width: 0.0038 });
 
-// 연보라 꽃 화관: 머리 둘레(앞 가운데 315px)를 한 바퀴 두른 큰 꽃 14송이 (꽃 지름 약 110px)
-const CROWN = { t: tAt(315), count: 14, petalOffset: 0.0068, petalSize: 0.0074, petalThickness: 0.0026, pearlSize: 0.0024, lift: 0.0035, pearlLift: 0.0026 };
+// 연보라 꽃 화관: 이마를 한 바퀴 두른 큰 꽃 14송이
+const CROWN = { t: 0.78, count: 14, petalOffset: 0.0068, petalSize: 0.0074, petalThickness: 0.0026, pearlSize: 0.0024, lift: 0.0035, pearlLift: 0.0026 };
 
-/** 꼬리: 뒤쪽 치마 허리 바로 위의 작고 보송한 연하늘색 공 */
+/** 꼬리: 뒤쪽 치마 허리 바로 위 등에 붙은 작고 보송한 연하늘색 공 */
 function buildTail() {
-  return placed(BASE.sphere, { pos: [0, Y(705), -(TORSO.r * BODY_DEPTH + 0.004)], scale: [0.0072, 0.0068, 0.0062] });
+  return placed(BASE.sphere, { pos: [0, -0.02, -0.033], scale: [0.0072, 0.0068, 0.0062] });
 }
 
 // 얼굴 좌표: 사진 앞모습에서 픽셀로 잰 값을 그대로 옮긴다 (얼굴 가운데 497px 기준, 가로·세로 같은 비율)
 function buildFace() {
+  // 사진 좌표(얼굴 가운데 497px 기준 가로 px, 높이 px)를 표준 얼굴로 옮긴다
+  const { px, py, pt } = faceFrom({ dx: 124, y: 447.5 });
   const ink = [];
   const white = [];
   const blush = [];
   const nose = [];
   for (const sx of [-1, 1]) {
     const m = (dx) => sx * dx; // 오른쪽 요소는 좌우 대칭
-    // 눈 (가운데 ±124px, y 447.5): 큰 가로 타원 검은 테두리(60×45px)
-    //   → 위쪽 흰 타원(41×21px, y 441)
-    //   → 아래 흰 초승달(폭 62px, 가운데 두께 약 14px): 흰 타원(31×12.5px, y 470) 위에 검은 타원(34×3.5px, y 465)을 겹쳐 아랫부분만 남긴다
-    const x = px(m(124));
-    ink.push(HEAD.faceDisc(x, py(447.5), px(60), px(45), 0.0004));
-    white.push(HEAD.faceDisc(x, py(441), px(41), px(21), 0.001));
-    white.push(HEAD.faceDisc(x, py(470), px(31), px(12.5), 0.001));
-    ink.push(HEAD.faceDisc(x, py(465), px(34), px(3.5), 0.0013));
     // 눈썹: 코 위 양옆의 짧은 사선 (바깥 위 → 안쪽 아래, 화난 눈썹)
     ink.push(HEAD.faceLine([pt(m(75), 383), pt(m(64), 393), pt(m(53), 404)], px(3.5)));
     // 볼터치 (가운데 ±223px, y 506): 분홍 타원(50×42px) + "/" 빗금 4줄 (두 볼 모두 같은 방향)
@@ -171,6 +135,10 @@ function buildFace() {
   ink.push(HEAD.faceLine(mouth([[-36, 517.5], [-30, 528], [-20, 535], [-9, 530], [3, 512], [5, 507.5], [7, 512], [19, 530], [30, 535], [40, 528], [45, 517.5]]), LINE));
   ink.push(HEAD.faceLine(mouth([[-44.5, 555], [-42, 580], [-32, 589], [-19.5, 582.5], [-17, 565]]), LINE));
   ink.push(HEAD.faceLine(mouth([[-8, 558], [6, 561], [20.5, 557]]), LINE));
+  // 눈: 호빵 시리즈와 똑같은 눈 (표정은 눈썹·입·볼로 그대로 둔다)
+  const eyes = standardEyes([1.28, 1.12]);
+  ink.push(...eyes.ink);
+  white.push(...eyes.white);
   return { ink: mergeAll(ink), white: mergeAll(white), blush: mergeAll(blush), nose: mergeAll(nose) };
 }
 
