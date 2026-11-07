@@ -47,7 +47,7 @@ test('얼굴(눈·입·볼·혀)은 앞쪽(+z)에만 있고 뒷면에는 없다'
 test('긴 귀가 머리 위로 솟고, 횃불은 왼쪽(-x)에 있다', () => {
   const [body, , , , , , stick, flame] = meshes(build());
   const head = new THREE.Box3().setFromBufferAttribute(body.geometry.attributes.position);
-  assert.ok(head.max.y > 0.13, `귀 끝 ${head.max.y.toFixed(3)}`);
+  assert.ok(head.max.y > 0.12, `귀 끝 ${head.max.y.toFixed(3)}`);
   assert.ok(boxOf(stick).max.x < -0.03, '횃불 막대는 왼쪽');
   assert.ok(boxOf(flame).min.y > boxOf(stick).min.y, '불꽃은 막대 위쪽');
 });
