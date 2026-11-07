@@ -87,34 +87,33 @@ function buildEarInner() {
 }
 
 /**
- * 볼 옆 털 뭉치: 머리 양옆(가운데에서 ±340px, 485px. 안쪽은 볼에 붙는다)에 위아래로 긴 보송한 털.
- * 앞에서는 폭 200px·높이 320px, 옆에서는 지름 약 300px. 속 뭉치에서 가는 털이 사방(머리 쪽 제외)으로 뻗는다.
+ * 볼 옆 털 뭉치: 머리 양옆(가운데에서 ±340px, 485px. 안쪽은 볼에 붙는다)에 위아래로 긴 구름 모양.
+ * 앞에서는 폭 200px·높이 320px, 옆에서는 지름 약 300px.
+ * 속 뭉치 둘레에 동글동글한 혹을 고르게(머리 쪽 제외) 붙인다. 혹은 높이마다 턱 쪽으로 좁아지는 머리 옆면을 따라 붙어 떨어져 보이지 않는다.
  */
 function buildTufts() {
   const parts = [];
-  const spike = new THREE.ConeGeometry(1, 1, 4, 1, true);
-  spike.translate(0, 0.5, 0); // 밑동을 원점에 둔다
-  const up = new THREE.Vector3(0, 1, 0);
+  const lump = new THREE.SphereGeometry(1, 10, 7); // 혹이 작아서 분할을 줄인다
   for (const sx of [-1, 1]) {
     const center = new THREE.Vector3(sx * px(340), Y(485), 0.003);
-    const core = new THREE.Vector3(0.012, 0.028, 0.026); // 속 뭉치 반지름
+    const core = new THREE.Vector3(0.013, 0.029, 0.025); // 속 뭉치 반지름
     parts.push(placed(BASE.sphere, { pos: center.toArray(), scale: core.toArray() }));
     const rand = seeded(sx > 0 ? 7 : 11);
-    const N = 700;
+    const N = 36;
     for (let i = 0; i < N; i++) {
-      // 고르게 퍼진 방향 (피보나치 구) + 조금씩 흔들기
+      // 고르게 퍼진 방향 (피보나치 구)
       const yy = 1 - (2 * (i + 0.5)) / N;
       const rr = Math.sqrt(1 - yy * yy);
-      const th = i * 2.399963 + rand() * 0.3;
+      const th = i * 2.399963;
       const dir = new THREE.Vector3(Math.cos(th) * rr, yy, Math.sin(th) * rr);
-      if (dir.x * sx < -0.6) continue; // 머리 속으로 파고드는 털은 뺀다
-      const base = center.clone().add(new THREE.Vector3(dir.x * core.x, dir.y * core.y, dir.z * core.z).multiplyScalar(0.85));
-      const len = 0.008 + rand() * 0.007;
-      const out = dir.clone().add(new THREE.Vector3((rand() - 0.5) * 0.4, (rand() - 0.5) * 0.4, (rand() - 0.5) * 0.4)).normalize();
-      parts.push(placed(spike, { pos: base.toArray(), quat: new THREE.Quaternion().setFromUnitVectors(up, out), scale: [0.0017, len, 0.0017] }));
+      if (dir.x * sx < -0.3) continue; // 머리 속으로 파고드는 혹은 뺀다
+      const pos = center.clone().add(new THREE.Vector3(dir.x * core.x, dir.y * core.y, dir.z * core.z).multiplyScalar(0.75));
+      pos.x += sx * (HEAD.radius(pos.y) - HEAD.radius(center.y)); // 턱 쪽으로 좁아지는 머리에서 떨어지지 않게
+      const size = 0.0105 + rand() * 0.003;
+      parts.push(placed(lump, { pos: pos.toArray(), scale: [size, size * 0.92, size] }));
     }
   }
-  spike.dispose();
+  lump.dispose();
   return mergeAll(parts);
 }
 
