@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BASE, buildCrown, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed, skirtHips } from './hulaBase.js';
+import { BASE, buildCrown, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed, scaledFace, skirtFrom, skirtHips } from './hulaBase.js';
 
 /**
  * 인어섬 모몽가 (#65): 크고 둥근 귀, 볼 옆 털 뭉치, 연보라 꽃 화관, 풀 치마를 입은 흰 모몽가.
@@ -44,7 +44,11 @@ const MAT = {
   pearl: mat(0xe8e4f4, 0.25, 0.1),
 };
 
-const { px, py, pt } = photoMapper(HEAD, PHOTO);
+const FACE_MAP = photoMapper(HEAD, PHOTO);
+const { px, py, pt } = FACE_MAP;
+// 얼굴 크기: 호빵 시리즈에 맞춰 얼굴 가운데(사진 y 490px) 기준으로 0.72배 (생김새는 그대로, 크기만 작게)
+const FACE_SCALE = 0.72;
+const FACE_ANCHOR_Y = 490;
 
 // ---------- 결정적 난수 (모든 인형이 같은 모양을 공유하도록 매번 같은 값) ----------
 function seeded(seed) {
@@ -57,17 +61,14 @@ function seeded(seed) {
 
 // ---------- 부품별 지오메트리 (한 번만 만든다) ----------
 
-// 몸통: 머리 아래(655px)에서 치마 허리(740px)까지 보이는 둥근 흰 원통 (반폭 235px). 뒤쪽에도 같은 높이로 보인다.
-const TORSO = { r: 235 * K, top: Y(640), bottom: Y(750) };
-
 function buildBody() {
-  const torsoH = TORSO.top - TORSO.bottom;
   const parts = [
     HEAD.geometry(),
     skirtHips(BODY_DEPTH, SKIRT), // 치마 속 몸 아랫부분 (치마 속이 비어 보이지 않게)
-    placed(new THREE.CylinderGeometry(TORSO.r, TORSO.r + 0.001, torsoH, 40), { pos: [0, (TORSO.top + TORSO.bottom) / 2, 0], scale: [1, 1, BODY_DEPTH] }),
-    // 팔: 몸통 옆에서 아래·바깥으로 내린 짧은 팔 (끝 165px·755px / 770px·735px). 어깨는 몸통 속에 묻는다.
-    ...[-1, 1].map((sx) => limb([sx * 0.036, -0.006, 0.004], [sx * 0.0615, -0.0225, 0.008], 0.0068, 0.0075)),
+    // 몸통: 호빵 시리즈와 같은 둥근 흰 몸. 치마 허리가 머리 바로 아래라 앞뒤 어디서도 목이 따로 보이지 않는다.
+    placed(BASE.sphere, { pos: [0, -0.03, 0], scale: [0.045, 0.032, 0.045 * BODY_DEPTH] }),
+    // 팔: 머리 바로 아래 어깨(머리 속)에서 아래·바깥으로 내린 짧은 팔 (끝 165px·755px / 770px·735px)
+    ...[-1, 1].map((sx) => limb([sx * 0.026, -0.006, 0.004], [sx * 0.0615, -0.0225, 0.008], 0.0068, 0.0075)),
     // 발: 치마 속, 아래로 살짝 보이는 작은 발
     placed(BASE.sphere, { pos: [-0.012, -0.059, 0.008], scale: [0.009, 0.006, 0.01] }),
     placed(BASE.sphere, { pos: [0.012, -0.059, 0.008], scale: [0.009, 0.006, 0.01] }),
@@ -114,30 +115,24 @@ function buildTufts() {
       parts.push(placed(lump, { pos: pos.toArray(), scale: [size, size * 0.92, size] }));
     }
   }
-  lump.dispose();
+// 풀 치마: 머리 바로 아래 허리(반폭 0.047)에서 치마 끝(955px, 반폭 0.058)까지 굵게 꼰 털실. 목이 보이지 않게 허리를 머리 밑에 붙인다.
   return mergeAll(parts);
 }
 
-// 풀 치마: 허리(740px, 반폭 240px)에서 아래 끝(955px, 반폭 277px)까지 굵게 꼰 털실
-const SKIRT = {
-  waistY: Y(740),
-  waistR: 0.049,
-  waistThick: 0.03,
-  strandY: (Y(740) + Y(955)) / 2,
-  front: { count: 26, r: 0.0528, tilt: 0.25, height: 0.044, offset: 0, width: 0.0046 },
-  back: { count: 26, r: 0.0488, tilt: 0.2, height: 0.042, offset: 0.5, width: 0.0044 },
-};
-
+// 풀 치마: 머리 바로 아래 허리(반폭 0.047)에서 치마 끝(955px, 반폭 0.058)까지 굵게 꼰 털실. 목이 보이지 않게 허리를 머리 밑에 붙인다.
+const SKIRT = skirtFrom({ waistY: -0.008, hemY: Y(955), topR: 0.047, hemR: 0.058, count: 26, width: 0.0046 });
+/** 꼬리: 뒤쪽 치마 허리 바로 아래의 작고 보송한 연하늘색 공 */
 // 연보라 꽃 화관: 머리 둘레(앞 가운데 315px)를 한 바퀴 두른 큰 꽃 14송이 (꽃 지름 약 110px)
 const CROWN = { t: tAt(315), count: 14, petalOffset: 0.0068, petalSize: 0.0074, petalThickness: 0.0026, pearlSize: 0.0024, lift: 0.0035, pearlLift: 0.0026 };
 
 /** 꼬리: 뒤쪽 치마 허리 바로 위의 작고 보송한 연하늘색 공 */
 function buildTail() {
-  return placed(BASE.sphere, { pos: [0, Y(705), -(TORSO.r * BODY_DEPTH + 0.004)], scale: [0.0072, 0.0068, 0.0062] });
+  return placed(BASE.sphere, { pos: [0, -0.016, -(SKIRT.waistR * BODY_DEPTH + 0.004)], scale: [0.0072, 0.0068, 0.0062] });
 }
 
 // 얼굴 좌표: 사진 앞모습에서 픽셀로 잰 값을 그대로 옮긴다 (얼굴 가운데 497px 기준, 가로·세로 같은 비율)
 function buildFace() {
+  const { px, py, pt } = scaledFace(FACE_MAP, FACE_SCALE, FACE_ANCHOR_Y);
   const ink = [];
   const white = [];
   const blush = [];
