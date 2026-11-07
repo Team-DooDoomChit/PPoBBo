@@ -72,9 +72,10 @@ function buildBody() {
     placed(BASE.sphere, { pos: [-0.012, -0.059, 0.008], scale: [0.009, 0.006, 0.01] }),
     placed(BASE.sphere, { pos: [0.012, -0.059, 0.008], scale: [0.009, 0.006, 0.01] }),
   ];
-  // 귀(바깥 흰 부분): 머리 위 양옆의 크고 둥근 접시 모양 (가운데에서 ±219px, 지름 약 230px, 끝 25px 근처). 위쪽이 바깥으로 기운다.
+  // 귀(바깥 흰 부분): 머리 위 양옆의 둥근 접시 모양 (가운데에서 ±205px, 지름 약 175px, 끝 70px 근처). 위쪽이 바깥으로 기운다.
+  // 밑동(사진 255px 근처)은 그대로 머리 속에 묻고 크기만 줄였다.
   for (const sx of [-1, 1]) {
-    parts.push(placed(BASE.sphere, { pos: [sx * px(219), Y(135), -0.004], scale: [px(115), px(122), 0.0078], rot: [0, -sx * 0.25, -sx * 0.3] }));
+    parts.push(placed(BASE.sphere, { pos: [sx * px(205), Y(163), -0.004], scale: [px(88), px(93), 0.0068], rot: [0, -sx * 0.25, -sx * 0.3] }));
   }
   return mergeAll(parts);
 }
@@ -82,7 +83,7 @@ function buildBody() {
 /** 귀 안쪽 연한 하늘색: 흰 귀 앞면에 얹은 조금 작은 타원 (바깥쪽 가장자리는 흰 테두리로 남는다) */
 function buildEarInner() {
   return mergeAll([-1, 1].map((sx) =>
-    placed(BASE.sphere, { pos: [sx * px(212), Y(140), 0.0005], scale: [px(95), px(104), 0.0047], rot: [0, -sx * 0.25, -sx * 0.3] }),
+    placed(BASE.sphere, { pos: [sx * px(199), Y(167), 0.0001], scale: [px(72), px(79), 0.0042], rot: [0, -sx * 0.25, -sx * 0.3] }),
   ));
 }
 
