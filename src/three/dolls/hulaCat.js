@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BASE, buildCrown, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed, skirtHips } from './hulaBase.js';
+import { BASE, buildCrown, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed, skirtFrom, skirtHips } from './hulaBase.js';
 
 /**
  * 훌라 고양이 (#53): 파란 모자 무늬 + 뾰족한 귀, 하늘색 꽃 화관, 풀 치마를 입은 흰 고양이.
@@ -53,14 +53,13 @@ function buildBody() {
   const parts = [
     HEAD.geometry(),
     skirtHips(HEAD.depth, SKIRT), // 치마 속 몸 아랫부분 (치마 속이 비어 보이지 않게)
-    // 몸통: 머리와 치마 사이로 보이는 둥근 흰 몸 (사진 반폭 121px). 모서리 없이 봉제 인형처럼 둥글게.
+    // 몸통: 호빵 시리즈와 같은 둥근 흰 몸. 치마 허리가 머리 바로 아래라 목은 보이지 않는다.
     placed(BASE.sphere, { pos: [0, -0.03, 0], scale: [0.043, 0.03, 0.043 * HEAD.depth] }),
   ];
   for (const sx of [-1, 1]) {
     parts.push(
-      // 팔: 목 아래 옆으로, 조금 앞·아래로 뻗은 작고 둥근 팔 (사진 끝 185px = 0.066m, 높이 338~385px).
-      // 어깨를 몸통 속에 두어 팔이 몸통에서 떨어져 보이지 않게 한다.
-      limb([sx * 0.028, -0.012, 0.006], [sx * 0.0624, -0.0201, 0.0155], 0.0078, 0.0105),
+      // 팔: 머리 바로 아래 어깨(머리 속)에서 옆·앞·아래로 뻗은 작고 둥근 팔 (사진 끝 185px = 0.066m)
+      limb([sx * 0.024, -0.009, 0.006], [sx * 0.0624, -0.0201, 0.0155], 0.0078, 0.0105),
       // 다리: 치마 아래로 보이는 짧은 두 다리 (사진 222~306px, 발바닥 510px)
       placed(BASE.sphere, { pos: [sx * 0.0075, -0.0595, 0.003], scale: [0.0072, 0.009, 0.0086] }),
     );
@@ -145,16 +144,8 @@ function buildEars() {
   return ears;
 }
 
-// 풀 치마: 허리띠(사진 396px, 반폭 128px)에서 아래(492px, 반폭 162px)로 퍼진다
-const SKIRT = {
-  waistY: HEAD.bottom - (396 - PHOTO.bottom) * K,
-  waistR: 0.0454,
-  waistThick: 0.03,
-  strandY: -0.0425,
-  // 가닥 사이로 몸·다리가 조금 보이도록 사진처럼 성기게, 끝은 다리보다 위에서 끝난다
-  front: { count: 28, r: 0.05, tilt: 0.42, height: 0.031, offset: 0, width: 0.0034 },
-  back: { count: 28, r: 0.046, tilt: 0.36, height: 0.029, offset: 0.5, width: 0.0034 },
-};
+// 풀 치마: 머리 바로 아래 허리(반폭 0.044)에서 치마 끝(반폭 0.057)까지 퍼진다. 목이 보이지 않게 허리를 머리 밑에 붙이고, 끝은 다리보다 위에서 끝난다.
+const SKIRT = skirtFrom({ waistY: -0.01, hemY: -0.057, topR: 0.044, hemR: 0.057, count: 28, width: 0.0036 });
 
 // 꽃 화관: 모자 무늬 위(사진 150px)를 두르는 하늘빛 흰 꽃 12송이 (꽃 지름 약 55px)
 const CROWN = { t: tAt(149.5), count: 12, petalOffset: 0.0054, petalSize: 0.0062, petalThickness: 0.0026, pearlSize: 0.0024, lift: 0.0035, pearlLift: 0.0026 };
