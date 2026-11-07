@@ -192,6 +192,29 @@ export function standardBody(depth = 0.75) {
 export const STD_SKIRT = { waistY: -0.026, hemY: -0.055, topR: 0.039, hemR: 0.043, waistThick: 0.02 }; // 부해 보이지 않게 조금만 퍼진다
 
 /**
+ * 호빵 시리즈와 똑같은 눈 두 개 (표준 얼굴 ±51px, 241.5px): 진한 타원 + 위쪽 흰 타원 + 아래 흰 초승달.
+ * @param {[number, number]} [scale] 눈 크기 배율 [가로, 세로] (호빵 모몽가는 [1.28, 1.12])
+ * @returns {{ ink: THREE.BufferGeometry[], white: THREE.BufferGeometry[] }} 합치기 전 부품 (인형의 ink·white 목록에 더한다)
+ */
+export function standardEyes(scale = [1, 1]) {
+  const { head, mapper } = standardHead();
+  const { px, py } = mapper;
+  const ex = (v) => px(v * scale[0]);
+  const ey = (y) => py(STD_EYE.y + (y - STD_EYE.y) * scale[1]);
+  const h = (v) => px(v * scale[1]);
+  const ink = [];
+  const white = [];
+  for (const sx of [-1, 1]) {
+    const x = px(sx * STD_EYE.dx);
+    ink.push(head.faceDisc(x, ey(241.5), ex(21), h(19.5), 0.0004));
+    white.push(head.faceDisc(x, ey(236.5), ex(12.75), h(9), 0.001));
+    white.push(head.faceDisc(x, ey(252.5), ex(11), h(4), 0.001));
+    ink.push(head.faceDisc(x, ey(248), ex(11.5), h(3), 0.0013));
+  }
+  return { ink, white };
+}
+
+/**
  * 각 인형 사진의 얼굴 좌표(px)를 표준 얼굴로 옮기는 좌표 변환.
  * 두 눈 간격을 표준(±51px)에 맞춰 같은 비율로 줄이고, 눈 높이를 표준 눈 높이(241.5px)에 맞춘다.
  * 그래서 표정(눈·입·눈썹 모양)은 그 인형 그대로이고, 얼굴 비율은 호빵 시리즈와 같아진다.
