@@ -148,6 +148,38 @@ export function photoMapper(head, { cx, halfWidth, bottom, stretchY = 1 }) {
 }
 
 /**
+ * 얼굴 좌표를 얼굴 가운데(anchorY 높이, 가로 가운데) 기준으로 같은 비율로 줄인다.
+ * 눈·눈썹·코·입·볼의 위치와 크기, 선 굵기가 모두 함께 줄어 얼굴 생김새는 그대로이고 크기만 작아진다.
+ * @param {{ px: (dx: number) => number, py: (y: number) => number }} mapper photoMapper 결과
+ * @param {number} scale 크기 배율 (1 = 그대로)
+ * @param {number} anchorY 기준 높이 (사진 y px)
+ */
+export function scaledFace({ px, py }, scale, anchorY) {
+  const spx = (v) => px(v * scale);
+  const spy = (y) => py(anchorY + (y - anchorY) * scale);
+  return { px: spx, py: spy, pt: (dx, y) => [spx(dx), spy(y)] };
+}
+
+/**
+ * 허리·치마 끝 높이와 반폭으로 풀 치마 치수를 만든다 (buildSkirt에 그대로 넘긴다).
+ * 가닥은 허리(topR)에서 치마 끝(hemR)까지 곧게 퍼지고, 안쪽 겹은 조금 안쪽·짧게 둔다.
+ * @param {{ waistY: number, hemY: number, topR: number, hemR: number, count?: number, width?: number, waistThick?: number }} spec
+ */
+export function skirtFrom({ waistY, hemY, topR, hemR, count = 28, width = 0.0042, waistThick = 0.026 }) {
+  const length = waistY - hemY;
+  const tilt = Math.atan((hemR - topR) / length);
+  const height = length / Math.cos(tilt) + 0.002; // 위 끝이 허리띠 속에 조금 묻히게
+  return {
+    waistY,
+    waistR: topR,
+    waistThick,
+    strandY: (waistY + hemY) / 2,
+    front: { count, r: (topR + hemR) / 2 + 0.002, tilt, height, offset: 0, width },
+    back: { count, r: (topR + hemR) / 2 - 0.002, tilt: tilt * 0.85, height: height - 0.003, offset: 0.5, width: width * 0.95 },
+  };
+}
+
+/**
  * 풀 치마: 털실을 모아 묶은 허리띠 + 아래로 늘어지는 가닥 두 겹(앞 겹 · 안쪽 겹).
  * 가닥마다 두 줄을 꼬아 털실 결을 낸다.
  */
