@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { limb, skirtHips, skirtLining } from './hulaBase.js';
+import { buildSkirt as buildHulaSkirt, limb, scaledFace, skirtFrom, skirtHips } from './hulaBase.js';
 
 /**
  * 훌라 햄스터 (#49): 꽃 화관 + 풀 치마를 입은 흰 햄스터.
@@ -115,12 +115,15 @@ const px = (dx) => dx * K;
 const py = (y) => HEAD.bottom + (PHOTO.bottom - y) * K;
 const pt = (dx, y) => [px(dx), py(y)];
 
+// 얼굴 크기: 호빵 시리즈에 맞춰 얼굴 가운데(사진 y 300px) 기준으로 0.9배 (생김새는 그대로, 크기만 작게)
+const FACE_MAP = { px, py };
+const FACE_SCALE = 0.9;
+const FACE_ANCHOR_Y = 300;
+
 // ---------- 부품별 지오메트리 (한 번만 만든다) ----------
 
-// 풀 치마 치수: 허리(사진 y 470px)에서 아래 끝(612px)까지. 안쪽 가닥 치수는 안감·치마 속 몸도 같이 따라간다.
-const SKIRT_WAIST_Y = py(470);
-const SKIRT_STRAND_Y = (py(470) + py(612)) / 2;
-const INNER_SKIRT = { r: 0.044, tilt: 0.26, height: 0.035 };
+// 풀 치마: 머리 바로 아래 허리(반폭 0.042)에서 치마 끝(사진 612px, 반폭 0.054)까지. 목이 보이지 않게 허리를 머리 밑에 붙인다.
+const SKIRT = skirtFrom({ waistY: -0.012, hemY: py(612), topR: 0.042, hemR: 0.054, count: 30, width: 0.0036 });
 
 function buildBody() {
   const head = new THREE.LatheGeometry(HEAD_PROFILE.map(([r, y]) => new THREE.Vector2(r, y)), 56);
@@ -128,16 +131,16 @@ function buildBody() {
   const parts = [
     head,
     // 치마 속 몸 아랫부분 (치마 속이 비어 보이지 않게)
-    skirtHips(HEAD_DEPTH, { waistY: SKIRT_WAIST_Y, strandY: SKIRT_STRAND_Y, back: INNER_SKIRT }),
-    // 몸통: 머리 아래에서 치마 허리(반폭 0.042)까지 통통하게 이어지는 둥근 흰 몸. 머리가 몸 위로 넓게 튀어나온다.
+    skirtHips(HEAD_DEPTH, SKIRT),
+    // 몸통: 호빵 시리즈와 같은 둥근 흰 몸. 치마 허리가 머리 바로 아래라 목은 보이지 않는다.
     placed(BASE.sphere, { pos: [0, -0.03, 0], scale: [0.042, 0.03, 0.042 * HEAD_DEPTH] }),
     // 발: 치마 속, 아래로 살짝 보이는 작은 발
     placed(BASE.sphere, { pos: [-0.011, -0.0642, 0.008], scale: [0.009, 0.006, 0.01] }),
     placed(BASE.sphere, { pos: [0.011, -0.0642, 0.008], scale: [0.009, 0.006, 0.01] }), // 발바닥 -0.0702
     // 팔 (사진처럼 비대칭인 큼직한 주걱 모양): 왼쪽(-x)은 아래로 내리고(끝 60px, 465px), 오른쪽(+x)은 옆으로 들어 끝이 조금 위로(끝 515px, 390px).
-    // 어깨를 몸통 속에 두어 팔이 몸통에서 떨어져 보이지 않게 한다.
-    limb([-0.026, -0.013, 0.004], [-0.0516, -0.0327, 0.0086], 0.0085, 0.009),
-    limb([0.026, -0.014, 0.004], [0.0687, -0.0102, 0.0086], 0.0082, 0.009),
+    // 어깨는 머리 바로 아래(머리 속)에 두어 팔이 자연스럽게 이어진다.
+    limb([-0.024, -0.01, 0.004], [-0.0516, -0.0327, 0.0086], 0.0085, 0.009),
+    limb([0.024, -0.01, 0.004], [0.0687, -0.0102, 0.0086], 0.0082, 0.009),
   ];
   // 귀: 머리 꼭대기 양쪽(가운데에서 ±129px), 화관 위로 또렷이 솟은 둥근 귀 (꼭대기 사진 25px)
   for (const sx of [-1, 1]) {
@@ -146,32 +149,9 @@ function buildBody() {
   return mergeAll(parts);
 }
 
+/** 풀 치마: 허리띠 + 꼰 털실 가닥 두 겹 + 안감 (다른 인어섬 인형과 같은 hulaBase.buildSkirt) */
 function buildSkirt() {
-  const front = [];
-  const back = [];
-  // 허리 (사진 y 470px, 반폭 163px): 털실을 꼬아 묶은 가는 띠 하나
-  const waistY = SKIRT_WAIST_Y;
-  front.push(placed(new THREE.TorusGeometry(1, 0.1, 8, 64), { pos: [0, waistY, 0], rot: [Math.PI / 2, 0, 0], scale: [0.042, 0.042 * HEAD_DEPTH, 0.018] }));
-  // 가닥: 털실이 허리(반폭 163px)에서 아래 끝(사진 y 612px, 반폭 207px)까지 넓게 퍼지며 늘어진다.
-  // 가닥 사이가 조금 성기게, 가닥마다 두 줄을 꼬아 털실 결을 낸다.
-  const strandY = SKIRT_STRAND_Y;
-  const layer = (list, count, r, tilt, height, offset, width) => {
-    for (let i = 0; i < count; i++) {
-      const a = ((i + offset) / count) * Math.PI * 2;
-      const qy = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), a);
-      for (const side of [-1, 1]) {
-        const q = qy.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-tilt, 0, side * 0.14)));
-        const local = new THREE.Vector3(side * 0.002, strandY, r).applyQuaternion(qy);
-        local.z *= HEAD_DEPTH;
-        list.push(placed(BASE.capsule, { pos: local.toArray(), quat: q, scale: [width, height / 5, 0.0034] }));
-      }
-    }
-  };
-  layer(front, 30, 0.048, 0.32, 0.037, 0, 0.0034);
-  layer(back, 30, INNER_SKIRT.r, INNER_SKIRT.tilt, INNER_SKIRT.height, 0.5, 0.0034);
-  // 안감: 가닥 사이 틈과 치마 속이 비어 보이지 않게 안쪽 가닥 바로 안에 두른다
-  back.push(skirtLining(HEAD_DEPTH, { strandY, back: INNER_SKIRT }));
-  return { front: mergeAll(front), back: mergeAll(back) };
+  return buildHulaSkirt({ depth: HEAD_DEPTH }, SKIRT);
 }
 
 function buildCrown() {
@@ -199,6 +179,7 @@ function buildCrown() {
 
 // 얼굴 좌표: 사진 앞모습에서 픽셀로 잰 값을 그대로 옮긴다 (가로·세로 같은 비율).
 function buildFace() {
+  const { px, py, pt } = scaledFace(FACE_MAP, FACE_SCALE, FACE_ANCHOR_Y);
   const ink = [];
   const white = [];
   const blush = [];
