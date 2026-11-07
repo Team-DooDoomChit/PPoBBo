@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BASE, Z, buildSkirt, faceFrom, hulaMesh, limb, mergeAll, placed, skirtFrom, skirtHips, standardBody, standardHead, STD_SKIRT } from './hulaBase.js';
+import { BASE, Z, buildSkirt, faceFrom, hulaMesh, limb, mergeAll, placed, skirtFrom, skirtHips, standardBody, standardEyes, standardHead, STD_SKIRT } from './hulaBase.js';
 
 /**
  * 인어섬 우사기 (#59): 긴 귀, 노란 꽃 화관, 풀 치마를 입고 횃불을 든 아이보리색 토끼.
@@ -193,14 +193,6 @@ function buildFace() {
   const tongue = [];
   for (const sx of [-1, 1]) {
     const m = (dx) => sx * dx; // 오른쪽 요소는 좌우 대칭
-    // 눈 (가운데 ±90.6px, y 456): 검은 타원(36×31px)
-    //   → 위쪽 흰 타원(18×12.25px, y 448.75)
-    //   → 아래 흰 초승달(폭 28px, 가운데 두께 약 7px): 흰 타원(14×5px, y 469.5) 위에 검은 타원(14.5×3px, y 464)을 겹쳐 아랫부분만 남긴다
-    const x = px(m(90.6));
-    ink.push(HEAD.faceDisc(x, py(456), px(36), px(31), 0.0004));
-    white.push(HEAD.faceDisc(x, py(448.75), px(18), px(12.25), 0.001));
-    white.push(HEAD.faceDisc(x, py(469.5), px(14), px(5), 0.001));
-    ink.push(HEAD.faceDisc(x, py(464), px(14.5), px(3), 0.0013));
     // 눈썹: 눈 바깥 아래(±185px, 427px)에서 위로 크게 휘어 안쪽(±70px, 313px)에서 끝나는 긴 호
     ink.push(HEAD.faceLine([[185, 427.5], [181, 390], [161, 355], [131.5, 330], [101, 317.5], [70, 313.5]].map(([dx, y]) => pt(m(dx), y)), px(4)));
     // 볼터치 (가운데 ±166.7px, y 512.5): 분홍 타원(52.5×40px) + "/" 빗금 4줄 (두 볼 모두 같은 방향)
@@ -225,6 +217,10 @@ function buildFace() {
   ink.push(HEAD.faceShape(uShape(25, 514, 582.5, 500), 0.0004));
   tongue.push(HEAD.faceShape(uShape(11, 525, 570, 522), 0.001));
   ink.push(HEAD.faceLine(mouth([[-14.25, 597.5], [0, 608.5], [14.25, 597.5]]), px(3.5)));
+  // 눈: 호빵 시리즈와 똑같은 눈 (표정은 눈썹·입·볼로 그대로 둔다)
+  const eyes = standardEyes();
+  ink.push(...eyes.ink);
+  white.push(...eyes.white);
   return { ink: mergeAll(ink), white: mergeAll(white), blush: mergeAll(blush), tongue: mergeAll(tongue) };
 }
 

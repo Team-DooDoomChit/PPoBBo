@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BASE, buildCrown, buildSkirt, faceFrom, hulaMesh, limb, mergeAll, placed, skirtFrom, skirtHips, standardBody, standardHead, STD_SKIRT } from './hulaBase.js';
+import { BASE, buildCrown, buildSkirt, faceFrom, hulaMesh, limb, mergeAll, placed, skirtFrom, skirtHips, standardBody, standardEyes, standardHead, STD_SKIRT } from './hulaBase.js';
 
 /**
  * 인어섬 치이카와 (훌라 햄스터, #49): 꽃 화관 + 풀 치마를 입은 흰 햄스터.
@@ -58,14 +58,6 @@ function buildFace() {
   const blush = [];
   for (const sx of [-1, 1]) {
     const m = (dx) => sx * dx; // 오른쪽 요소는 좌우 대칭
-    // 눈 (가운데 ±76px, y 266): 검은 타원(31×30px)
-    //   → 그 안 위쪽에 큰 흰 타원(18.3×13.7px, y 259.7)
-    //   → 아래 흰 초승달: 흰 타원(14×5px, y 283) 위에 검은 타원(14.5×3.5px, y 279.5)을 겹쳐 아랫부분만 남긴다
-    const x = px(m(76));
-    ink.push(HEAD.faceDisc(x, py(266), px(31), px(30), 0.0004));
-    white.push(HEAD.faceDisc(x, py(259.7), px(18.3), px(13.7), 0.001));
-    white.push(HEAD.faceDisc(x, py(283), px(14), px(5), 0.001));
-    ink.push(HEAD.faceDisc(x, py(279.5), px(14.5), px(3.5), 0.0013));
     // 눈썹: 안쪽은 평평하고 바깥 끝이 내려가는 호 (가운데에서 52~100px, y 180~192.5)
     ink.push(HEAD.faceLine([[52, 182], [64, 179.8], [76, 180], [89, 184.5], [100, 192.5]].map(([dx, y]) => pt(m(dx), y)), px(3)));
     // 볼터치 (가운데 ±151.6px, y 304.5): 분홍 타원(43×33.8px) + "/" 빗금 4줄
@@ -82,6 +74,10 @@ function buildFace() {
   ink.push(HEAD.faceLine(mouth([[-26, 316], [-22, 323.5], [-15, 327], [-8, 324], [-3, 316], [0, 312], [3, 316], [8, 324], [15, 327], [22, 323.5], [26, 316]]), LINE));
   ink.push(HEAD.faceLine(mouth([[-12, 327], [-12.5, 335], [-10, 344], [-5, 349.5], [0, 350.5], [5, 349.5], [10, 344], [12.5, 335], [12, 327]]), LINE));
   ink.push(HEAD.faceLine(mouth([[-11.5, 367], [0, 371.5], [11.5, 367]]), px(3)));
+  // 눈: 호빵 시리즈와 똑같은 눈 (표정은 눈썹·입·볼로 그대로 둔다)
+  const eyes = standardEyes();
+  ink.push(...eyes.ink);
+  white.push(...eyes.white);
   return { ink: mergeAll(ink), white: mergeAll(white), blush: mergeAll(blush) };
 }
 
