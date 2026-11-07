@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BASE, buildCrown, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed, skirtFrom, skirtHips } from './hulaBase.js';
+import { BASE, buildCrown, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed, skirtFrom, skirtHips, standardBody, STD_SKIRT } from './hulaBase.js';
 
 /**
  * 훌라 고양이 (#53): 파란 모자 무늬 + 뾰족한 귀, 하늘색 꽃 화관, 풀 치마를 입은 흰 고양이.
@@ -53,16 +53,12 @@ function buildBody() {
   const parts = [
     HEAD.geometry(),
     skirtHips(HEAD.depth, SKIRT), // 치마 속 몸 아랫부분 (치마 속이 비어 보이지 않게)
-    // 몸통: 호빵 시리즈와 같은 둥근 흰 몸. 치마 허리가 머리 바로 아래라 목은 보이지 않는다.
-    placed(BASE.sphere, { pos: [0, -0.03, 0], scale: [0.043, 0.03, 0.043 * HEAD.depth] }),
+    // 몸통·다리: 호빵 시리즈와 같은 둥근 몸. 허리 위로 몸 윗부분이 보이고 그 아래가 치마다.
+    ...standardBody(HEAD.depth),
   ];
   for (const sx of [-1, 1]) {
-    parts.push(
-      // 팔: 머리 바로 아래 어깨(머리 속)에서 옆·앞·아래로 뻗은 작고 둥근 팔 (사진 끝 185px = 0.066m)
-      limb([sx * 0.024, -0.009, 0.006], [sx * 0.0624, -0.0201, 0.0155], 0.0078, 0.0105),
-      // 다리: 치마 아래로 보이는 짧은 두 다리 (사진 222~306px, 발바닥 510px)
-      placed(BASE.sphere, { pos: [sx * 0.0075, -0.0595, 0.003], scale: [0.0072, 0.009, 0.0086] }),
-    );
+    // 팔: 몸 윗부분 어깨(몸 속)에서 옆·앞·아래로 뻗은 작고 둥근 팔
+    parts.push(limb([sx * 0.026, -0.016, 0.006], [sx * 0.049, -0.03, 0.012], 0.0074, 0.0085));
   }
   return mergeAll(parts);
 }
@@ -144,8 +140,8 @@ function buildEars() {
   return ears;
 }
 
-// 풀 치마: 머리 바로 아래 허리(반폭 0.044)에서 치마 끝(반폭 0.057)까지 퍼진다. 목이 보이지 않게 허리를 머리 밑에 붙이고, 끝은 다리보다 위에서 끝난다.
-const SKIRT = skirtFrom({ waistY: -0.01, hemY: -0.057, topR: 0.044, hemR: 0.057, count: 28, width: 0.0036 });
+// 풀 치마: 몸 가운데 허리에서 다리 위까지 (인어섬 시리즈 표준 치수). 허리 위로 몸 윗부분이 보여 원피스가 아니라 치마로 보인다.
+const SKIRT = skirtFrom({ ...STD_SKIRT, count: 28, width: 0.0036 });
 
 // 꽃 화관: 모자 무늬 위(사진 150px)를 두르는 하늘빛 흰 꽃 12송이 (꽃 지름 약 55px)
 const CROWN = { t: tAt(149.5), count: 12, petalOffset: 0.0054, petalSize: 0.0062, petalThickness: 0.0026, pearlSize: 0.0024, lift: 0.0035, pearlLift: 0.0026 };
