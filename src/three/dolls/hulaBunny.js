@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import { BASE, Z, buildSkirt, createHead, hulaMesh, limb, mergeAll, photoMapper, placed, scaledFace, skirtFrom, skirtHips } from './hulaBase.js';
+import { BASE, Z, buildSkirt, faceFrom, hulaMesh, limb, mergeAll, placed, skirtFrom, skirtHips, standardBody, standardHead, STD_SKIRT } from './hulaBase.js';
 
 /**
  * 인어섬 우사기 (#59): 긴 귀, 노란 꽃 화관, 풀 치마를 입고 횃불을 든 아이보리색 토끼.
  *
  * 원점 = 몸통 중심, +Y = 위, +Z = 얼굴 정면 (DollFactory와 같다). 단위 m.
- * 모습은 참고 이미지(앞·뒤·양옆)에서 픽셀로 잰 값을 그대로 옮겼다. 머리 반폭은 다른 훌라 인형과 같은 0.061m.
- * 사진 기준(앞모습): 얼굴 가운데 x = 462px, 머리 반폭 285px, 머리 아래 끝 y = 700px(몸통 속),
- * 가장 넓은 볼 y = 500px, 정수리 y = 250px, 귀 끝 y = 22px, 발바닥 y = 965px. (y는 아래가 +)
+ * 머리·몸 비율은 호빵 시리즈와 같은 표준 체형(hulaBase.standardHead/standardBody)을 쓴다 (#80).
+ * 얼굴·횃불은 참고 사진 앞모습(얼굴 가운데 462px, 머리 반폭 285px, 눈 ±90.6px·456px, 발바닥 965px)에서 잰 픽셀 좌표를 옮겼다.
+ * 얼굴은 faceFrom으로 표준 얼굴에 옮겨, 표정은 사진 그대로이고 얼굴 비율은 호빵 시리즈와 같다.
  * 얼굴은 앞쪽에만 있고, 뒷면은 아이보리색이다.
  *
  * 같은 재질의 부품은 처음 한 번만 합쳐 모든 인형이 공유한다. 몸 색(fur)만 인형마다 다르다.
@@ -18,18 +18,8 @@ const K = 0.061 / PHOTO.halfWidth; // 1px → m
 const Y0 = -0.065 + 965 * K; // 사진 y 0px의 높이 (발바닥 965px이 몸통 구 아래 끝 -0.065에 오도록)
 const X = (x) => (x - PHOTO.cx) * K; // 사진 x(px) → m
 const Y = (y) => Y0 - y * K; // 사진 y(px) → m
-const tAt = (y) => (PHOTO.bottom - y) / (PHOTO.bottom - PHOTO.top); // 사진 y(px) → 머리 높이 비율
-
-// 머리 앞모습 실루엣: 가장 넓은 볼(500px)을 가운데로 위는 반타원, 아래는 둥근 턱 초타원(지수 2.5)으로 몸통 속에서 닫힌다
-const WIDEST = tAt(500);
-const SILHOUETTE = Array.from({ length: 41 }, (_, i) => {
-  const t = i / 40;
-  const [r, p] = t >= WIDEST ? [1 - WIDEST, 2] : [WIDEST, 2.5];
-  return [t, Math.max(0, 1 - Math.abs((t - WIDEST) / r) ** p) ** (1 / p)];
-});
-// 옆모습에서 잰 머리 앞뒤 두께는 좌우 폭의 0.92 (공처럼 둥근 머리)
-const HEAD = createHead({ bottom: Y(PHOTO.bottom), height: (PHOTO.bottom - PHOTO.top) * K, halfWidth: 0.061, depth: 0.92, silhouette: SILHOUETTE });
-const BODY_DEPTH = 0.87; // 몸통·치마 앞뒤 두께 / 좌우 폭 (옆모습)
+const { head: HEAD, top: HEAD_TOP } = standardHead();
+const BODY_DEPTH = 0.75; // 몸통·치마 앞뒤 두께 / 좌우 폭 (호빵 시리즈와 같다)
 
 const mat = (color, roughness = 0.9, metalness = 0) => new THREE.MeshStandardMaterial({ color, roughness, metalness });
 const MAT = {
@@ -47,44 +37,35 @@ const MAT = {
   flameCore: mat(0xf3ead2, 0.9), // 불꽃 안쪽 흰 불씨
 };
 
-const FACE_MAP = photoMapper(HEAD, PHOTO);
-const { px, py, pt } = FACE_MAP;
-// 얼굴 크기: 호빵 시리즈에 맞춰 얼굴 가운데(사진 y 500px) 기준으로 0.9배 (생김새는 그대로, 크기만 작게)
-const FACE_SCALE = 0.9;
-const FACE_ANCHOR_Y = 500;
-
 // ---------- 부품별 지오메트리 (한 번만 만든다) ----------
 
-// 귀: 머리 위로 곧게 선 통통하고 긴 귀 두 개 (가운데에서 ±58px, 반폭 58px로 서로 맞닿음, 끝 22px). 옆모습 두께는 폭의 1.15배.
-const EAR = { dx: 58, r: 58 * K, top: Y(22), base: Y(300), depth: 1.15 };
+// 귀: 머리 위로 곧게 선 통통하고 긴 귀 두 개 (서로 맞닿음). 머리 위로 약 4.9cm 솟고, 밑동은 정수리 아래 1cm까지 묻힌다. 옆모습 두께는 폭의 1.15배.
+const EAR = { x: 0.0124, r: 0.0124, top: HEAD_TOP + 0.049, base: HEAD_TOP - 0.0107, depth: 1.15 };
 
 function buildBody() {
   const parts = [
     HEAD.geometry(),
     skirtHips(BODY_DEPTH, SKIRT), // 치마 속 몸 아랫부분 (치마 속이 비어 보이지 않게)
-    // 몸통: 호빵 시리즈와 같은 둥근 흰 몸. 치마 허리가 머리 바로 아래라 목은 보이지 않는다.
-    placed(BASE.sphere, { pos: [0, -0.03, 0], scale: [0.044, 0.032, 0.044 * BODY_DEPTH] }),
-    // 발: 치마 아래로 보이는 두 발 (가운데에서 ±54px, 반폭 40px, 905~965px)
-    placed(BASE.sphere, { pos: [-px(54), Y(935), 0.004], scale: [px(40), px(30), 0.009] }),
-    placed(BASE.sphere, { pos: [px(54), Y(935), 0.004], scale: [px(40), px(30), 0.009] }),
-    // 팔: 어깨는 머리 바로 아래(머리 속)에 두어 팔이 자연스럽게 이어진다
-    // 오른팔(+x): 옆·아래로 뻗은 짧은 팔 (끝 752px, 725px)
-    limb([0.026, 0, 0.003], [0.0626, -0.0139, 0.0065], 0.0062, 0.0072),
-    // 왼팔(-x): 옆으로 들어 횃불을 쥔 팔 (손 160px, 640px)
-    limb([-0.026, 0.002, 0.004], [-0.0684, 0.0052, 0.0105], 0.0065, 0.0075),
+    // 몸통·다리: 호빵 시리즈와 같은 둥근 몸. 허리 위로 몸 윗부분이 보이고 그 아래가 치마다.
+    ...standardBody(BODY_DEPTH),
+    // 팔: 몸 윗부분 어깨(몸 속)에서 나온다
+    // 오른팔(+x): 옆·아래로 뻗은 짧은 팔
+    limb([0.026, -0.016, 0.006], [0.048, -0.029, 0.011], 0.0068, 0.0074),
+    // 왼팔(-x): 옆으로 들어 횃불을 쥔 팔 (손이 횃불 막대를 쥔다)
+    limb([-0.026, -0.016, 0.006], [-0.0565, -0.003, 0.0135], 0.0068, 0.0074),
   ];
   // 귀 (캡슐을 머리 속까지 내려 밑동을 묻는다)
   const len = EAR.top - EAR.base - 2 * EAR.r;
   const ear = new THREE.CapsuleGeometry(EAR.r, len, 8, 20);
   for (const sx of [-1, 1]) {
-    parts.push(placed(ear, { pos: [sx * px(EAR.dx), (EAR.top + EAR.base) / 2, -0.002], scale: [1, 1, EAR.depth] }));
+    parts.push(placed(ear, { pos: [sx * EAR.x, (EAR.top + EAR.base) / 2, -0.002], scale: [1, 1, EAR.depth] }));
   }
   ear.dispose();
   return mergeAll(parts);
 }
 
 /**
- * 귀 안쪽 분홍: 귀 바깥 앞쪽(정면에서 바깥으로 26°)을 귀 끝 바로 아래(58px)부터 밑동(270px, 화관 뒤)까지
+ * 귀 안쪽 분홍: 귀 바깥 앞쪽(정면에서 바깥으로 26°)을 귀 끝 바로 아래부터 밑동(화관 뒤)까지
  * 길게 덮는 띠. 귀 표면을 따라 휘어지고 위 끝은 둥글다. 띠 폭은 귀 폭의 절반 남짓(약 60px).
  */
 function buildEarPink() {
@@ -92,14 +73,14 @@ function buildEarPink() {
   const NU = 10; // 띠 폭 방향 칸 수
   const NV = 28; // 띠 길이 방향 칸 수
   const LIFT = 1.04; // 귀 표면에서 살짝 띄운다 (반지름 배율)
-  const top = Y(58);
-  const bottom = Y(270);
+  const top = EAR.top - 0.0077;
+  const bottom = EAR.top - 0.0531;
   const capStart = EAR.top - EAR.r; // 이보다 위는 귀 끝의 반구
   const roundFrom = top - 0.012; // 띠 위 끝을 둥글게 좁히기 시작하는 높이
   for (const sx of [-1, 1]) {
     const theta = sx * 0.45; // 띠 가운데 방향
     const HALF = 0.62; // 띠 반폭 (rad)
-    const ex = sx * px(EAR.dx);
+    const ex = sx * EAR.x;
     const positions = [];
     const uvs = [];
     for (let j = 0; j <= NV; j++) {
@@ -135,8 +116,8 @@ function buildEarPink() {
   return mergeAll(parts);
 }
 
-// 풀 치마: 머리 바로 아래 허리(반폭 0.045)에서 치마 끝(915px, 반폭 0.06)까지 굵게 꼰 털실이 퍼진다. 목이 보이지 않게 허리를 머리 밑에 붙인다.
-const SKIRT = skirtFrom({ waistY: -0.002, hemY: Y(915), topR: 0.045, hemR: 0.06, count: 24, width: 0.0047 });
+// 풀 치마: 몸 가운데 허리에서 다리 위까지 (인어섬 시리즈 표준 치수). 굵게 꼰 털실.
+const SKIRT = skirtFrom({ ...STD_SKIRT, count: 24, width: 0.0047 });
 
 /**
  * 노란 꽃 화관: 앞쪽 정수리에만 얹은 꽃 5송이 (뒤에서는 양옆 끝만 살짝 보인다).
@@ -165,10 +146,10 @@ function buildCrown() {
   return { petals: mergeAll(petals), pearls: mergeAll(pearls) };
 }
 
-// 횃불: 왼손에 쥔 흰 막대(아래 끝 225px·730px → 위 끝 120px·520px) 위에 주황 불꽃과 흰 불씨
+// 횃불: 왼손에 쥔 흰 막대(아래 끝 225px·730px → 위 끝 120px·520px, 작은 몸에 맞춰 1.2cm 안쪽으로) 위에 주황 불꽃과 흰 불씨
 const TORCH = {
-  bottom: new THREE.Vector3(X(225), Y(730), 0.014),
-  top: new THREE.Vector3(X(120), Y(520), 0.014),
+  bottom: new THREE.Vector3(X(225) + 0.012, Y(730), 0.014),
+  top: new THREE.Vector3(X(120) + 0.012, Y(520), 0.014),
   stickRadius: 0.003,
 };
 // 불꽃 꽃잎 단면 (r: 최대 폭 대비, y: 길이 대비). 아래는 둥글고 끝이 뾰족한 물방울 모양
@@ -204,7 +185,8 @@ function buildTorch() {
 
 // 얼굴 좌표: 사진 앞모습에서 픽셀로 잰 값을 그대로 옮긴다 (가로·세로 같은 비율)
 function buildFace() {
-  const { px, py, pt } = scaledFace(FACE_MAP, FACE_SCALE, FACE_ANCHOR_Y);
+  // 사진 좌표(얼굴 가운데 462px 기준 가로 px, 높이 px)를 표준 얼굴로 옮긴다
+  const { px, py, pt } = faceFrom({ dx: 90.6, y: 456 });
   const ink = [];
   const white = [];
   const blush = [];
