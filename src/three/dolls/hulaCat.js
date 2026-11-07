@@ -57,8 +57,8 @@ function buildBody() {
     ...standardBody(HEAD.depth),
   ];
   for (const sx of [-1, 1]) {
-    // 팔: 몸 윗부분 어깨(몸 속)에서 옆·앞·아래로 뻗은 작고 둥근 팔
-    parts.push(limb([sx * 0.026, -0.016, 0.006], [sx * 0.049, -0.03, 0.012], 0.0074, 0.0085));
+    // 팔: 몸통 맨 위(머리 바로 아래, 목 가까이) 어깨에서 옆·앞·아래로 뻗은 작고 둥근 팔
+    parts.push(limb([sx * 0.022, -0.005, 0.006], [sx * 0.05, -0.019, 0.012], 0.0074, 0.0085));
   }
   return mergeAll(parts);
 }
