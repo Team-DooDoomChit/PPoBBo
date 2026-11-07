@@ -147,6 +147,63 @@ export function photoMapper(head, { cx, halfWidth, bottom, stretchY = 1 }) {
   return { cx, px, py, pt: (dx, y) => [px(dx), py(y)] };
 }
 
+// ---------- 인어섬 시리즈 공통 체형 (호빵 시리즈와 같은 머리·몸 비율) ----------
+
+/** 표준 머리 사진 좌표 (호빵 시리즈·인어섬 하치와레와 같다): 가운데 263px, 반폭 172px, 턱 354.5px, 정수리 92px */
+export const STD_PHOTO = { cx: 263, halfWidth: 172, bottom: 354.5, top: 92 };
+/** 표준 얼굴: 눈 가운데 ±51px, 높이 241.5px */
+export const STD_EYE = { dx: 51, y: 241.5 };
+
+let stdHead = null;
+/**
+ * 호빵 시리즈와 같은 머리 (반폭 0.061, 앞뒤 두께 0.75, 볼 높이가 가장 넓고 둥근 턱).
+ * 인어섬 인형은 모두 이 머리를 써서 머리·얼굴 비율을 호빵 시리즈와 맞춘다.
+ */
+export function standardHead() {
+  if (stdHead) return stdHead;
+  const P = STD_PHOTO;
+  const K = 0.061 / P.halfWidth;
+  const tAt = (y) => (P.bottom - y) / (P.bottom - P.top);
+  const widest = tAt(250);
+  const silhouette = Array.from({ length: 33 }, (_, i) => {
+    const t = i / 32;
+    const [r, p] = t >= widest ? [1 - widest, 2.3] : [widest, 2.5];
+    return [t, Math.max(0, 1 - Math.abs((t - widest) / r) ** p) ** (1 / p)];
+  });
+  const head = createHead({ bottom: -0.008 - (P.bottom - 342) * K, height: (P.bottom - P.top) * K, halfWidth: 0.061, depth: 0.75, silhouette });
+  stdHead = { head, top: head.at(1), tAt, mapper: photoMapper(head, P) };
+  return stdHead;
+}
+
+/** 호빵 시리즈와 같은 몸: 둥근 몸통 + 치마 아래로 보이는 짧은 두 다리 (발바닥 -0.0685) */
+export const STD_BODY = { center: -0.034, rx: 0.036, ry: 0.027 }; // 머리보다 훨씬 작은 몸 (머리 반폭 0.061)
+export function standardBody(depth = 0.75) {
+  return [
+    placed(BASE.sphere, { pos: [0, STD_BODY.center, 0], scale: [STD_BODY.rx, STD_BODY.ry, STD_BODY.rx * depth] }),
+    ...[-1, 1].map((sx) => placed(BASE.sphere, { pos: [sx * 0.0075, -0.0595, 0.002], scale: [0.0072, 0.009, 0.0086] })),
+  ];
+}
+
+/**
+ * 인어섬 풀 치마 표준 치수: 작은 몸의 허리(-0.026)에서 다리 위(-0.055)까지. 짧은 다리가 치마 아래로 조금 보인다.
+ * 허리 위로 몸 윗부분이 보여서 원피스가 아니라 치마로 보인다.
+ */
+export const STD_SKIRT = { waistY: -0.026, hemY: -0.055, topR: 0.038, hemR: 0.046 };
+
+/**
+ * 각 인형 사진의 얼굴 좌표(px)를 표준 얼굴로 옮기는 좌표 변환.
+ * 두 눈 간격을 표준(±51px)에 맞춰 같은 비율로 줄이고, 눈 높이를 표준 눈 높이(241.5px)에 맞춘다.
+ * 그래서 표정(눈·입·눈썹 모양)은 그 인형 그대로이고, 얼굴 비율은 호빵 시리즈와 같아진다.
+ * @param {{ dx: number, y: number }} eye 그 인형 사진의 눈 가운데 (얼굴 가운데에서 가로 px, 높이 px)
+ */
+export function faceFrom(eye) {
+  const { px, py } = standardHead().mapper;
+  const s = STD_EYE.dx / eye.dx;
+  const fpx = (v) => px(v * s);
+  const fpy = (y) => py(STD_EYE.y + (y - eye.y) * s);
+  return { px: fpx, py: fpy, pt: (dx, y) => [fpx(dx), fpy(y)], scale: s };
+}
+
 /**
  * 얼굴 좌표를 얼굴 가운데(anchorY 높이, 가로 가운데) 기준으로 같은 비율로 줄인다.
  * 눈·눈썹·코·입·볼의 위치와 크기, 선 굵기가 모두 함께 줄어 얼굴 생김새는 그대로이고 크기만 작아진다.
