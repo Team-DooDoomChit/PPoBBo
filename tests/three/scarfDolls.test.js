@@ -39,6 +39,33 @@ test('호빵 모몽가의 꼬리는 발바닥 아래로 내려가지 않고 등 
   assert.ok(box.min.z < -0.05, `꼬리 뒤 ${box.min.z.toFixed(4)}`);
 });
 
+test('호빵 모몽가 수염 선은 머리 밖 판 위에 있고, 수염 판 충돌체가 판을 덮는다', () => {
+  const doll = getDoll('momonga-scarf');
+  const list = meshes(createDollMesh(doll));
+  const OUT = 0.064; // 머리 반폭 0.061보다 바깥
+  const ink = list.find((m) => m.material.color?.getHex() === 0x33221f);
+  const inkBox = new THREE.Box3().setFromBufferAttribute(ink.geometry.attributes.position);
+  assert.ok(inkBox.max.x > 0.075 && inkBox.min.x < -0.075, `수염 선 좌우 끝 ${inkBox.min.x.toFixed(4)} ~ ${inkBox.max.x.toFixed(4)}`);
+
+  // 몸 메시 중 머리 밖으로 나온 볼 높이 부분 = 수염 판
+  const fur = list.find((m) => m.material.userData.ownedByDoll);
+  const pad = new THREE.Box3();
+  const p = fur.geometry.attributes.position;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    if (Math.abs(v.x) > OUT && v.y > -0.03 && v.y < 0.06) pad.expandByPoint(v);
+  }
+  assert.ok(!pad.isEmpty(), '수염 판');
+  const body = createDollBody(undefined, [0, 0, 0], doll.type);
+  const i = body.shapes.findIndex((s, k) => s.halfExtents?.x > OUT && Math.abs(body.shapeOffsets[k].y) < 0.05); // 귀 상자(y 0.094)가 아닌 볼 높이 상자
+  assert.ok(i >= 0, '수염 판 상자');
+  const { halfExtents: h } = body.shapes[i];
+  const o = body.shapeOffsets[i];
+  const box = new THREE.Box3(new THREE.Vector3(o.x - h.x, o.y - h.y, o.z - h.z), new THREE.Vector3(o.x + h.x, o.y + h.y, o.z + h.z)).expandByScalar(0.001);
+  assert.ok(box.containsBox(pad), `판 ${pad.min.toArray().map((x) => x.toFixed(4))} ~ ${pad.max.toArray().map((x) => x.toFixed(4))}`);
+});
+
 test('모델 크기와 물리 충돌체가 맞는다 (위쪽 끝 차이 5mm 이내)', () => {
   for (const id of IDS) {
     const doll = getDoll(id);

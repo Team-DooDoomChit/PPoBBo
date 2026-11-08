@@ -513,9 +513,11 @@ function momongaWhiskersGeometry() {
         if (!hit || hit.face.normal.z < 0.35) break; // 옆면까지 돌아가면 앞에서 보이지 않는다
         pts.push(hit.point.addScaledVector(hit.face.normal, 0.0002));
       }
+      if (pts.length < 2) throw new Error(`호빵 모몽가 수염 ${k}: 판 앞면에 닿은 점이 ${pts.length}개`); // 치수를 바꾸다 판을 빗나가면 바로 알 수 있게
       lines.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, R, 6));
       for (const q of [pts[0], pts.at(-1)]) lines.push(placed(BASE.small, { pos: q.toArray(), scale: [R, R, R] }));
     }
+    surface.material.dispose(); // 레이캐스트에만 쓴 기본 재질
     const pivot = new THREE.Vector3(x0 + sx * BURY, Y, 0);
     const tilt = new THREE.Matrix4().makeTranslation(pivot).multiply(new THREE.Matrix4().makeRotationZ(-sx * TILT)).multiply(new THREE.Matrix4().makeTranslation(pivot.clone().negate()));
     pad.push(g.applyMatrix4(tilt));
