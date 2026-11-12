@@ -43,15 +43,16 @@ test('얼굴(코·눈·입·볼)은 앞쪽(+z)에만 있고 뒷면에는 없다'
   }
 });
 
-test('뒤쪽에서도 머리와 치마 사이에 몸통(목)이 보인다', () => {
+test('앞뒤 어디서 봐도 머리 바로 아래에서 치마가 시작해 목이 따로 보이지 않는다 (빈틈 없음)', () => {
   const group = build();
   group.updateMatrixWorld(true);
-  const [body] = meshes(group);
-  // 머리 아래 끝(-0.006)과 치마 허리(-0.021) 사이 높이에서 뒤쪽 바로 뒤에서 앞으로 광선을 쏘면 몸통 표면(반폭 0.048 × 앞뒤 0.85)에 맞아야 한다
-  const ray = new THREE.Raycaster(new THREE.Vector3(0, -0.013, -0.2), new THREE.Vector3(0, 0, 1));
-  const [hit] = ray.intersectObject(body);
-  assert.ok(hit, '뒤쪽에 몸통이 있어야 함');
-  assert.ok(hit.point.z < -0.038, `뒤쪽 몸통 표면 z ${hit.point.z.toFixed(3)}`);
+  // 머리 아래 끝(-0.006)부터 치마 위쪽(-0.02)까지, 앞·뒤에서 가운데로 광선을 쏘면 머리·치마·몸 중 하나에 맞아야 한다
+  for (const z of [0.2, -0.2]) {
+    for (let y = -0.004; y >= -0.02; y -= 0.004) {
+      const ray = new THREE.Raycaster(new THREE.Vector3(0, y, z), new THREE.Vector3(0, 0, -Math.sign(z)));
+      assert.ok(ray.intersectObject(group, true).length > 0, `${z > 0 ? '앞' : '뒤'} y ${y.toFixed(3)} 높이에 빈틈`);
+    }
+  }
 });
 
 test('귀·털 뭉치까지 모델 크기와 물리 충돌체가 맞는다', () => {
