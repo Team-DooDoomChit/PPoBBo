@@ -6,6 +6,8 @@
 [웹캠] → MediaPipe → 모션 브릿지(#10) ─ inputState.update() ─→ MotionBinding(#6) → 집게 / 조이스틱 / 화면
                                                                                 ↓ eventBus
                    게임 로직(#11~#13) ←──── integration/gameApi.js ←──────── UI(#4·#5)
+                        ↕ 로그인 중일 때만
+                   cloudSync(#38) ←──── integration/auth.js ←───────────── UI(#37)
 ```
 
 ## 1. 입력: `InputState` (`src/core/InputState.js`)
@@ -139,12 +141,61 @@ UI는 이 객체만 호출합니다. 현재는 **메모리 Mock**이며, 게임 
 - 현재 `doll:won → addDoll` 구독은 `gameApi.js` 하단에 있습니다. #13에서 저장 모듈이 직접 구독하도록 옮기면 이 줄은 삭제합니다.
 - 인형 목록(`id`, `name`, `rarity`, `machineId`)은 `src/data/dolls.js`를 사용합니다.
 
-## 4. 디버깅
+## 4. 구글 로그인·클라우드 저장: `auth` (`src/integration/auth.js`, #38)
+
+**게스트 플레이가 기본입니다.** 로그인하지 않으면 지금처럼 이 기기(LocalStorage)에만 저장하고, 로그인하면 같은 기록(골드·출석·야간 근무·도감)을 Firestore `users/{uid}`에 올려 다른 기기에서도 이어 합니다. 게임 로직·`gameApi`는 그대로이고, UI(#37)는 아래 객체만 호출합니다.
+
+```js
+import { auth } from './integration/auth.js';
+
+auth.enabled;                   // false면 Firebase 설정이 없는 것 → 로그인 버튼 숨기기
+auth.getUser();                 // { uid, name, photoUrl } | null
+auth.signInWithGoogle();        // Promise<{ ok: true, redirect? } | { ok: false, reason }>
+auth.signOut();                 // Promise<{ ok: true, unsynced }>
+auth.migrateGuestData(choice);  // 'upload' | 'use-cloud' → Promise<{ ok: true } | { ok: false, reason }>
+auth.getSyncStatus();           // 아래 sync:status 값
+```
+
+| 이벤트 | payload | 용도 |
+| --- | --- | --- |
+| `auth:changed` | `{ user }` (`null`이면 로그아웃) | HUD 로그인 버튼 ↔ 프로필 |
+| `auth:needs-merge` | `{ guest, cloud }` 각각 `{ gold, dolls, streak }`, `cloud.savedAt`(ms) | "이 기기의 기록을 계정으로 옮길까요?" 모달 → `migrateGuestData` |
+| `sync:status` | `{ status }` | `off`(게스트) · `syncing`(저장 중) · `saved`(저장됨) · `offline` · `error` · `needs-merge`(고르기 대기) |
+
+- 로그인 직후 받아 온 기록은 `gold:changed`, `collection:changed`로 화면에 반영됩니다. 따로 새로고침할 필요 없습니다.
+- `signInWithGoogle()` 실패 `reason`: `cancelled`(창 닫음) · `network` · `unauthorized-domain`(허용 도메인 미등록) · `too-many-requests` · `unavailable`(SDK 로드 실패) · `disabled`(설정 없음) · `unknown`
+- 팝업이 막히면 자동으로 리다이렉트 로그인으로 넘어가고 `{ ok: true, redirect: true }`를 돌려줍니다 (페이지가 이동함).
+- `signOut()`의 `unsynced: true`는 오프라인이라 마지막 변경을 올리지 못하고 지웠다는 뜻입니다 (안내 문구용).
+
+### 기록 규칙
+
+| 상황 | 동작 |
+| --- | --- |
+| 처음 로그인한 계정 (클라우드 기록 없음) | 이 기기의 게스트 기록을 그대로 계정으로 옮김 (게스트 쪽은 비움) |
+| 클라우드 기록만 있음 | 클라우드 기록을 받아서 사용 |
+| 게스트·클라우드 기록 둘 다 있음 | `auth:needs-merge`로 멈추고 게스트로 계속 플레이. `upload`: 게스트 기록으로 덮되 도감은 합침 (게스트 쪽은 비움) / `use-cloud`: 클라우드 기록 사용 (게스트 기록은 남아서 로그아웃하면 돌아옴) |
+| 로그인 중 저장 | 로컬에 바로 저장, 바뀐 키를 1.5초 모아서 올림 |
+| 오프라인 | 로컬에만 저장(`offline`), 다시 연결되면 올림. 로그인 직후 기록을 못 받았으면 받을 때까지 게스트로 플레이 |
+| 두 기기에서 동시에 | 키마다 나중에 저장한 쪽 우선 (기기 시계 기준), 도감은 합치기 (개수는 큰 쪽). 다른 기기의 저장은 실시간으로 반영 |
+| 로그아웃 | 남은 변경을 올려 보고, 계정 기록을 이 기기에서 지운 뒤 게스트 기록으로 |
+
+### 설정 (Firebase)
+
+1. Firebase 콘솔에서 프로젝트 생성 → 웹 앱 추가 → **Authentication > 로그인 방법 > Google** 사용 설정, **Firestore** 데이터베이스 생성
+2. `.env.example`을 `.env.local`로 복사해 `VITE_FIREBASE_*` 값 채우기 (커밋 금지). Vercel에도 같은 환경 변수 등록
+3. **Authentication > 설정 > 승인된 도메인**에 배포 도메인 추가 (https 필요, `localhost`는 기본 포함)
+4. 보안 규칙 배포: `npx firebase-tools deploy --only firestore:rules` (`firestore.rules`: 본인 `uid` 문서만 읽기/쓰기)
+
+설정이 없으면 `auth.enabled === false`이고 Firebase SDK도 불러오지 않습니다. 로컬 개발·테스트는 그대로 게스트로 동작합니다.
+
+> **한계**: 골드·출석 계산이 브라우저에서 일어나므로 본인 기록 조작은 완전히 막지 못합니다. 필요하면 이후 Cloud Functions로 검증을 옮깁니다.
+
+## 5. 디버깅
 
 개발 서버(`npm run dev`)에서는 브라우저 콘솔에서 `window.__ppobbo`로 접근할 수 있습니다.
 
 ```js
-const { inputState, router, games, motion } = window.__ppobbo;
+const { inputState, router, games, motion, auth } = window.__ppobbo;
 router.go('game', { machineId: 'bear' });
 inputState.update({ isOk: true }); inputState.update({ isOk: false }); // 코인 투입 확인
 router.go('game', { machineId: 'bear' });                              // 카메라 켜짐 (motion.hand.left / motion.hand.right 로 손별 상태 확인)
