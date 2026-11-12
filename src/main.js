@@ -17,6 +17,8 @@ import { inputState } from './core/InputState.js';
 import { setupKeyboardInput } from './integration/KeyboardInput.js';
 import { setupMotionBinding } from './integration/MotionBinding.js';
 import { setupMotion } from './motion/setupMotion.js';
+// 구글 로그인(선택): 불러오면 로그인 상태를 확인하고, 로그인 중이면 기록을 클라우드와 맞춘다 (#38)
+import { auth } from './integration/auth.js';
 import { preloadDollModels } from './three/DollPreview.js';
 import { DOLLS } from './data/dolls.js';
 import { inject } from '@vercel/analytics';
@@ -69,6 +71,6 @@ setupModals(hud);
 // 웹캠 모션 인식 (게임 화면에 들어가면 카메라 켜짐)
 const motion = setupMotion();
 
-if (import.meta.env.DEV) window.__ppobbo = { sceneManager, arcade, games, router, eventBus, inputState, motion };
+if (import.meta.env.DEV) window.__ppobbo = { sceneManager, arcade, games, router, eventBus, inputState, motion, auth };
 sceneManager.start();
 eventBus.emit('app:ready');
