@@ -1,0 +1,21 @@
+rules_version = '2';
+
+// 구글 로그인 계정 기록 (#38): 본인 uid 문서만 읽고 쓸 수 있다.
+// 한계: 골드·출석 계산이 브라우저에서 일어나므로 본인 기록 조작은 막지 못한다.
+//       (필요하면 이후 Cloud Functions로 검증을 옮긴다)
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['v', 'data', 'updatedAt'])
+        && request.resource.data.data is map
+        && request.resource.data.updatedAt is map;
+    }
+    // 그 밖의 문서는 모두 막는다
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
